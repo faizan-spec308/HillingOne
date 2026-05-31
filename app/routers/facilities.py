@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from app.database import get_db
-from app.models import Facility, Category
+from app.models import Facility
 from typing import Optional
 
 router = APIRouter(prefix="/facilities", tags=["Facilities"])
