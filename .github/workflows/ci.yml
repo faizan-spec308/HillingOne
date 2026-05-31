@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — lint & import check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check app/ main.py --ignore=E501,E712
+
+      - name: Import check — verify all modules resolve
+        env:
+          GEMINI_API_KEY: ""
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: hillingdon_booking
+          DB_USER: postgres
+          DB_PASSWORD: ""
+        run: |
+          python -c "
+          from app.config import settings
+          from app.schemas import (
+              CategoryResponse, FacilityResponse, TimeSlotResponse,
+              UserCreate, UserResponse, BookingCreate, BookingStatusUpdate,
+              AISearchRequest, AIBookRequest,
+          )
+          from app.routers import categories, facilities, slots, bookings, users, ai_agent
+          print('All imports OK')
+          "
+
+  frontend:
+    name: Frontend — install & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: atrium/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: atrium/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build

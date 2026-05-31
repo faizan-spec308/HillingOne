@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+*.pyc
+
+# Secrets — never commit these
+.env
+.env.local
+.env.production
+*.pem
+*.key
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Frontend build output
+atrium/frontend/dist/
+atrium/frontend/.vite/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# pytest / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# mypy
+.mypy_cache/

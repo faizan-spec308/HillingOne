@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: hillingone-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        value: hillingone
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false

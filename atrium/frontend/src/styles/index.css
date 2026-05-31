@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --hillingdon-navy:       #1B4F8C;
+  --hillingdon-navy-dark:  #153D6E;
+  --hillingdon-navy-tint:  #EBF4FF;
+  --hillingdon-teal:       #0EA5E9;
+  --hillingdon-green:      #059669;
+  --text-primary:          #0F172A;
+  --text-secondary:        #475569;
+  --text-muted:            #94A3B8;
+  --border:                #E2E8F0;
+  --surface:               #F8FAFC;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+*  { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+*:focus-visible { outline: 2px solid var(--hillingdon-navy); outline-offset: 2px; border-radius: 6px; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text-primary);
+  background: var(--surface);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 6px; height: 6px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: #CBD5E1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+@keyframes slideInRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1;   }
+}
+@keyframes skeletonShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes spinnerRing {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Utility classes ────────────────────────────────────────────────────────── */
+.agent-step    { animation: slideInRight 0.4s ease-out; }
+.pulse-subtle  { animation: pulseSubtle 1.5s ease-in-out infinite; }
+.fade-in-up    { animation: fadeInUp 0.35s ease-out both; }
+
+.skeleton {
+  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── Card / surface ─────────────────────────────────────────────────────────── */
+.civic-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+.civic-card:hover {
+  box-shadow: 0 8px 28px rgba(27,79,140,0.10), 0 3px 10px rgba(0,0,0,0.06);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 22px; border-radius: 12px;
+  background: var(--hillingdon-navy); color: #fff;
+  font-size: 14px; font-weight: 600;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(27,79,140,0.25);
+}
+.btn-primary:hover  { background: var(--hillingdon-navy-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(27,79,140,0.30); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 18px; border-radius: 12px;
+  border: 1.5px solid var(--border); color: var(--text-secondary);
+  font-size: 14px; font-weight: 500;
+  background: #fff; transition: all 0.15s ease;
+}
+.btn-secondary:hover { border-color: var(--hillingdon-navy); color: var(--hillingdon-navy); background: var(--hillingdon-navy-tint); }
+
+/* ── Confidence badge colours ────────────────────────────────────────────────── */
+.conf-high   { --conf-fg: #059669; --conf-bg: #ECFDF5; --conf-border: #A7F3D0; --conf-bar: #10B981; }
+.conf-medium { --conf-fg: #D97706; --conf-bg: #FFFBEB; --conf-border: #FCD34D; --conf-bar: #F59E0B; }
+.conf-low    { --conf-fg: #2563EB; --conf-bg: #EFF6FF; --conf-border: #BFDBFE; --conf-bar: #3B82F6; }
+
+/* ── Leaflet fix ─────────────────────────────────────────────────────────────── */
+.leaflet-container { z-index: 0; }
+
+/* ── Nav tab ─────────────────────────────────────────────────────────────────── */
+.nav-tab {
+  padding: 6px 18px; border-radius: 8px;
+  font-size: 14px; font-weight: 500;
+  transition: all 0.15s;
+}
+.nav-tab.active { background: #fff; color: var(--hillingdon-navy); box-shadow: 0 1px 4px rgba(0,0,0,0.10); }
+.nav-tab:not(.active) { color: #64748B; }
+.nav-tab:not(.active):hover { color: #1E293B; background: rgba(255,255,255,0.6); }
+
+/* ── Staff table ─────────────────────────────────────────────────────────────── */
+.staff-table th { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748B; }
+.staff-table tr:hover td { background: #F8FAFC; }
