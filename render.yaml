@@ -3,19 +3,28 @@ services:
     name: hillingone-api
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: atrium/backend
+    buildCommand: pip install -r requirements.txt && python -m alembic upgrade head && python -m app.seed.seed_data
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hillingone-db
+          property: connectionString
       - key: GEMINI_API_KEY
         sync: false
-      - key: DB_HOST
-        sync: false
-      - key: DB_PORT
-        value: "5432"
-      - key: DB_NAME
-        value: hillingone
-      - key: DB_USER
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: CORS_ORIGINS
+        value: '["https://faizan-spec308.github.io","http://localhost:5173","http://localhost:3000"]'
+      - key: HOLD_DURATION_SECONDS
+        value: "60"
+      - key: DEFAULT_GOODWILL_CREDIT_PERCENTAGE
+        value: "20"
+
+databases:
+  - name: hillingone-db
+    plan: free
+    databaseName: atrium
+    user: atrium
