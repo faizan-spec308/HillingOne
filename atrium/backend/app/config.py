@@ -23,15 +23,15 @@ class Settings(BaseSettings):
         asyncpg does not accept sslmode as a URL param — SSL is handled via
         connect_args in database.py instead.
         """
-        import re
         url = self.database_url
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        # Strip sslmode parameter — asyncpg uses connect_args for SSL
-        url = re.sub(r"[?&]sslmode=[^&]*", "", url)
-        url = re.sub(r"\?$", "", url)
+        # Strip ALL query params — asyncpg doesn't accept URL params like
+        # sslmode or channel_binding. SSL is handled via connect_args instead.
+        if "?" in url:
+            url = url[: url.index("?")]
         return url
 
     class Config:
