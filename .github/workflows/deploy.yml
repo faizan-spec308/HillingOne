@@ -6,25 +6,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
+  contents: write
 
 jobs:
   deploy-frontend:
     name: Frontend → GitHub Pages
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    defaults:
-      run:
-        working-directory: atrium/frontend
 
     steps:
       - uses: actions/checkout@v4
@@ -37,19 +24,19 @@ jobs:
           cache-dependency-path: atrium/frontend/package-lock.json
 
       - name: Install dependencies
+        working-directory: atrium/frontend
         run: npm ci
 
       - name: Build
+        working-directory: atrium/frontend
         env:
           VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
           VITE_BASE_URL: /HillingOne/
         run: npm run build
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: atrium/frontend/dist
-
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: atrium/frontend/dist
+          branch: gh-pages
+          clean: true
