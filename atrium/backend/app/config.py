@@ -16,12 +16,22 @@ class Settings(BaseSettings):
 
     @property
     def async_database_url(self) -> str:
-        """Convert bare postgresql:// URL (provided by Render) to asyncpg driver URL."""
+        """Convert a bare postgresql:// URL to asyncpg format, stripping incompatible params.
+
+        Neon and Render supply URLs like:
+          postgresql://user:pass@host/db?sslmode=require
+        asyncpg does not accept sslmode as a URL param — SSL is handled via
+        connect_args in database.py instead.
+        """
+        import re
         url = self.database_url
         if url.startswith("postgres://"):
-            return url.replace("postgres://", "postgresql+asyncpg://", 1)
-        if url.startswith("postgresql://"):
-            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        # Strip sslmode parameter — asyncpg uses connect_args for SSL
+        url = re.sub(r"[?&]sslmode=[^&]*", "", url)
+        url = re.sub(r"\?$", "", url)
         return url
 
     class Config:
