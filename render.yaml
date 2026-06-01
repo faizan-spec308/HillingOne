@@ -7,6 +7,7 @@ services:
     buildCommand: pip install -r requirements.txt && python -m alembic upgrade head && python -m app.seed.seed_data
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
+    pythonVersion: "3.11.0"
     envVars:
       - key: DATABASE_URL
         sync: false
