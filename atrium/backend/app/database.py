@@ -13,6 +13,7 @@ engine = create_async_engine(
     echo=False,
     future=True,
     pool_pre_ping=True,
+    connect_args={"ssl": "require"} if settings.async_database_url.startswith("postgresql+asyncpg") and "localhost" not in settings.async_database_url else {},
 )
 
 AsyncSessionLocal = async_sessionmaker(
