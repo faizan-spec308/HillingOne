@@ -29,10 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: atrium/frontend/package-lock.json
 
@@ -41,9 +41,6 @@ jobs:
 
       - name: Build
         env:
-          # Point the frontend at the live Render backend.
-          # Add VITE_API_BASE as a GitHub Actions secret once Render is deployed.
-          # Leave blank to use mock data fallback (still shows a working demo).
           VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
           VITE_BASE_URL: /HillingOne/
         run: npm run build
