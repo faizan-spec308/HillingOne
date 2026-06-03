@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Lock, Calendar, Bell, ArrowLeft, Sparkles, MapPin, Clock, Users } from "lucide-react";
 import { api } from "../api/client";
 
-export default function BookingConfirmation({ booking, asset, onBack, encouragement, remindersScheduled }) {
+export default function BookingConfirmation({ booking, asset, onBack, encouragement, remindersScheduled, paymentAmount }) {
   const [_now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -51,6 +51,14 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
             <span className="text-[13px] text-gray-600">Reference</span>
             <span className="text-[15px] font-mono font-bold text-gray-900">{booking.reference}</span>
           </div>
+
+          {/* Payment amount */}
+          {paymentAmount && (
+            <div className="mt-3 inline-flex items-center gap-2 text-[13px] text-emerald-700 font-medium">
+              <CheckCircle2 size={15} className="text-emerald-500" />
+              {paymentAmount} paid
+            </div>
+          )}
         </div>
 
         {/* Details */}

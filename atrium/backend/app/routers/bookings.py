@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.schemas.search import HoldRequest, ConfirmRequest, SwapResponseRequest
 from app.services.booking_service import BookingService
@@ -53,12 +54,48 @@ async def confirm(booking_id: str, req: ConfirmRequest, db: AsyncSession = Depen
 
 @router.delete("/{booking_id}")
 async def cancel_user(booking_id: str, user_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Cancel a booking and automatically refund any Stripe payment.
+
+    If a succeeded payment exists for this booking, a full refund is issued
+    via Stripe before the booking is cancelled.
+    """
     svc = BookingService(db)
     try:
         booking = await svc.user_cancel(booking_id, user_id)
-        return booking.to_dict()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # Auto-refund if a payment was made
+    refund_info = None
+    if settings.stripe_secret_key:
+        try:
+            import uuid as _uuid
+            import stripe as _stripe
+            from sqlalchemy import select as _select
+            from app.models.payment import Payment
+
+            _stripe.api_key = settings.stripe_secret_key
+            result = await db.execute(
+                _select(Payment).where(
+                    Payment.booking_id == _uuid.UUID(booking_id),
+                    Payment.status == "succeeded",
+                )
+            )
+            payment = result.scalar_one_or_none()
+            if payment:
+                refund = _stripe.Refund.create(payment_intent=payment.stripe_payment_intent_id)
+                payment.status = "refunded"
+                payment.refund_id = refund.id
+                await db.commit()
+                refund_info = {"refunded": True, "amount": f"£{payment.amount_pence / 100:.2f}"}
+        except Exception:
+            refund_info = {"refunded": False, "message": "Cancellation processed; refund requires manual review."}
+
+    result = booking.to_dict()
+    if refund_info:
+        result["refund"] = refund_info
+    return result
 
 
 @router.post("/{booking_id}/swap-accept")

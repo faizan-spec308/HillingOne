@@ -102,6 +102,13 @@ export const api = {
   listReminders: (userId) =>
     request(userId ? `/api/reminders/all?user_id=${userId}` : "/api/reminders/all"),
 
+  // Payments
+  createPaymentIntent: (bookingId) =>
+    request(`/api/payments/create-intent?booking_id=${bookingId}`, { method: "POST" }),
+
+  refundBooking: (bookingId) =>
+    request(`/api/payments/refund/${bookingId}`, { method: "POST" }),
+
   // Demo scenarios
   runScenarioAgentSwap: () =>
     request("/api/demo/scenario/agent-swap-request", { method: "POST" }),

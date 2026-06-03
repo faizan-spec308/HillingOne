@@ -6,6 +6,7 @@ from app.models.audit_log import AuditLog
 from app.models.agent_run import AgentRun
 from app.models.search_log import SearchLog
 from app.models.reminder import Reminder
+from app.models.payment import Payment
 
 __all__ = [
     "User",
@@ -17,4 +18,5 @@ __all__ = [
     "AgentRun",
     "SearchLog",
     "Reminder",
+    "Payment",
 ]

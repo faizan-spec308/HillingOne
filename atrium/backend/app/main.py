@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import search, bookings, agent, staff, assets, reminders, demo
+from app.routers import search, bookings, agent, staff, assets, reminders, demo, payments
 
 
 @asynccontextmanager
@@ -29,6 +29,7 @@ app.add_middleware(
 
 app.include_router(search.router)
 app.include_router(bookings.router)
+app.include_router(payments.router)
 app.include_router(agent.router)
 app.include_router(staff.router)
 app.include_router(assets.router)

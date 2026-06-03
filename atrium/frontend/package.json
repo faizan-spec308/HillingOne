@@ -12,7 +12,9 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
-"lucide-react": "^0.453.0"
+    "lucide-react": "^0.453.0",
+    "@stripe/stripe-js": "^4.0.0",
+    "@stripe/react-stripe-js": "^2.8.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.11",

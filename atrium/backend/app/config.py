@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
     hold_duration_seconds: int = 60
     default_goodwill_credit_percentage: int = 20
+    stripe_secret_key: str = Field(default="")
+    stripe_webhook_secret: str = Field(default="")
 
     @property
     def async_database_url(self) -> str:

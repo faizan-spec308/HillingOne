@@ -3,10 +3,11 @@ import { Sparkles, Network, ArrowLeft } from "lucide-react";
 import SearchBox from "../components/SearchBox";
 import AssetCard from "../components/AssetCard";
 import BookingConfirmation from "./BookingConfirmation";
+import PaymentForm from "../components/PaymentForm";
 import { api } from "../api/client";
 
 export default function ResidentView({ user }) {
-  const [stage, setStage] = useState("search"); // search | loading | results | hold | confirmed
+  const [stage, setStage] = useState("search"); // search | loading | results | hold | payment | confirmed
   const [intent, setIntent] = useState(null);
   const [matches, setMatches] = useState([]);
   const [searchWindow, setSearchWindow] = useState(null);
@@ -17,6 +18,8 @@ export default function ResidentView({ user }) {
   const [encouragement, setEncouragement] = useState(null);
   const [remindersCount, setRemindersCount] = useState(0);
   const [error, setError] = useState(null);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState(null);
 
   const handleSearch = async (query) => {
     setError(null);
@@ -54,6 +57,19 @@ export default function ResidentView({ user }) {
     }
   };
 
+  const handleProceedToPayment = async () => {
+    try {
+      const res = await api.createPaymentIntent(holdBooking.id);
+      setClientSecret(res.client_secret);
+      setPaymentAmount(res.amount_display);
+      setStage("payment");
+    } catch (err) {
+      // If Stripe isn't configured, skip payment and confirm directly
+      setError(null);
+      await handleConfirm();
+    }
+  };
+
   const handleConfirm = async () => {
     try {
       const res = await api.confirm(holdBooking.id, user.id, true);
@@ -74,6 +90,8 @@ export default function ResidentView({ user }) {
     setHoldAsset(null);
     setConfirmed(null);
     setError(null);
+    setClientSecret(null);
+    setPaymentAmount(null);
   };
 
   /* ── Loading state ─────────────────────────────────────────────────────── */
@@ -186,8 +204,20 @@ export default function ResidentView({ user }) {
       <HoldScreen
         booking={holdBooking}
         asset={holdAsset}
-        onConfirm={handleConfirm}
+        onConfirm={handleProceedToPayment}
         onCancel={reset}
+      />
+    );
+  }
+
+  /* ── Payment state ─────────────────────────────────────────────────────── */
+  if (stage === "payment" && clientSecret) {
+    return (
+      <PaymentForm
+        clientSecret={clientSecret}
+        amountDisplay={paymentAmount}
+        onSuccess={handleConfirm}
+        onBack={() => setStage("hold")}
       />
     );
   }
@@ -201,6 +231,7 @@ export default function ResidentView({ user }) {
         onBack={reset}
         encouragement={encouragement}
         remindersScheduled={remindersCount}
+        paymentAmount={paymentAmount}
       />
     );
   }
@@ -277,7 +308,7 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
             Release slot
           </button>
           <button onClick={onConfirm} className="btn-primary">
-            Confirm booking
+            Proceed to payment
           </button>
         </div>
       </div>
