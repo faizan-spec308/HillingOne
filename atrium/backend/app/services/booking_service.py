@@ -323,6 +323,36 @@ class BookingService:
             "resident_notification_sent": True,
         }
 
+    async def reschedule(self, booking_id: str, user_id: str, new_start: datetime, new_end: datetime) -> Booking:
+        """Reschedule a confirmed booking to a new time on the same asset."""
+        booking = await self.db.get(Booking, booking_id)
+        if not booking:
+            raise ValueError("booking_not_found")
+        if str(booking.user_id) != str(user_id):
+            raise ValueError("not_booking_owner")
+        if booking.state not in ("confirmed", "held"):
+            raise ValueError("cannot_reschedule")
+        if new_start.tzinfo:
+            new_start = new_start.replace(tzinfo=None)
+        if new_end.tzinfo:
+            new_end = new_end.replace(tzinfo=None)
+        conflicts = await self.find_conflicts(str(booking.asset_id), new_start, new_end, exclude_booking_id=str(booking_id))
+        if conflicts:
+            raise ValueError("slot_unavailable")
+        booking.start_time = new_start
+        booking.end_time = new_end
+        log = AuditLog(
+            id=uuid.uuid4(),
+            booking_id=booking.id,
+            user_id=user_id,
+            action="booking_rescheduled",
+            details={"new_start": new_start.isoformat(), "new_end": new_end.isoformat()},
+        )
+        self.db.add(log)
+        await self.db.commit()
+        await self.db.refresh(booking)
+        return booking
+
     async def expire_holds(self) -> int:
         """Background task: expire stale held bookings."""
         stmt = select(Booking).where(

@@ -1,11 +1,22 @@
-import { Bell, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Bell, ShieldCheck, BookOpen, ChevronDown } from "lucide-react";
 
-export default function Header({ view, onViewChange, userName, role }) {
+export default function Header({ view, onViewChange, userName, role, onMyBookings }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropRef = useRef();
+
   const initials = userName
     ? userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "?";
-
   const isStaff = role === "staff" || role === "admin";
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) setDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -38,12 +49,11 @@ export default function Header({ view, onViewChange, userName, role }) {
           </div>
         </div>
 
-        {/* Nav switcher */}
-        <nav className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5" role="tablist" aria-label="Switch view">
+        {/* Nav switcher — Resident / Staff only */}
+        <nav className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5" role="tablist">
           {[
-            { key: "resident",    label: "Resident" },
-            { key: "my-bookings", label: "My Bookings" },
-            { key: "staff",       label: "Staff" },
+            { key: "resident", label: "Resident" },
+            { key: "staff",    label: "Staff" },
           ].map(({ key, label }) => (
             <button
               key={key}
@@ -57,7 +67,7 @@ export default function Header({ view, onViewChange, userName, role }) {
           ))}
         </nav>
 
-        {/* Right: notification + user */}
+        {/* Right: notification + profile dropdown */}
         <div className="flex items-center gap-2">
           <button
             aria-label="Notifications"
@@ -66,21 +76,45 @@ export default function Header({ view, onViewChange, userName, role }) {
             <Bell size={18} />
           </button>
 
-          <div className="flex items-center gap-2.5 pl-2 border-l border-gray-200 ml-1">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0"
-              style={{
-                background: isStaff
-                  ? "linear-gradient(135deg, #153D6E, #1B4F8C)"
-                  : "linear-gradient(135deg, #059669, #10B981)",
-              }}
+          {/* Profile dropdown */}
+          <div className="relative" ref={dropRef}>
+            <button
+              onClick={() => setDropdownOpen((v) => !v)}
+              className="flex items-center gap-2.5 pl-2 border-l border-gray-200 ml-1 hover:bg-gray-50 rounded-xl pr-2 py-1 transition"
             >
-              {initials}
-            </div>
-            <div className="hidden sm:block leading-tight">
-              <div className="text-[13px] font-semibold text-gray-900">{userName}</div>
-              <div className="text-[11px] text-gray-500 capitalize">{role}</div>
-            </div>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0"
+                style={{
+                  background: isStaff
+                    ? "linear-gradient(135deg, #153D6E, #1B4F8C)"
+                    : "linear-gradient(135deg, #059669, #10B981)",
+                }}
+              >
+                {initials}
+              </div>
+              <div className="hidden sm:block leading-tight text-left">
+                <div className="text-[13px] font-semibold text-gray-900">{userName}</div>
+                <div className="text-[11px] text-gray-500 capitalize">{role}</div>
+              </div>
+              <ChevronDown size={14} className={`text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {/* Dropdown menu */}
+            {dropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-[13px] font-semibold text-gray-900">{userName}</p>
+                  <p className="text-[11px] text-gray-500 capitalize">{role}</p>
+                </div>
+                <button
+                  onClick={() => { setDropdownOpen(false); onMyBookings?.(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left"
+                >
+                  <BookOpen size={15} className="text-hillingdon-navy" />
+                  My Bookings
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

@@ -106,6 +106,12 @@ export const api = {
   listUserBookings: (userId) =>
     request(`/api/bookings?user_id=${userId}`),
 
+  rescheduleBooking: (bookingId, userId, startTime, endTime) =>
+    request(`/api/bookings/${bookingId}/reschedule`, {
+      method: "PATCH",
+      body: JSON.stringify({ user_id: userId, start_time: startTime, end_time: endTime }),
+    }),
+
   // Payments
   createPaymentIntent: (bookingId) =>
     request(`/api/payments/create-intent?booking_id=${bookingId}`, { method: "POST" }),

@@ -65,6 +65,7 @@ export default function App() {
         onViewChange={setView}
         userName={activeUser.name}
         role={activeUser.role}
+        onMyBookings={() => setView("my-bookings")}
       />
 
       <main className="pb-20">

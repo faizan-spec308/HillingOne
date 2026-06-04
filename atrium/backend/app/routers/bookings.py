@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.database import get_db
-from app.schemas.search import HoldRequest, ConfirmRequest, SwapResponseRequest
+from app.schemas.search import HoldRequest, ConfirmRequest, SwapResponseRequest, RescheduleRequest
 from app.services.booking_service import BookingService
 from app.services.reminder_service import ReminderService, generate_ics
 from app.models.booking import Booking
@@ -114,6 +114,17 @@ async def cancel_user(booking_id: str, user_id: str, db: AsyncSession = Depends(
     if refund_info:
         result["refund"] = refund_info
     return result
+
+
+@router.patch("/{booking_id}/reschedule")
+async def reschedule_booking(booking_id: str, req: RescheduleRequest, db: AsyncSession = Depends(get_db)):
+    svc = BookingService(db)
+    try:
+        booking = await svc.reschedule(booking_id, req.user_id, req.start_time, req.end_time)
+        return booking.to_dict()
+    except ValueError as e:
+        code = 409 if str(e) == "slot_unavailable" else 400
+        raise HTTPException(status_code=code, detail=str(e))
 
 
 @router.post("/{booking_id}/swap-accept")

@@ -78,3 +78,9 @@ class SwapResponseRequest(BaseModel):
     booking_id: str
     user_id: str
     accept: bool
+
+
+class RescheduleRequest(BaseModel):
+    user_id: str
+    start_time: datetime
+    end_time: datetime
