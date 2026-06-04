@@ -102,6 +102,10 @@ export const api = {
   listReminders: (userId) =>
     request(userId ? `/api/reminders/all?user_id=${userId}` : "/api/reminders/all"),
 
+  // My Bookings
+  listUserBookings: (userId) =>
+    request(`/api/bookings?user_id=${userId}`),
+
   // Payments
   createPaymentIntent: (bookingId) =>
     request(`/api/payments/create-intent?booking_id=${bookingId}`, { method: "POST" }),

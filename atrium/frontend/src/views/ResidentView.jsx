@@ -6,7 +6,7 @@ import BookingConfirmation from "./BookingConfirmation";
 import PaymentForm from "../components/PaymentForm";
 import { api } from "../api/client";
 
-export default function ResidentView({ user }) {
+export default function ResidentView({ user, onViewMyBookings }) {
   const [stage, setStage] = useState("search"); // search | loading | results | hold | payment | confirmed
   const [intent, setIntent] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -232,6 +232,8 @@ export default function ResidentView({ user }) {
         encouragement={encouragement}
         remindersScheduled={remindersCount}
         paymentAmount={paymentAmount}
+        user={user}
+        onViewMyBookings={onViewMyBookings}
       />
     );
   }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Header from "./components/Header";
 import ResidentView from "./views/ResidentView";
 import StaffView from "./views/StaffView";
+import MyBookings from "./views/MyBookings";
 import DemoController from "./components/DemoController";
 import AgentReasoningPanel from "./components/AgentReasoningPanel";
 import { api } from "./api/client";
@@ -67,11 +68,9 @@ export default function App() {
       />
 
       <main className="pb-20">
-        {view === "resident" ? (
-          <ResidentView user={activeUser} />
-        ) : (
-          <StaffView />
-        )}
+        {view === "resident" && <ResidentView user={activeUser} onViewMyBookings={() => setView("my-bookings")} />}
+        {view === "my-bookings" && <MyBookings user={activeUser} onBack={() => setView("resident")} />}
+        {view === "staff" && <StaffView />}
       </main>
 
       <DemoController

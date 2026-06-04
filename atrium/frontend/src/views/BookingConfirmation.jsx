@@ -1,13 +1,30 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Lock, Calendar, Bell, ArrowLeft, Sparkles, MapPin, Clock, Users } from "lucide-react";
+import { CheckCircle2, Lock, Calendar, Bell, ArrowLeft, Sparkles, MapPin, Clock, Users, X, RefreshCw } from "lucide-react";
 import { api } from "../api/client";
 
-export default function BookingConfirmation({ booking, asset, onBack, encouragement, remindersScheduled, paymentAmount }) {
+export default function BookingConfirmation({ booking, asset, onBack, encouragement, remindersScheduled, paymentAmount, user, onViewMyBookings }) {
   const [_now, setNow] = useState(Date.now());
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+  const [refundInfo, setRefundInfo] = useState(null);
+
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    try {
+      const res = await api.cancelBooking(booking.id, user?.id);
+      setCancelled(true);
+      setRefundInfo(res.refund || null);
+    } catch (err) {
+      setRefundInfo({ error: err.message });
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const startTime = new Date(booking.start_time);
   const endTime   = new Date(booking.end_time);
@@ -145,6 +162,37 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
           )}
         </div>
       </div>
+
+      {/* Cancel / refund */}
+      {cancelled ? (
+        <div className="mt-5 p-5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
+          <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[14px] font-bold text-gray-900 mb-0.5">Booking cancelled</p>
+            <p className="text-[13px] text-gray-600">
+              {refundInfo?.refunded
+                ? `${refundInfo.amount} has been refunded to your card.`
+                : refundInfo?.error || "Cancellation processed."}
+            </p>
+            {onViewMyBookings && (
+              <button onClick={onViewMyBookings} className="mt-3 text-[13px] text-hillingdon-navy font-semibold hover:underline">
+                View all bookings →
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-5 flex justify-center">
+          <button
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="inline-flex items-center gap-2 text-[13px] text-red-500 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-xl transition font-medium"
+          >
+            {cancelling ? <RefreshCw size={14} className="animate-spin" /> : <X size={14} />}
+            {cancelling ? "Cancelling…" : "Cancel this booking"}
+          </button>
+        </div>
+      )}
 
       {/* Trust panel */}
       <div className="mt-5 p-5 bg-white border border-gray-200 rounded-2xl shadow-civic">

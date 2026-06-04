@@ -1,7 +1,9 @@
 """Bookings router."""
+import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.config import settings
 from app.database import get_db
@@ -13,6 +15,22 @@ from app.models.asset import Asset
 from app.models.user import User
 
 router = APIRouter(prefix="/api/bookings", tags=["bookings"])
+
+
+@router.get("")
+async def list_user_bookings(user_id: str, db: AsyncSession = Depends(get_db)):
+    """List all bookings for a user with asset info, newest first."""
+    result = await db.execute(
+        select(Booking)
+        .where(Booking.user_id == uuid.UUID(user_id))
+        .order_by(Booking.start_time.desc())
+    )
+    bookings = result.scalars().all()
+    out = []
+    for b in bookings:
+        asset = await db.get(Asset, b.asset_id)
+        out.append({**b.to_dict(), "asset": asset.to_dict() if asset else None})
+    return out
 
 
 @router.post("/hold")

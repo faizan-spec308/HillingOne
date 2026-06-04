@@ -41,8 +41,9 @@ export default function Header({ view, onViewChange, userName, role }) {
         {/* Nav switcher */}
         <nav className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5" role="tablist" aria-label="Switch view">
           {[
-            { key: "resident", label: "Resident" },
-            { key: "staff",    label: "Staff" },
+            { key: "resident",    label: "Resident" },
+            { key: "my-bookings", label: "My Bookings" },
+            { key: "staff",       label: "Staff" },
           ].map(({ key, label }) => (
             <button
               key={key}
