@@ -5,7 +5,7 @@ import { Lock, CreditCard, ArrowLeft, CheckCircle2 } from "lucide-react";
 
 // Publishable key is intentionally public — safe to embed in frontend code
 const stripePromise = loadStripe(
-  "pk_test_51Tdu5EJnLJL3uPyWkcKdhIeDeoIP20NEVz2jtZwzWOXCF6WFn3hBQK5t2zgnPX2M4A046Xi3oeWCljgjciWnmWni00wzNtuJRa"
+  "pk_test_51Tdu5YQwQUDdwUxjCQ5M2ucTRi7kp9yaCkfmUvkR9rwJNKbcpOEBhZVEYD5lcOcw7Gllzgj4ky0pPS1UKsHZjAPt00KXyYf3YG"
 );
 
 function CheckoutForm({ amountDisplay, onSuccess, onBack }) {
