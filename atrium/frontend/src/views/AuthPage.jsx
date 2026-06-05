@@ -35,7 +35,7 @@ export default function AuthPage() {
       {/* Left panel — branding */}
       <div
         className="hidden lg:flex flex-col justify-between w-[45%] p-12 relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg, #1e1b4b 0%, #4338CA 50%, #7C3AED 100%)" }}
+        style={{ background: "linear-gradient(160deg, #020617 0%, #0F172A 60%, #1E293B 100%)" }}
       >
         {/* Decorative circles */}
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #60A5FA, transparent)" }} />

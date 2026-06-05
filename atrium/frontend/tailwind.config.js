@@ -4,14 +4,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        "hillingdon-navy":       "#4F46E5",
-        "hillingdon-navy-dark":  "#4338CA",
-        "hillingdon-navy-tint":  "#EEF2FF",
-        "hillingdon-teal":       "#7C3AED",
+        "hillingdon-navy":       "#0F172A",
+        "hillingdon-navy-dark":  "#020617",
+        "hillingdon-navy-tint":  "#F0F9FF",
+        "hillingdon-teal":       "#0891B2",
         "hillingdon-green":      "#059669",
-        "civic-slate":           "#4b5563",
-        "civic-surface":         "#FAFAFA",
-        "civic-border":          "#E5E7EB",
+        "civic-slate":           "#475569",
+        "civic-surface":         "#F8FAFC",
+        "civic-border":          "#E2E8F0",
       },
       fontFamily: {
         sans:    ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],

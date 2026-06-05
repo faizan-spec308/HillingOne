@@ -65,7 +65,7 @@ export default function SearchBox({ onSearch, loading }) {
     <div>
       {/* ── Hero ──────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-gray-100" style={{
-        background: "linear-gradient(160deg, #f5f3ff 0%, #faf9ff 50%, #ffffff 100%)",
+        background: "linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)",
       }}>
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 opacity-[0.025]"
@@ -86,7 +86,7 @@ export default function SearchBox({ onSearch, loading }) {
             <h1 className="font-display text-[44px] md:text-[56px] font-black text-gray-900 leading-[1.05] tracking-tight mb-5">
               Book any council space
               <br />
-              <span style={{ background: "linear-gradient(135deg, #4F46E5, #7C3AED)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              <span style={{ color: "#0891B2" }}>
                 in plain English.
               </span>
             </h1>

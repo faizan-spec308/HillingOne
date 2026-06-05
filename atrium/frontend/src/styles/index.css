@@ -4,17 +4,18 @@
 
 /* ── Tokens ────────────────────────────────────────────────── */
 :root {
-  --navy:         #4F46E5;
-  --navy-dark:    #4338CA;
-  --navy-tint:    #EEF2FF;
-  --violet:       #7C3AED;
+  --navy:         #0F172A;
+  --navy-dark:    #020617;
+  --navy-tint:    #F0F9FF;
+  --cyan:         #0891B2;
+  --cyan-light:   #E0F2FE;
   --green:        #059669;
-  --border:       #E5E7EB;
-  --border-focus: #4F46E5;
-  --surface:      #FAFAFA;
+  --border:       #E2E8F0;
+  --border-focus: #0891B2;
+  --surface:      #F8FAFC;
   --text-1:       #0f172a;
-  --text-2:       #374151;
-  --text-3:       #6b7280;
+  --text-2:       #334155;
+  --text-3:       #64748b;
 }
 
 /* ── Base ───────────────────────────────────────────────────── */
@@ -80,16 +81,16 @@ h1, h2, h3, h4 {
   font-weight: 600;
   letter-spacing: -0.01em;
   transition: all 0.18s cubic-bezier(0.16,1,0.3,1);
-  box-shadow: 0 1px 3px rgba(26,63,111,0.3), 0 0 0 0 rgba(26,63,111,0);
+  box-shadow: 0 1px 3px rgba(15,23,42,0.25);
   cursor: pointer;
   border: none;
 }
 .btn-primary:hover {
-  background: var(--navy-dark);
+  background: #1E293B;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(26,63,111,0.28);
+  box-shadow: 0 6px 20px rgba(15,23,42,0.22);
 }
-.btn-primary:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(26,63,111,0.3); }
+.btn-primary:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(15,23,42,0.25); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .btn-secondary {
