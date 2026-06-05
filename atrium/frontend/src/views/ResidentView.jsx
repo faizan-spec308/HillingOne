@@ -257,7 +257,9 @@ export default function ResidentView({ user, onViewMyBookings }) {
 /* ── Hold screen ──────────────────────────────────────────────────────────── */
 function HoldScreen({ booking, asset, onConfirm, onCancel }) {
   const heldUntil = new Date(booking.held_until).getTime();
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const totalSeconds = Math.max(60, Math.round((heldUntil - Date.now()) / 1000 + 0));
+  const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
+  const durationRef = useState(totalSeconds)[0];
 
   useEffect(() => {
     const tick = () => {
@@ -269,8 +271,8 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
     return () => clearInterval(interval);
   }, [heldUntil]);
 
-  const progress = Math.min(100, (secondsLeft / 60) * 100);
-  const isUrgent = secondsLeft <= 15;
+  const progress = Math.min(100, (secondsLeft / durationRef) * 100);
+  const isUrgent = secondsLeft <= 30;
 
   return (
     <div className="max-w-md mx-auto px-6 py-14 fade-in-up">

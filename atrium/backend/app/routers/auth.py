@@ -81,3 +81,36 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me")
 async def me(current_user: User = Depends(get_current_user)):
     return current_user.to_dict()
+
+
+class CreateStaffRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str = "staff"
+    admin_secret: str
+
+
+@router.post("/create-staff", status_code=201)
+async def create_staff(req: CreateStaffRequest, db: AsyncSession = Depends(get_db)):
+    """Create a staff/councillor account. Requires ADMIN_SECRET env var."""
+    import os
+    secret = os.getenv("ADMIN_SECRET", "")
+    if not secret or req.admin_secret != secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret.")
+    if req.role not in ("staff", "councillor", "admin"):
+        raise HTTPException(status_code=400, detail="Role must be staff, councillor, or admin.")
+    existing = await db.execute(select(User).where(User.email == req.email.lower()))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Email already registered.")
+    user = User(
+        id=uuid.uuid4(),
+        email=req.email.lower(),
+        name=req.name,
+        role=req.role,
+        password_hash=_hash(req.password),
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return {"token": _make_token(user), "user": user.to_dict()}

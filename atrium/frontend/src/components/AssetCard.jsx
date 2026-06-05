@@ -122,11 +122,9 @@ export default function AssetCard({ match, onBook }) {
                 Up to {asset.capacity}
               </span>
             )}
-            {asset.hourly_rate && (
-              <span className="font-semibold text-hillingdon-navy">
-                £{asset.hourly_rate}/hr
-              </span>
-            )}
+            <span className="font-bold text-hillingdon-navy">
+              {asset.hourly_rate > 0 ? `£${Number(asset.hourly_rate).toFixed(2)}/hr` : "Free"}
+            </span>
           </div>
 
           {/* Reasoning */}
