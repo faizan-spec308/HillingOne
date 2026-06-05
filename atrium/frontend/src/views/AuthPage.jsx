@@ -35,7 +35,7 @@ export default function AuthPage() {
       {/* Left panel — branding */}
       <div
         className="hidden lg:flex flex-col justify-between w-[45%] p-12 relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg, #0F2A50 0%, #1B4F8C 60%, #2563EB 100%)" }}
+        style={{ background: "linear-gradient(160deg, #1e1b4b 0%, #4338CA 50%, #7C3AED 100%)" }}
       >
         {/* Decorative circles */}
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #60A5FA, transparent)" }} />
@@ -43,7 +43,7 @@ export default function AuthPage() {
 
         {/* Logo */}
         <div className="flex items-center gap-3 z-10">
-          <div className="w-10 h-10 bg-white/15 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />

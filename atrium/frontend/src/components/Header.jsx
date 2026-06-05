@@ -27,7 +27,7 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
       {/* Brand strip */}
-      <div className="bg-hillingdon-navy px-6 py-1.5 flex items-center gap-2">
+      <div className="px-6 py-1.5 flex items-center gap-2" style={{ background: "linear-gradient(90deg, #4F46E5, #7C3AED)" }}>
         <ShieldCheck size={12} className="text-white/60" />
         <span className="text-[11px] text-white/70 tracking-wide">
           Official digital service · London Borough of Hillingdon
@@ -80,7 +80,7 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0"
                 style={{
                   background: isStaff
-                    ? "linear-gradient(135deg, #153D6E, #1B4F8C)"
+                    ? "linear-gradient(135deg, #4338CA, #7C3AED)"
                     : "linear-gradient(135deg, #059669, #10B981)",
                 }}
               >
