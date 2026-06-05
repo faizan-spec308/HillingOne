@@ -9,6 +9,13 @@ from app.routers import search, bookings, agent, staff, assets, reminders, demo,
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure password_hash column exists (safe to run multiple times)
+    from app.database import engine
+    from sqlalchemy import text
+    async with engine.begin() as conn:
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"
+        ))
     yield
 
 
