@@ -5,15 +5,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 
 from app.database import get_db
+from app.dependencies import require_staff
 from app.schemas.search import StaffOverrideRequest
 from app.services.booking_service import BookingService
+from app.models.user import User
 from app.models.audit_log import AuditLog
 from app.models.booking import Booking
 from app.models.asset import Asset
 from app.models.agent_run import AgentRun
 from app.models.search_log import SearchLog
 
-router = APIRouter(prefix="/api/staff", tags=["staff"])
+router = APIRouter(prefix="/api/staff", tags=["staff"], dependencies=[Depends(require_staff)])
 
 
 @router.post("/override")

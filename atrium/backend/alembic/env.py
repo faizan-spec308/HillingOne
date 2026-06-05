@@ -18,6 +18,9 @@ db_url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
 # Alembic expects sync URL
 if db_url and "+asyncpg" in db_url:
     db_url = db_url.replace("+asyncpg", "")
+# Strip query params — SSL is passed via connect_args instead
+if db_url and "?" in db_url:
+    db_url = db_url[: db_url.index("?")]
 config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:
@@ -39,10 +42,15 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    url = config.get_main_option("sqlalchemy.url")
+    connect_args = {}
+    if url and "neon.tech" in url:
+        connect_args = {"sslmode": "require"}
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)

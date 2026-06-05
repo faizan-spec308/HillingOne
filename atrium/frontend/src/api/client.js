@@ -1,16 +1,17 @@
-import {
-  MOCK_USERS,
-  MOCK_SEARCH,
-  MOCK_HOLD,
-  MOCK_CONFIRM,
-  MOCK_STAFF_DASHBOARD,
-} from "./mockData";
-
 const BASE = import.meta.env.VITE_API_BASE || "";
 
+function getToken() {
+  return localStorage.getItem("atrium_token");
+}
+
 async function request(path, options = {}) {
+  const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
     ...options,
   });
   if (!res.ok) {
@@ -23,48 +24,38 @@ async function request(path, options = {}) {
   return res;
 }
 
-/** Try the real API; if unreachable fall back to mock data silently. */
-async function withFallback(path, options, mockFn) {
-  try {
-    return await request(path, options);
-  } catch {
-    return typeof mockFn === "function" ? mockFn() : mockFn;
-  }
-}
-
 export const api = {
-  // Users
-  demoUsers: () =>
-    withFallback("/api/demo/users", {}, () => MOCK_USERS),
+  // Auth
+  login: (email, password) =>
+    request("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+
+  register: (name, email, password, ward) =>
+    request("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password, ward }) }),
+
+  me: () => request("/api/auth/me"),
 
   // Search
   search: (query, userId = null) =>
-    withFallback(
-      "/api/search",
-      { method: "POST", body: JSON.stringify({ query, user_id: userId }) },
-      () => {
-        // Simulate a short delay so the loading skeleton is visible
-        return new Promise((r) => setTimeout(() => r(MOCK_SEARCH(query)), 1200));
-      }
-    ),
+    request("/api/search", { method: "POST", body: JSON.stringify({ query, user_id: userId }) }),
 
   // Bookings
   hold: (data) =>
-    withFallback(
-      "/api/bookings/hold",
-      { method: "POST", body: JSON.stringify(data) },
-      () => MOCK_HOLD(data)
-    ),
+    request("/api/bookings/hold", { method: "POST", body: JSON.stringify(data) }),
 
   confirm: (bookingId, userId, enableReminders = true) =>
-    withFallback(
-      `/api/bookings/${bookingId}/confirm`,
-      { method: "POST", body: JSON.stringify({ user_id: userId, enable_reminders: enableReminders }) },
-      () => MOCK_CONFIRM()
-    ),
+    request(`/api/bookings/${bookingId}/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, enable_reminders: enableReminders }),
+    }),
 
   cancelBooking: (bookingId, userId) =>
     request(`/api/bookings/${bookingId}?user_id=${userId}`, { method: "DELETE" }),
+
+  rescheduleBooking: (bookingId, userId, startTime, endTime) =>
+    request(`/api/bookings/${bookingId}/reschedule`, {
+      method: "PATCH",
+      body: JSON.stringify({ user_id: userId, start_time: startTime, end_time: endTime }),
+    }),
 
   acceptSwap: (bookingId, userId) =>
     request(`/api/bookings/${bookingId}/swap-accept`, {
@@ -80,20 +71,18 @@ export const api = {
 
   getBooking: (bookingId) => request(`/api/bookings/${bookingId}`),
 
+  listUserBookings: (userId) => request(`/api/bookings?user_id=${userId}`),
+
   icsUrl: (bookingId) => `${BASE}/api/bookings/${bookingId}/ics`,
 
   // Agent
-  triggerAgent:   (data) => request("/api/agent/conflict-resolution", { method: "POST", body: JSON.stringify(data) }),
-  recentAgentRuns: ()    => request("/api/agent/runs/recent"),
+  triggerAgent:    (data) => request("/api/agent/conflict-resolution", { method: "POST", body: JSON.stringify(data) }),
+  recentAgentRuns: ()     => request("/api/agent/runs/recent"),
 
   // Staff
-  staffDashboard: () =>
-    withFallback("/api/staff/dashboard", {}, () => MOCK_STAFF_DASHBOARD()),
-
-  staffOverride: (data) =>
-    request("/api/staff/override", { method: "POST", body: JSON.stringify(data) }),
-
-  decisionQueue: () => request("/api/staff/decision-queue"),
+  staffDashboard: () => request("/api/staff/dashboard"),
+  staffOverride:  (data) => request("/api/staff/override", { method: "POST", body: JSON.stringify(data) }),
+  decisionQueue:  () => request("/api/staff/decision-queue"),
 
   // Assets
   listAssets: () => request("/api/assets"),
@@ -102,29 +91,10 @@ export const api = {
   listReminders: (userId) =>
     request(userId ? `/api/reminders/all?user_id=${userId}` : "/api/reminders/all"),
 
-  // My Bookings
-  listUserBookings: (userId) =>
-    request(`/api/bookings?user_id=${userId}`),
-
-  rescheduleBooking: (bookingId, userId, startTime, endTime) =>
-    request(`/api/bookings/${bookingId}/reschedule`, {
-      method: "PATCH",
-      body: JSON.stringify({ user_id: userId, start_time: startTime, end_time: endTime }),
-    }),
-
   // Payments
   createPaymentIntent: (bookingId) =>
     request(`/api/payments/create-intent?booking_id=${bookingId}`, { method: "POST" }),
 
   refundBooking: (bookingId) =>
     request(`/api/payments/refund/${bookingId}`, { method: "POST" }),
-
-  // Demo scenarios
-  runScenarioAgentSwap: () =>
-    request("/api/demo/scenario/agent-swap-request", { method: "POST" }),
-
-  runScenarioOverride: () =>
-    request("/api/demo/scenario/legitimate-override", { method: "POST" }),
-
-  resetDemo: () => request("/api/demo/reset", { method: "POST" }),
 };

@@ -16,6 +16,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(50), nullable=False)
     ward: Mapped[str | None] = mapped_column(String(100), nullable=True)
     flexibility_credits: Mapped[int] = mapped_column(Integer, default=0)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     def to_dict(self) -> dict:

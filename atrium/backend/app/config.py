@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     default_goodwill_credit_percentage: int = 20
     stripe_secret_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")
+    jwt_secret: str = Field(default="atrium-dev-secret-change-in-production")
+    jwt_algorithm: str = "HS256"
+    jwt_expire_days: int = 30
 
     @property
     def async_database_url(self) -> str:

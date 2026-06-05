@@ -20,3 +20,5 @@ services:
         value: "20"
       - key: STRIPE_SECRET_KEY
         sync: false
+      - key: JWT_SECRET
+        sync: false

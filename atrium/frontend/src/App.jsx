@@ -1,85 +1,58 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import AuthPage from "./views/AuthPage";
 import Header from "./components/Header";
 import ResidentView from "./views/ResidentView";
 import StaffView from "./views/StaffView";
 import MyBookings from "./views/MyBookings";
-import DemoController from "./components/DemoController";
 import AgentReasoningPanel from "./components/AgentReasoningPanel";
-import { api } from "./api/client";
 
-export default function App() {
-  const [view, setView] = useState("resident");
-  const [users, setUsers] = useState([]);
-  const [activeUser, setActiveUser] = useState(null);
+function AppShell() {
+  const { user, isStaff } = useAuth();
+  const [view, setView]     = useState("resident");
   const [agentRun, setAgentRun] = useState(null);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    api.demoUsers()
-      .then((u) => {
-        setUsers(u);
-        const resident = u.find((x) => x.role === "resident") || u[0];
-        setActiveUser(resident);
-      })
-      .catch((e) => setError(`Backend unreachable: ${e.message}. Make sure the backend is running on port 8000.`));
-  }, []);
+  if (!user) return <AuthPage />;
 
-  // When the user switches to staff view, change active user to a staff user
-  useEffect(() => {
-    if (!users.length) return;
-    if (view === "staff") {
-      const staff = users.find((u) => u.role === "staff");
-      if (staff) setActiveUser(staff);
-    } else {
-      const resident = users.find((u) => u.role === "resident");
-      if (resident) setActiveUser(resident);
-    }
-  }, [view, users]);
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="max-w-md text-center">
-          <div className="text-red-700 font-semibold mb-2">Cannot reach backend</div>
-          <div className="text-sm text-gray-600">{error}</div>
-          <div className="mt-4 text-xs text-gray-500 font-mono bg-gray-100 p-3 rounded">
-            docker compose up
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!activeUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-500">
-        Loading Atrium...
-      </div>
-    );
-  }
+  const handleViewChange = (v) => {
+    // Non-staff cannot access the staff view
+    if (v === "staff" && !isStaff) return;
+    setView(v);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
         view={view}
-        onViewChange={setView}
-        userName={activeUser.name}
-        role={activeUser.role}
+        onViewChange={handleViewChange}
+        userName={user.name}
+        role={user.role}
+        isStaff={isStaff}
         onMyBookings={() => setView("my-bookings")}
       />
 
       <main className="pb-20">
-        {view === "resident" && <ResidentView user={activeUser} onViewMyBookings={() => setView("my-bookings")} />}
-        {view === "my-bookings" && <MyBookings user={activeUser} onBack={() => setView("resident")} />}
-        {view === "staff" && <StaffView />}
+        {view === "resident"    && <ResidentView user={user} onViewMyBookings={() => setView("my-bookings")} />}
+        {view === "my-bookings" && <MyBookings user={user} onBack={() => setView("resident")} />}
+        {view === "staff"       && isStaff && <StaffView />}
+        {view === "staff"       && !isStaff && (
+          <div className="max-w-md mx-auto px-6 py-20 text-center">
+            <div className="text-5xl mb-4">🔒</div>
+            <h2 className="text-[18px] font-bold text-gray-900 mb-2">Staff access only</h2>
+            <p className="text-[14px] text-gray-500">This area is restricted to Hillingdon Council staff.</p>
+          </div>
+        )}
       </main>
-
-      <DemoController
-        onAgentRun={(run) => setAgentRun(run)}
-        onScenarioComplete={() => {}}
-      />
 
       <AgentReasoningPanel run={agentRun} onClose={() => setAgentRun(null)} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
