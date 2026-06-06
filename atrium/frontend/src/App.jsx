@@ -5,12 +5,10 @@ import Header from "./components/Header";
 import ResidentView from "./views/ResidentView";
 import StaffView from "./views/StaffView";
 import MyBookings from "./views/MyBookings";
-import AgentReasoningPanel from "./components/AgentReasoningPanel";
 
 function AppShell() {
   const { user, isStaff } = useAuth();
-  const [view, setView]     = useState("resident");
-  const [agentRun, setAgentRun] = useState(null);
+  const [view, setView] = useState("resident");
 
   if (!user) return <AuthPage />;
 
@@ -44,7 +42,6 @@ function AppShell() {
         )}
       </main>
 
-      <AgentReasoningPanel run={agentRun} onClose={() => setAgentRun(null)} />
     </div>
   );
 }

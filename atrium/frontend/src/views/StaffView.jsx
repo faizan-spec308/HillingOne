@@ -110,7 +110,7 @@ export default function StaffView() {
       {/* Operating principles strip */}
       <div
         className="rounded-2xl p-5 mb-6"
-        style={{ background: "linear-gradient(135deg, #153D6E 0%, #1B4F8C 100%)" }}
+        style={{ background: "linear-gradient(135deg, #0F766E 0%, #0D9488 100%)" }}
       >
         <div className="text-[10px] uppercase tracking-widest text-white/60 font-bold mb-3">
           Operating principles
@@ -294,7 +294,7 @@ function MetricCard({ icon, label, value, accent }) {
           ? "border-hillingdon-navy text-white"
           : "bg-white border-gray-200"
       }`}
-      style={accent ? { background: "linear-gradient(135deg, #153D6E, #1B4F8C)" } : {}}
+      style={accent ? { background: "linear-gradient(135deg, #0F766E, #0D9488)" } : {}}
     >
       <div className={`flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider mb-2 ${
         accent ? "text-white/70" : "text-gray-400"

@@ -35,11 +35,12 @@ export default function AuthPage() {
       {/* Left panel — branding */}
       <div
         className="hidden lg:flex flex-col justify-between w-[45%] p-12 relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg, #020617 0%, #0F172A 60%, #1E293B 100%)" }}
+        style={{ background: "linear-gradient(160deg, #042F2E 0%, #0F766E 55%, #0D9488 100%)" }}
       >
         {/* Decorative circles */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #60A5FA, transparent)" }} />
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #2DD4BF, transparent)" }} />
         <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #34D399, transparent)" }} />
+        <div className="absolute top-1/2 left-1/4 w-48 h-48 rounded-full opacity-5" style={{ background: "radial-gradient(circle, #F0FDFA, transparent)" }} />
 
         {/* Logo */}
         <div className="flex items-center gap-3 z-10">
@@ -59,7 +60,7 @@ export default function AuthPage() {
         <div className="z-10">
           <h1 className="text-[40px] font-black text-white leading-tight mb-4">
             Book council<br />spaces with<br />
-            <span className="text-blue-300">confidence.</span>
+            <span className="text-teal-200">confidence.</span>
           </h1>
           <p className="text-white/70 text-[16px] leading-relaxed mb-8">
             AI-powered matching across every council facility in the London Borough of Hillingdon.
@@ -170,7 +171,7 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-hillingdon-navy hover:bg-blue-900 text-white text-[15px] font-bold rounded-2xl transition-all shadow-sm hover:shadow-md mt-2"
+                className="w-full flex items-center justify-center gap-2 py-3.5 text-white text-[15px] font-bold rounded-2xl transition-all mt-2 btn-primary"
               >
                 {loading
                   ? <><Loader2 size={18} className="animate-spin" /> {mode === "login" ? "Signing in…" : "Creating account…"}</>
@@ -182,7 +183,7 @@ export default function AuthPage() {
             <p className="text-center text-[13px] text-gray-400 mt-6">
               {mode === "login" ? "Don't have an account? " : "Already have an account? "}
               <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }}
-                className="text-hillingdon-navy font-semibold hover:underline">
+                className="text-hillingdon-navy font-semibold hover:underline decoration-hillingdon-navy/40">
                 {mode === "login" ? "Create one" : "Sign in"}
               </button>
             </p>

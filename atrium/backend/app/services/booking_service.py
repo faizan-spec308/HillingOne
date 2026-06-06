@@ -42,10 +42,18 @@ class BookingService:
         end: datetime,
         exclude_booking_id: str | None = None,
     ) -> list[Booking]:
+        now = datetime.utcnow()
         stmt = select(Booking).where(
             and_(
                 Booking.asset_id == asset_id,
-                Booking.state.in_(["confirmed", "held", "swap_pending"]),
+                # Confirmed/swap_pending always block. Held only blocks if not expired.
+                or_(
+                    Booking.state.in_(["confirmed", "swap_pending"]),
+                    and_(
+                        Booking.state == "held",
+                        or_(Booking.held_until == None, Booking.held_until > now),
+                    ),
+                ),
                 Booking.start_time < end,
                 Booking.end_time > start,
             )
@@ -71,6 +79,21 @@ class BookingService:
             start = start.replace(tzinfo=None)
         if end.tzinfo:
             end = end.replace(tzinfo=None)
+
+        now = datetime.utcnow()
+        if start < now:
+            raise ValueError("cannot_book_past_slot")
+
+        duration_hours = (end - start).total_seconds() / 3600
+        if duration_hours < 0.5:
+            raise ValueError("minimum_booking_30_minutes")
+        if duration_hours > 12:
+            raise ValueError("maximum_booking_12_hours")
+
+        if attendee_count is not None and attendee_count > 0:
+            asset_obj = await self.db.get(Asset, asset_id)
+            if asset_obj and asset_obj.capacity and attendee_count > asset_obj.capacity:
+                raise ValueError(f"exceeds_capacity_{asset_obj.capacity}")
 
         conflicts = await self.find_conflicts(asset_id, start, end)
         if conflicts:
@@ -336,6 +359,11 @@ class BookingService:
             new_start = new_start.replace(tzinfo=None)
         if new_end.tzinfo:
             new_end = new_end.replace(tzinfo=None)
+        if new_start < datetime.utcnow():
+            raise ValueError("cannot_reschedule_to_past")
+        duration_hours = (new_end - new_start).total_seconds() / 3600
+        if duration_hours < 0.5 or duration_hours > 12:
+            raise ValueError("invalid_duration")
         conflicts = await self.find_conflicts(str(booking.asset_id), new_start, new_end, exclude_booking_id=str(booking_id))
         if conflicts:
             raise ValueError("slot_unavailable")

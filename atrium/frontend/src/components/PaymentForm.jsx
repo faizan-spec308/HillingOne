@@ -95,7 +95,7 @@ export default function PaymentForm({ clientSecret, amountDisplay, onSuccess, on
     appearance: {
       theme: "stripe",
       variables: {
-        colorPrimary: "#1B4F8C",
+        colorPrimary: "#0D9488",
         colorBackground: "#ffffff",
         colorText: "#111827",
         borderRadius: "12px",
@@ -113,12 +113,12 @@ export default function PaymentForm({ clientSecret, amountDisplay, onSuccess, on
         <div className="text-center mb-7">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, #1B4F8C, #2563EB)" }}
+            style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}
           >
             <CreditCard size={24} className="text-white" />
           </div>
           <h2 className="text-[20px] font-bold text-gray-900 mb-1">Complete payment</h2>
-          <p className="text-[32px] font-black text-hillingdon-navy">{amountDisplay}</p>
+          <p className="text-[32px] font-black" style={{ color: "#0D9488" }}>{amountDisplay}</p>
           <p className="text-[13px] text-gray-500 mt-1">Booking fee · Fully refundable on cancellation</p>
         </div>
 

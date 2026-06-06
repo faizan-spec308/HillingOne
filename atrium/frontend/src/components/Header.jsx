@@ -35,7 +35,7 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
         <div className="flex items-center gap-3 min-w-0">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "#0F172A" }}
+            style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -77,7 +77,7 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0"
                 style={{
                   background: isStaff
-                    ? "linear-gradient(135deg, #0F172A, #334155)"
+                    ? "linear-gradient(135deg, #0F766E, #0D9488)"
                     : "linear-gradient(135deg, #059669, #10B981)",
                 }}
               >

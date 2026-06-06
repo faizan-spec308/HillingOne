@@ -69,7 +69,7 @@ export default function SearchBox({ onSearch, loading }) {
       }}>
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 opacity-[0.025]"
-          style={{ backgroundImage: "radial-gradient(#1a3f6f 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+          style={{ backgroundImage: "radial-gradient(#0D9488 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
 
         <div className="relative max-w-3xl mx-auto px-6 pt-16 pb-12">
 
@@ -86,7 +86,7 @@ export default function SearchBox({ onSearch, loading }) {
             <h1 className="font-display text-[44px] md:text-[56px] font-black text-gray-900 leading-[1.05] tracking-tight mb-5">
               Book any council space
               <br />
-              <span style={{ color: "#0891B2" }}>
+              <span style={{ color: "#0D9488" }}>
                 in plain English.
               </span>
             </h1>
@@ -99,9 +99,9 @@ export default function SearchBox({ onSearch, loading }) {
           <div
             className="bg-white rounded-2xl overflow-hidden transition-all duration-300"
             style={{
-              border: focused ? "1.5px solid #1a3f6f" : "1.5px solid #e5e7eb",
+              border: focused ? "1.5px solid #0D9488" : "1.5px solid #e5e7eb",
               boxShadow: focused
-                ? "0 0 0 4px rgba(26,63,111,0.08), 0 8px 32px rgba(26,63,111,0.12)"
+                ? "0 0 0 4px rgba(13,148,136,0.10), 0 8px 32px rgba(13,148,136,0.14)"
                 : "0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
             }}
           >

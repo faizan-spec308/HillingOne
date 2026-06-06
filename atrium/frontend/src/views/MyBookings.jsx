@@ -186,7 +186,8 @@ function RescheduleModal({ booking, user, onClose, onSuccess }) {
           <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[14px] font-semibold rounded-2xl transition">
             Cancel
           </button>
-          <button onClick={save} disabled={saving} className="flex-1 px-4 py-3 bg-hillingdon-navy hover:bg-blue-900 text-white text-[14px] font-semibold rounded-2xl transition flex items-center justify-center gap-2">
+          <button onClick={save} disabled={saving} className="flex-1 px-4 py-3 text-white text-[14px] font-semibold rounded-2xl transition flex items-center justify-center gap-2 btn-primary"
+            style={{ padding: "12px 16px" }}>
             {saving && <RefreshCw size={14} className="animate-spin" />}
             {saving ? "Saving…" : "Save changes"}
           </button>

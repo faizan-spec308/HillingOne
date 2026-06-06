@@ -4,18 +4,31 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import search, bookings, agent, staff, assets, reminders, demo, payments, auth
+from app.routers import search, bookings, agent, staff, assets, reminders, payments, auth
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure password_hash column exists (safe to run multiple times)
+    import bcrypt as _bcrypt
     from app.database import engine
     from sqlalchemy import text
+
     async with engine.begin() as conn:
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"
         ))
+        # Give any existing null-hash users a working default password
+        result = await conn.execute(
+            text("SELECT id FROM users WHERE password_hash IS NULL")
+        )
+        null_users = result.fetchall()
+        if null_users:
+            default_hash = _bcrypt.hashpw(b"Atrium2026!", _bcrypt.gensalt()).decode()
+            for (uid,) in null_users:
+                await conn.execute(
+                    text("UPDATE users SET password_hash = :h WHERE id = :id"),
+                    {"h": default_hash, "id": str(uid)},
+                )
     yield
 
 
@@ -42,7 +55,6 @@ app.include_router(agent.router)
 app.include_router(staff.router)
 app.include_router(assets.router)
 app.include_router(reminders.router)
-app.include_router(demo.router)
 
 
 @app.get("/health")
