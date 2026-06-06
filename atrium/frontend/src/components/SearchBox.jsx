@@ -1,29 +1,15 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Mic, Globe, Sparkles, ArrowRight, ChevronDown, MapPin, Users, Clock } from "lucide-react";
+import { Search, Mic, Sparkles, ArrowRight, MapPin, Users, Clock } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
-
-// Voice-input language options (separate from UI language)
-const VOICE_LANGS = [
-  { code: "en-GB", label: "English",  flag: "🇬🇧" },
-  { code: "ur",    label: "اردو",     flag: "🇵🇰" },
-  { code: "pa-IN", label: "ਪੰਜਾਬੀ",   flag: "🇮🇳" },
-  { code: "pl-PL", label: "Polski",   flag: "🇵🇱" },
-  { code: "ar",    label: "العربية",  flag: "🇸🇦" },
-  { code: "so",    label: "Soomaali", flag: "🇸🇴" },
-  { code: "hi-IN", label: "हिन्दी",   flag: "🇮🇳" },
-];
 
 export default function SearchBox({ onSearch, loading }) {
   const { t } = useLanguage();
 
   const [query,     setQuery]     = useState("");
   const [listening, setListening] = useState(false);
-  const [voiceLang, setVoiceLang] = useState("en-GB");
-  const [langOpen,  setLangOpen]  = useState(false);
   const [focused,   setFocused]   = useState(false);
 
   const recRef      = useRef(null);
-  const langRef     = useRef(null);
   const textareaRef = useRef(null);
 
   const EXAMPLES = [
@@ -49,7 +35,7 @@ export default function SearchBox({ onSearch, loading }) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { alert("Voice input isn't supported in this browser."); return; }
     const rec = new SR();
-    rec.lang     = voiceLang;
+    rec.lang     = lang === "ur" ? "ur" : lang === "ar" ? "ar" : lang === "pl" ? "pl-PL" : "en-GB";
     rec.onstart  = () => setListening(true);
     rec.onend    = () => setListening(false);
     rec.onerror  = () => setListening(false);
@@ -57,16 +43,6 @@ export default function SearchBox({ onSearch, loading }) {
     recRef.current = rec;
     rec.start();
   };
-
-  useEffect(() => {
-    const h = (e) => {
-      if (langRef.current && !langRef.current.contains(e.target)) setLangOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
-  const selectedVoiceLang = VOICE_LANGS.find((l) => l.code === voiceLang);
 
   return (
     <div>
@@ -147,34 +123,6 @@ export default function SearchBox({ onSearch, loading }) {
                   {listening ? t("search_listening") : t("search_voice")}
                 </button>
 
-                {/* Voice input language selector */}
-                <div className="relative" ref={langRef}>
-                  <button
-                    onClick={() => setLangOpen((o) => !o)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium border bg-white border-gray-200 text-gray-600 hover:border-hillingdon-navy hover:text-hillingdon-navy hover:bg-hillingdon-navy-tint transition"
-                  >
-                    <Globe size={13} />
-                    {selectedVoiceLang?.flag} {selectedVoiceLang?.label}
-                    <ChevronDown size={11} className={`transition-transform ${langOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  {langOpen && (
-                    <div className="absolute top-full left-0 mt-1.5 w-48 bg-white border border-gray-200 rounded-xl overflow-hidden py-1 z-20 shadow-lg">
-                      {VOICE_LANGS.map((l) => (
-                        <button
-                          key={l.code}
-                          onClick={() => { setVoiceLang(l.code); setLangOpen(false); }}
-                          className={`w-full text-left px-3 py-2 text-[13px] flex items-center gap-2 transition ${
-                            l.code === voiceLang
-                              ? "bg-hillingdon-navy-tint text-hillingdon-navy font-semibold"
-                              : "text-gray-700 hover:bg-gray-50"
-                          }`}
-                        >
-                          <span>{l.flag}</span> {l.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Submit */}
