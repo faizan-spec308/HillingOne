@@ -33,7 +33,9 @@ export default function Header({ userName, role, isStaff }) {
     { path: "/staff", label: t("nav_staff"),    icon: <Shield size={11} />, staffOnly: true },
   ].filter((tab) => !tab.staffOnly || isStaff);
 
-  const currentPath = location.pathname;
+  // Treat all booking-flow sub-paths as "/"
+  const FLOW_PATHS = new Set(["/search", "/results", "/hold", "/pay", "/confirmed"]);
+  const activePath = FLOW_PATHS.has(location.pathname) ? "/" : location.pathname;
 
   return (
     <header
@@ -68,7 +70,7 @@ export default function Header({ userName, role, isStaff }) {
             <button
               key={path}
               onClick={() => navigate(path)}
-              className={`nav-tab ${currentPath === path ? "active" : ""}`}
+              className={`nav-tab ${activePath === path ? "active" : ""}`}
             >
               {icon}
               {label}

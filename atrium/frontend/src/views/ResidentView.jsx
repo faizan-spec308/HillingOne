@@ -7,9 +7,24 @@ import PaymentForm from "../components/PaymentForm";
 import { api } from "../api/client";
 import { useLanguage } from "../context/LanguageContext";
 
+const STAGE_PATHS = {
+  search:    "/",
+  loading:   "/search",
+  results:   "/results",
+  hold:      "/hold",
+  payment:   "/pay",
+  confirmed: "/confirmed",
+};
+
 export default function ResidentView({ user, onViewMyBookings }) {
   const { t } = useLanguage();
-  const [stage, setStage] = useState("search"); // search | loading | results | hold | payment | confirmed
+  const [stage, setStageRaw] = useState("search"); // search | loading | results | hold | payment | confirmed
+
+  const setStage = (s) => {
+    setStageRaw(s);
+    const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+    window.history.replaceState(null, "", base + (STAGE_PATHS[s] ?? "/"));
+  };
   const [intent, setIntent] = useState(null);
   const [matches, setMatches] = useState([]);
   const [searchWindow, setSearchWindow] = useState(null);

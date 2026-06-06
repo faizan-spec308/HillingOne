@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AuthPage from "./views/AuthPage";
 import Header from "./components/Header";
@@ -17,19 +17,17 @@ function AppShell() {
       <Header userName={user.name} role={user.role} isStaff={isStaff} />
       <main className="pb-20">
         <Routes>
-          <Route
-            path="/"
-            element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />}
-          />
-          <Route
-            path="/bookings"
-            element={<MyBookings user={user} onBack={() => navigate("/")} />}
-          />
-          <Route
-            path="/staff"
-            element={isStaff ? <StaffView /> : <Navigate to="/" replace />}
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Booking flow — all render ResidentView; URL synced via replaceState in the component */}
+          <Route path="/"         element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
+          <Route path="/search"   element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
+          <Route path="/results"  element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
+          <Route path="/hold"     element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
+          <Route path="/pay"      element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
+          <Route path="/confirmed"element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
+
+          <Route path="/bookings" element={<MyBookings user={user} onBack={() => navigate("/")} />} />
+          <Route path="/staff"    element={isStaff ? <StaffView /> : <Navigate to="/" replace />} />
+          <Route path="*"         element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
@@ -39,9 +37,9 @@ function AppShell() {
 export default function App() {
   return (
     <AuthProvider>
-      <HashRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <AppShell />
-      </HashRouter>
+      </BrowserRouter>
     </AuthProvider>
   );
 }
