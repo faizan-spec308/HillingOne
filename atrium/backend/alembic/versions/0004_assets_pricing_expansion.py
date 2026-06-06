@@ -187,7 +187,7 @@ def upgrade() -> None:
         safe_name = name.replace("'", "''")
         safe_ward = ward.replace("'", "''")
         desc = f"{safe_name} in {safe_ward}, London Borough of Hillingdon. Capacity {cap}."
-        img  = f"https://placehold.co/400x300/0D9488/FFFFFF/png?text={name.replace(' ', '+')}"
+        img  = f"https://placehold.co/400x300/0D9488/FFFFFF/png?text={name.replace(' ', '+').replace(chr(39), '%27')}"
         acc  = _acc(wheelchair)
         amen = _amen(kitchen, parking)
 
