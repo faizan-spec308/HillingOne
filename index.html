@@ -9,7 +9,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <title>Atrium · Hillingdon Council</title>
-    <script type="module" crossorigin src="/HillingOne/assets/index-Bp2XIWci.js"></script>
+    <!-- Decode GitHub Pages SPA redirect (pairs with public/404.html) -->
+    <script>
+      (function(l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search.slice(1).split('&').map(function(s) {
+            return s.replace(/~and~/g, '&');
+          }).join('?');
+          window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash);
+        }
+      }(window.location));
+    </script>
+    <script type="module" crossorigin src="/HillingOne/assets/index-BeClyV5G.js"></script>
     <link rel="stylesheet" crossorigin href="/HillingOne/assets/index-qt1mFvhZ.css">
   </head>
   <body>
