@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, BookOpen, ChevronDown, LogOut, Shield } from "lucide-react";
+import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 
-export default function Header({ view, onViewChange, userName, role, isStaff, onMyBookings }) {
+export default function Header({ userName, role, isStaff }) {
   const { logout } = useAuth();
+  const { lang, setLang, t, languages } = useLanguage();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [langOpen,     setLangOpen]     = useState(false);
   const dropRef = useRef();
+  const langRef = useRef();
 
   const initials = userName
     ? userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
@@ -14,15 +22,18 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
   useEffect(() => {
     const handler = (e) => {
       if (dropRef.current && !dropRef.current.contains(e.target)) setDropdownOpen(false);
+      if (langRef.current && !langRef.current.contains(e.target)) setLangOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const tabs = [
-    { key: "resident", label: "Resident", show: true },
-    { key: "staff",    label: "Staff",    show: isStaff },
-  ].filter((t) => t.show);
+    { path: "/",      label: t("nav_resident"), icon: null },
+    { path: "/staff", label: t("nav_staff"),    icon: <Shield size={11} />, staffOnly: true },
+  ].filter((tab) => !tab.staffOnly || isStaff);
+
+  const currentPath = location.pathname;
 
   return (
     <header
@@ -32,7 +43,10 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
       <div className="px-6 py-3 flex items-center justify-between gap-4 max-w-7xl mx-auto">
 
         {/* Wordmark */}
-        <div className="flex items-center gap-3 min-w-0">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 min-w-0 focus:outline-none"
+        >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}
@@ -42,32 +56,71 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </div>
-          <div>
+          <div className="text-left">
             <div className="text-[10px] font-semibold text-gray-400 leading-none tracking-widest uppercase">Hillingdon Council</div>
             <div className="text-[16px] font-display font-bold text-gray-900 leading-tight">Atrium</div>
           </div>
-        </div>
+        </button>
 
-        {/* Nav */}
+        {/* Nav tabs */}
         <nav className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
-          {tabs.map(({ key, label }) => (
+          {tabs.map(({ path, label, icon }) => (
             <button
-              key={key}
-              onClick={() => onViewChange(key)}
-              className={`nav-tab ${view === key ? "active" : ""}`}
+              key={path}
+              onClick={() => navigate(path)}
+              className={`nav-tab ${currentPath === path ? "active" : ""}`}
             >
-              {key === "staff" && <Shield size={11} />}
+              {icon}
               {label}
             </button>
           ))}
         </nav>
 
-        {/* Right */}
+        {/* Right controls */}
         <div className="flex items-center gap-1.5">
+
+          {/* Language switcher */}
+          <div className="relative" ref={langRef}>
+            <button
+              onClick={() => setLangOpen((v) => !v)}
+              title="Change language"
+              className="flex items-center gap-1.5 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition"
+            >
+              <Globe size={18} />
+              <span className="text-[11px] font-bold uppercase hidden sm:block tracking-wide">
+                {lang}
+              </span>
+            </button>
+
+            {langOpen && (
+              <div className="absolute right-0 top-full mt-2 w-44 bg-white border border-gray-100 rounded-2xl shadow-lg overflow-hidden z-50">
+                {Object.entries(languages).map(([code, { name, flag }]) => (
+                  <button
+                    key={code}
+                    onClick={() => { setLang(code); setLangOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-[13px] transition text-left ${
+                      lang === code
+                        ? "bg-teal-50 text-teal-700 font-semibold"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="text-base">{flag}</span>
+                    <span className="flex-1">{name}</span>
+                    {lang === code && (
+                      <span className="text-teal-500 text-[11px] font-black">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Notifications bell */}
           <button className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition">
             <Bell size={18} />
           </button>
 
+          {/* User dropdown */}
           <div className="relative" ref={dropRef}>
             <button
               onClick={() => setDropdownOpen((v) => !v)}
@@ -87,21 +140,24 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
                 <div className="text-[13px] font-semibold text-gray-900">{userName}</div>
                 <div className="text-[11px] text-gray-400 capitalize">{role}</div>
               </div>
-              <ChevronDown size={13} className={`text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                size={13}
+                className={`text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+              />
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-civic-lg overflow-hidden z-50">
+              <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-lg overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-gray-100">
                   <p className="text-[13px] font-bold text-gray-900">{userName}</p>
                   <p className="text-[11px] text-gray-400 capitalize">{role}</p>
                 </div>
                 <button
-                  onClick={() => { setDropdownOpen(false); onMyBookings?.(); }}
+                  onClick={() => { setDropdownOpen(false); navigate("/bookings"); }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left"
                 >
                   <BookOpen size={14} className="text-gray-400" />
-                  My Bookings
+                  {t("nav_my_bookings")}
                 </button>
                 <div className="border-t border-gray-100" />
                 <button
@@ -109,7 +165,7 @@ export default function Header({ view, onViewChange, userName, role, isStaff, on
                   className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-red-500 hover:bg-red-50 transition text-left"
                 >
                   <LogOut size={14} />
-                  Sign out
+                  {t("nav_sign_out")}
                 </button>
               </div>
             )}

@@ -5,8 +5,10 @@ import AssetCard from "../components/AssetCard";
 import BookingConfirmation from "./BookingConfirmation";
 import PaymentForm from "../components/PaymentForm";
 import { api } from "../api/client";
+import { useLanguage } from "../context/LanguageContext";
 
 export default function ResidentView({ user, onViewMyBookings }) {
+  const { t } = useLanguage();
   const [stage, setStage] = useState("search"); // search | loading | results | hold | payment | confirmed
   const [intent, setIntent] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -101,10 +103,10 @@ export default function ResidentView({ user, onViewMyBookings }) {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-hillingdon-navy text-white rounded-full text-sm font-semibold pulse-subtle mb-6">
             <Network size={15} />
-            Searching across all council booking systems…
+            {t("results_loading_label")}
           </div>
           <p className="text-[15px] text-gray-500">
-            Atrium is parsing your request and matching it to spaces across the borough.
+            {t("results_loading_sub")}
           </p>
         </div>
 
@@ -139,7 +141,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
           className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-hillingdon-navy mb-6 transition font-medium"
         >
           <ArrowLeft size={15} />
-          New search
+          {t("results_new_search")}
         </button>
 
         {/* Intent panel */}
@@ -154,7 +156,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
               </div>
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-widest text-hillingdon-navy mb-1">
-                  We understood your request
+                  {t("results_understood")}
                 </div>
                 <p className="text-[14px] text-gray-800 leading-relaxed">{intent.extracted_summary}</p>
                 {intent.follow_up_question && (
@@ -170,19 +172,19 @@ export default function ResidentView({ user, onViewMyBookings }) {
         {/* Count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-[13px] text-gray-500 font-medium">
-            {matches.length} {matches.length === 1 ? "match" : "matches"} ranked by suitability
+            {matches.length} {matches.length === 1 ? t("results_match") : t("results_matches")}
           </p>
         </div>
 
         {matches.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
             <div className="text-5xl mb-4">🔍</div>
-            <h3 className="text-[16px] font-bold text-gray-900 mb-2">No matches found</h3>
+            <h3 className="text-[16px] font-bold text-gray-900 mb-2">{t("results_none")}</h3>
             <p className="text-[14px] text-gray-500 mb-6">
-              Try broadening your request or removing specific requirements.
+              {t("results_none_sub")}
             </p>
             <button onClick={reset} className="btn-primary">
-              Search again
+              {t("results_search_again")}
             </button>
           </div>
         ) : (
@@ -256,6 +258,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
 /* ── Hold screen ──────────────────────────────────────────────────────────── */
 function HoldScreen({ booking, asset, onConfirm, onCancel }) {
+  const { t } = useLanguage();
   const heldUntil = new Date(booking.held_until).getTime();
   const totalSeconds = Math.max(60, Math.round((heldUntil - Date.now()) / 1000 + 0));
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
@@ -292,11 +295,11 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
         </div>
 
         <h2 className="text-[20px] font-bold text-gray-900 mb-1">
-          Holding {asset.name}
+          {t("hold_title")} {asset.name}
         </h2>
         <p className="text-[14px] text-gray-500 mb-6 leading-relaxed">
-          This slot is reserved for you. Confirm within{" "}
-          <strong>{secondsLeft} seconds</strong> or it returns to available.
+          {t("hold_sub")}{" "}
+          <strong>{secondsLeft} {t("hold_sub2")}</strong>
         </p>
 
         {/* Progress bar */}
@@ -309,10 +312,10 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
 
         <div className="flex gap-3 justify-center">
           <button onClick={onCancel} className="btn-secondary">
-            Release slot
+            {t("hold_release")}
           </button>
           <button onClick={onConfirm} className="btn-primary">
-            Proceed to payment
+            {t("hold_proceed")}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { MapPin, Users, Accessibility, Utensils, Wifi, Car, Leaf, ChevronRight, Star } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 const CATEGORY_EMOJI = {
   hall: "🏛️", community: "🏛️", sport: "⚽", gym: "🏋️", pitch: "⚽",
@@ -24,10 +25,13 @@ const AMENITY_CHIP = ({ icon: Icon, label, color }) => (
 );
 
 export default function AssetCard({ match, onBook }) {
+  const { t } = useLanguage();
   const asset  = match.asset || {};
   const score  = match.match_score ?? 0;
   const cfg    = SCORE_CONFIG(score);
-  const price  = asset.hourly_rate > 0 ? `£${Number(asset.hourly_rate).toFixed(2)}/hr` : "Free";
+  const price  = asset.hourly_rate > 0
+    ? `£${Number(asset.hourly_rate).toFixed(2)}`
+    : t("card_free");
   const amenities = asset.amenities || {};
 
   return (
@@ -64,7 +68,7 @@ export default function AssetCard({ match, onBook }) {
                 <div className="text-[18px] font-display font-black text-hillingdon-navy leading-none">
                   {price}
                 </div>
-                <div className="text-[10px] text-gray-400 font-medium mt-0.5">per hour</div>
+                <div className="text-[10px] text-gray-400 font-medium mt-0.5">{t("card_per_hour")}</div>
               </div>
             </div>
 
@@ -122,13 +126,13 @@ export default function AssetCard({ match, onBook }) {
                 <AMENITY_CHIP icon={Accessibility} label="Partial access" color="bg-amber-50 text-amber-700 border-amber-200" />
               )}
               {amenities.kitchen && (
-                <AMENITY_CHIP icon={Utensils} label="Kitchen" color="bg-orange-50 text-orange-700 border-orange-200" />
+                <AMENITY_CHIP icon={Utensils} label={t("card_kitchen")} color="bg-orange-50 text-orange-700 border-orange-200" />
               )}
               {amenities.wifi && (
-                <AMENITY_CHIP icon={Wifi} label="WiFi" color="bg-sky-50 text-sky-700 border-sky-200" />
+                <AMENITY_CHIP icon={Wifi} label={t("card_wifi")} color="bg-sky-50 text-sky-700 border-sky-200" />
               )}
               {(amenities.parking || asset.parking) && (
-                <AMENITY_CHIP icon={Car} label="Parking" color="bg-violet-50 text-violet-700 border-violet-200" />
+                <AMENITY_CHIP icon={Car} label={t("card_parking")} color="bg-violet-50 text-violet-700 border-violet-200" />
               )}
               {match.carbon_estimate_kg !== undefined && (
                 <AMENITY_CHIP icon={Leaf} label={`${match.carbon_estimate_kg} kg CO₂`} color="bg-emerald-50 text-emerald-700 border-emerald-200" />
@@ -140,7 +144,7 @@ export default function AssetCard({ match, onBook }) {
               onClick={() => onBook(asset)}
               className="btn-primary w-full justify-center"
             >
-              Book this space
+              {t("card_book")}
               <ChevronRight size={15} />
             </button>
           </div>
