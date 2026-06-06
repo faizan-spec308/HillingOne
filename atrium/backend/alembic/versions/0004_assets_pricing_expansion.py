@@ -110,34 +110,48 @@ _NEW_ASSETS = [
 ]
 
 
+def _sql_bool(v: bool) -> str:
+    return "true" if v else "false"
+
+
 def _acc(wheelchair: bool) -> str:
-    v = "true" if wheelchair else "false"
+    """Return a jsonb_build_object() SQL expression — avoids :true bind-param issue."""
+    v = _sql_bool(wheelchair)
     return (
-        f'{{"wheelchair_access":{v},"hearing_loop":{v},'
-        f'"accessible_toilet":{v},"parking_accessible":{v}}}'
+        f"jsonb_build_object("
+        f"'wheelchair_access',{v}::boolean,"
+        f"'hearing_loop',{v}::boolean,"
+        f"'accessible_toilet',{v}::boolean,"
+        f"'parking_accessible',{v}::boolean)"
     )
 
 
 def _amen(kitchen: bool, parking: bool) -> str:
-    k = "true" if kitchen else "false"
-    p = "true" if parking else "false"
+    """Return a jsonb_build_object() SQL expression — avoids :true bind-param issue."""
+    k = _sql_bool(kitchen)
+    p = _sql_bool(parking)
     return (
-        f'{{"kitchen":{k},"wifi":true,"projector":true,'
-        f'"whiteboard":true,"stage":false,"parking":{p}}}'
+        f"jsonb_build_object("
+        f"'kitchen',{k}::boolean,"
+        f"'wifi',true::boolean,"
+        f"'projector',true::boolean,"
+        f"'whiteboard',true::boolean,"
+        f"'stage',false::boolean,"
+        f"'parking',{p}::boolean)"
     )
 
 
 def upgrade() -> None:
     # ── 1. Price all existing assets ──────────────────────────────────────
     for name, rate in _PRICING.items():
-        # Escape single quotes in name (O'Brien style)
         safe_name = name.replace("'", "''")
         op.execute(
             f"UPDATE assets SET hourly_rate = {rate} WHERE name = '{safe_name}'"
         )
 
     # ── 2. Add parking field to existing amenities that don't have it ────
-    #    Community centres and sports halls typically have parking
+    #    Use jsonb_build_object to avoid :true bind-param issue.
+    #    Use jsonb_exists() instead of ? operator (which SQLAlchemy intercepts).
     _parking_yes = [
         "Botwell Green Community Centre", "Hayes End Community Centre",
         "Northwood Community Centre", "Botwell Green Sports Centre Hall",
@@ -148,12 +162,14 @@ def upgrade() -> None:
     for name in _parking_yes:
         safe = name.replace("'", "''")
         op.execute(
-            f"UPDATE assets SET amenities = amenities || '{{\"parking\":true}}'::jsonb "
-            f"WHERE name = '{safe}' AND NOT (amenities ? 'parking')"
+            f"UPDATE assets "
+            f"SET amenities = amenities || jsonb_build_object('parking', true::boolean) "
+            f"WHERE name = '{safe}' AND NOT jsonb_exists(amenities, 'parking')"
         )
     op.execute(
-        "UPDATE assets SET amenities = amenities || '{\"parking\":false}'::jsonb "
-        "WHERE NOT (amenities ? 'parking')"
+        "UPDATE assets "
+        "SET amenities = amenities || jsonb_build_object('parking', false::boolean) "
+        "WHERE NOT jsonb_exists(amenities, 'parking')"
     )
 
     # ── 3. Fix placeholder image colour (old blue → teal) ────────────────
@@ -184,8 +200,8 @@ def upgrade() -> None:
                 gen_random_uuid(),
                 '{safe_name}', '{category}', '{safe_ward}', {cap},
                 '{desc}',
-                '{acc}'::jsonb,
-                '{amen}'::jsonb,
+                {acc},
+                {amen},
                 {rate}, {lat}, {lng},
                 '{img}',
                 {co2}, true, now()
@@ -194,7 +210,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Remove only the newly added assets; restore prices to 0
     new_names = [a[0].replace("'", "''") for a in _NEW_ASSETS]
     names_sql  = ", ".join(f"'{n}'" for n in new_names)
     op.execute(f"DELETE FROM assets WHERE name IN ({names_sql})")
