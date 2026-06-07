@@ -48,3 +48,9 @@ coverage.xml
 
 # mypy
 .mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Alembic (local overrides only — versions/ must stay tracked)
+atrium/backend/alembic/versions/__pycache__/

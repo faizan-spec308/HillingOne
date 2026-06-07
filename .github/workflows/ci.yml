@@ -10,6 +10,9 @@ jobs:
   backend:
     name: Backend — lint & import check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: atrium/backend
 
     steps:
       - uses: actions/checkout@v4
@@ -25,26 +28,24 @@ jobs:
       - name: Lint with ruff
         run: |
           pip install ruff
-          ruff check app/ main.py --ignore=E501,E712
+          ruff check app/ --ignore=E501,E712
 
       - name: Import check — verify all modules resolve
         env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost/test
           GEMINI_API_KEY: ""
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: hillingdon_booking
-          DB_USER: postgres
-          DB_PASSWORD: ""
+          JWT_SECRET: ci-test-secret
+          ADMIN_SECRET: ci-test-admin
+          CORS_ORIGINS: '["http://localhost:5173"]'
         run: |
           python -c "
           from app.config import settings
-          from app.schemas import (
-              CategoryResponse, FacilityResponse, TimeSlotResponse,
-              UserCreate, UserResponse, BookingCreate, BookingStatusUpdate,
-              AISearchRequest, AIBookRequest,
-          )
-          from app.routers import categories, facilities, slots, bookings, users, ai_agent
-          print('All imports OK')
+          from app.models.user import User
+          from app.models.asset import Asset
+          from app.models.booking import Booking
+          from app.models.payment import Payment
+          from app.routers import auth, search, bookings, payments, agent, staff, assets, reminders
+          print('All Atrium imports OK')
           "
 
   frontend:
@@ -69,3 +70,6 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_API_BASE: ""
+          VITE_BASE_URL: /HillingOne/

@@ -7,9 +7,15 @@ Implements the four-tier cancellation model:
 - Tier 4: Force majeure (system-wide closure)
 """
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
+
+
+def _now() -> datetime:
+    """Return current UTC time as a naive datetime (matches DB column type)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 from app.config import settings
 from app.models.booking import Booking, VALID_OVERRIDE_REASONS, DUAL_APPROVAL_REASONS, CancellationReason
@@ -19,7 +25,7 @@ from app.models.audit_log import AuditLog
 
 
 def _generate_reference() -> str:
-    today = datetime.utcnow().strftime("%Y%m%d")
+    today = _now().strftime("%Y%m%d")
     suffix = str(uuid.uuid4())[:6].upper()
     return f"ATR-{today}-{suffix}"
 
@@ -42,7 +48,7 @@ class BookingService:
         end: datetime,
         exclude_booking_id: str | None = None,
     ) -> list[Booking]:
-        now = datetime.utcnow()
+        now = _now()
         stmt = select(Booking).where(
             and_(
                 Booking.asset_id == asset_id,
@@ -80,7 +86,7 @@ class BookingService:
         if end.tzinfo:
             end = end.replace(tzinfo=None)
 
-        now = datetime.utcnow()
+        now = _now()
         if start < now:
             raise ValueError("cannot_book_past_slot")
 
@@ -127,7 +133,7 @@ class BookingService:
             attendee_count=attendee_count,
             is_recurring=is_recurring,
             recurrence_pattern={"weeks": recurrence_weeks} if recurrence_weeks else None,
-            held_until=datetime.utcnow() + timedelta(seconds=settings.hold_duration_seconds),
+            held_until=_now() + timedelta(seconds=settings.hold_duration_seconds),
             reference=_generate_reference(),
         )
         self.db.add(booking)
@@ -153,14 +159,14 @@ class BookingService:
             raise ValueError(f"cannot_confirm_state_{booking.state}")
         if str(booking.user_id) != str(user_id):
             raise ValueError("not_booking_owner")
-        if booking.held_until and booking.held_until < datetime.utcnow():
+        if booking.held_until and booking.held_until < _now():
             booking.state = "cancelled"
             booking.cancellation_reason = CancellationReason.HOLD_EXPIRED.value
-            booking.cancelled_at = datetime.utcnow()
+            booking.cancelled_at = _now()
             await self.db.commit()
             raise ValueError("hold_expired")
         booking.state = "confirmed"
-        booking.confirmed_at = datetime.utcnow()
+        booking.confirmed_at = _now()
 
         log = AuditLog(
             id=uuid.uuid4(),
@@ -181,7 +187,7 @@ class BookingService:
         if str(booking.user_id) != str(user_id):
             raise ValueError("not_booking_owner")
         booking.state = "cancelled"
-        booking.cancelled_at = datetime.utcnow()
+        booking.cancelled_at = _now()
         booking.cancelled_by = user_id
         booking.cancellation_reason = CancellationReason.USER_CANCELLED.value
 
@@ -211,7 +217,7 @@ class BookingService:
             raise ValueError("no_alternative_proposed")
 
         booking.state = "cancelled"
-        booking.cancelled_at = datetime.utcnow()
+        booking.cancelled_at = _now()
         booking.cancellation_reason = CancellationReason.SWAP_ACCEPTED.value
 
         # Create the new confirmed booking at the alternative
@@ -224,7 +230,7 @@ class BookingService:
             end_time=booking.end_time,
             purpose=booking.purpose,
             attendee_count=booking.attendee_count,
-            confirmed_at=datetime.utcnow(),
+            confirmed_at=_now(),
             reference=_generate_reference(),
         )
         self.db.add(new_booking)
@@ -308,7 +314,7 @@ class BookingService:
         requires_dual = reason_enum in DUAL_APPROVAL_REASONS
 
         booking.state = "cancelled"
-        booking.cancelled_at = datetime.utcnow()
+        booking.cancelled_at = _now()
         booking.cancelled_by = staff_user_id
         booking.cancellation_reason = reason_enum.value
         booking.cancellation_details = details
@@ -359,7 +365,7 @@ class BookingService:
             new_start = new_start.replace(tzinfo=None)
         if new_end.tzinfo:
             new_end = new_end.replace(tzinfo=None)
-        if new_start < datetime.utcnow():
+        if new_start < _now():
             raise ValueError("cannot_reschedule_to_past")
         duration_hours = (new_end - new_start).total_seconds() / 3600
         if duration_hours < 0.5 or duration_hours > 12:
@@ -386,7 +392,7 @@ class BookingService:
         stmt = select(Booking).where(
             and_(
                 Booking.state == "held",
-                Booking.held_until < datetime.utcnow(),
+                Booking.held_until < _now(),
             )
         )
         result = await self.db.execute(stmt)
@@ -394,6 +400,6 @@ class BookingService:
         for b in expired:
             b.state = "cancelled"
             b.cancellation_reason = CancellationReason.HOLD_EXPIRED.value
-            b.cancelled_at = datetime.utcnow()
+            b.cancelled_at = _now()
         await self.db.commit()
         return len(expired)
