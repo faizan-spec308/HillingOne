@@ -5,12 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   deploy-frontend:
-    name: Frontend → GitHub Pages
+    name: Frontend → Vercel
     runs-on: ubuntu-latest
 
     steps:
@@ -23,20 +20,29 @@ jobs:
           cache: "npm"
           cache-dependency-path: atrium/frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel environment
         working-directory: atrium/frontend
-        run: npm ci
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
 
       - name: Build
         working-directory: atrium/frontend
         env:
-          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
-          VITE_BASE_URL: /HillingOne/
-        run: npm run build
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel build --prod --token=$VERCEL_TOKEN
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: atrium/frontend/dist
-          branch: gh-pages
-          clean: true
+      - name: Deploy to Vercel
+        working-directory: atrium/frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN

@@ -13,7 +13,7 @@ services:
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
       - key: CORS_ORIGINS
-        value: '["https://faizan-spec308.github.io","http://localhost:5173","http://localhost:3000"]'
+        value: '["https://atrium-hillingdon.vercel.app","https://faizan-spec308.github.io","http://localhost:5173","http://localhost:3000"]'
       - key: HOLD_DURATION_SECONDS
         value: "300"
       - key: DEFAULT_GOODWILL_CREDIT_PERCENTAGE
