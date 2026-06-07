@@ -60,7 +60,7 @@ export default function Header({ userName, role, isStaff }) {
           </div>
           <div className="text-left">
             <div className="text-[10px] font-semibold text-gray-400 leading-none tracking-widest uppercase">Hillingdon Council</div>
-            <div className="text-[16px] font-display font-bold text-gray-900 leading-tight">Atrium</div>
+            <div className="text-[16px] font-display font-bold text-gray-900 leading-tight">HillingOne</div>
           </div>
         </button>
 

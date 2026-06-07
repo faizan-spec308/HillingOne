@@ -5,13 +5,13 @@ const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState(
-    () => localStorage.getItem("atrium_lang") || "en"
+    () => localStorage.getItem("hillingone_lang") || "en"
   );
 
   const setLang = (code) => {
     if (!languages[code]) return;
     setLangState(code);
-    localStorage.setItem("atrium_lang", code);
+    localStorage.setItem("hillingone_lang", code);
   };
 
   useEffect(() => {

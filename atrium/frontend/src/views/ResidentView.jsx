@@ -62,7 +62,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
         user_id: user.id,
         start_time: searchWindow.start,
         end_time: searchWindow.end,
-        purpose: intent?.purpose_summary || "Booking via Atrium",
+        purpose: intent?.purpose_summary || "Booking via HillingOne",
         attendee_count: intent?.capacity || null,
       });
       setHoldBooking(booking);

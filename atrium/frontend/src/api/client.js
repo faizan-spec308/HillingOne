@@ -1,7 +1,7 @@
 const BASE = import.meta.env.VITE_API_BASE || "";
 
 function getToken() {
-  return localStorage.getItem("atrium_token");
+  return localStorage.getItem("hillingone_token");
 }
 
 async function request(path, options = {}) {

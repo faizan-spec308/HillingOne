@@ -153,7 +153,7 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
                 </div>
                 <div>
                   <div className="text-[11px] font-bold text-hillingdon-navy uppercase tracking-wide mb-1">
-                    A note from Atrium
+                    A note from HillingOne
                   </div>
                   <p className="text-[13px] text-gray-700 leading-relaxed">{encouragement}</p>
                 </div>

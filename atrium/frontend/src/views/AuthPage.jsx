@@ -68,7 +68,7 @@ export default function AuthPage() {
             </div>
             <div>
               <p className="text-white/60 text-[11px] font-medium uppercase tracking-widest">Hillingdon Council</p>
-              <p className="text-white text-[20px] font-black tracking-tight">Atrium</p>
+              <p className="text-white text-[20px] font-black tracking-tight">HillingOne</p>
             </div>
           </div>
 
@@ -138,7 +138,7 @@ export default function AuthPage() {
                   <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
               </div>
-              <span className="text-[18px] font-black text-gray-900">Atrium</span>
+              <span className="text-[18px] font-black text-gray-900">HillingOne</span>
             </div>
             <div className="flex items-center gap-1">
               {Object.entries(languages).map(([code, { flag }]) => (

@@ -2,8 +2,8 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
-const TOKEN_KEY = "atrium_token";
-const USER_KEY  = "atrium_user";
+const TOKEN_KEY = "hillingone_token";
+const USER_KEY  = "hillingone_user";
 
 export function AuthProvider({ children }) {
   const [token, setToken]   = useState(() => localStorage.getItem(TOKEN_KEY));
