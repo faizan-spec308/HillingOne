@@ -42,7 +42,7 @@ export default function Header({ userName, role, isStaff }) {
       className="bg-white sticky top-0 z-30"
       style={{ borderBottom: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
     >
-      <div className="px-6 py-3 flex items-center justify-between gap-4 max-w-7xl mx-auto">
+      <div className="px-6 py-3 flex items-center justify-between gap-4 w-full">
 
         {/* Wordmark */}
         <button
