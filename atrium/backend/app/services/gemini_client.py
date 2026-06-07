@@ -9,6 +9,7 @@ Each call has a deterministic fallback so the system never breaks.
 """
 import json
 import time
+from datetime import date
 from app.config import settings
 
 # Cache intent parsing results — same query text always maps to same intent.
@@ -47,6 +48,7 @@ Return a JSON object matching this exact schema (no other text):
   "location": <Hillingdon ward name or "anywhere" or null>,
   "venue_type": "office" | "meeting_room" | "hall" | "sports" | "outdoor" | "community" | "studio" | "other" | null,
   "frequency": "one-off" | "weekly" | "monthly" | null,
+  "specific_date": <ISO date string "YYYY-MM-DD" if a specific date was mentioned, else null>,
   "day_of_week": <string or null>,
   "time_of_day": "morning" | "afternoon" | "evening" | null,
   "duration_hours": <number or null>,
@@ -71,6 +73,8 @@ venue_type guidance:
 - "park", "garden", "outdoor" → "outdoor"
 - "studio", "recording", "dance" → "studio"
 - generic "community centre" → "community"
+
+specific_date rules: Today is {today}. If the user says "10th of June", "next Friday", "this Saturday", "tomorrow" etc., resolve it to an absolute YYYY-MM-DD date and put it in specific_date. If no date is mentioned, set specific_date to null.
 
 If the request is clear and complete, set follow_up_question to null. British English.
 Hillingdon wards include: Botwell, Hayes Town, Yiewsley, Uxbridge, Northwood, Ruislip, Manor, Brunel, Pinkwell, Heathrow Villages, Hillingdon East, West Drayton, Townfield, Charville."""
@@ -131,7 +135,8 @@ Return ONLY the message text, nothing else."""
 
 
 async def parse_intent(user_input: str) -> dict:
-    cache_key = user_input.strip().lower()
+    # Include today's date in cache key — same query on a different day resolves differently
+    cache_key = f"{date.today().isoformat()}:{user_input.strip().lower()}"
     now = time.monotonic()
     if cache_key in _intent_cache and now - _intent_cache[cache_key][0] < _INTENT_TTL:
         return _intent_cache[cache_key][1]
@@ -145,7 +150,7 @@ async def parse_intent(user_input: str) -> dict:
         from google.genai import types
         response = await client.aio.models.generate_content(
             model=settings.gemini_model,
-            contents=INTENT_PROMPT.format(user_input=user_input),
+            contents=INTENT_PROMPT.format(user_input=user_input, today=date.today().isoformat()),
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 temperature=0.2,

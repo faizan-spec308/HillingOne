@@ -21,16 +21,24 @@ router = APIRouter(prefix="/api/search", tags=["search"])
 async def search(request: Request, req: SearchRequest, db: AsyncSession = Depends(get_db)):
     intent = await parse_intent(req.query)
 
-    # Choose a target window for availability filtering
-    base = datetime.utcnow() + timedelta(days=2)
-    if intent.get("time_of_day") == "morning":
+    # Build the target window — use specific_date if Gemini resolved one, else default to +2 days
+    specific_date = intent.get("specific_date")
+    if specific_date:
+        try:
+            base = datetime.fromisoformat(specific_date)
+        except ValueError:
+            base = datetime.utcnow() + timedelta(days=2)
+    else:
+        base = datetime.utcnow() + timedelta(days=2)
+
+    tod = intent.get("time_of_day")
+    if tod == "morning":
         base = base.replace(hour=10, minute=0, second=0, microsecond=0)
-    elif intent.get("time_of_day") == "afternoon":
-        base = base.replace(hour=14, minute=0, second=0, microsecond=0)
-    elif intent.get("time_of_day") == "evening":
+    elif tod == "evening":
         base = base.replace(hour=18, minute=0, second=0, microsecond=0)
     else:
         base = base.replace(hour=14, minute=0, second=0, microsecond=0)
+
     duration = intent.get("duration_hours") or 2
     end = base + timedelta(hours=duration)
 
