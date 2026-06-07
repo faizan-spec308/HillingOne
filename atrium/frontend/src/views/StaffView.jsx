@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Activity, MapPin, AlertTriangle, TrendingUp,
-  ShieldCheck, Clock, RefreshCw, Users, Zap,
+  ShieldCheck, Clock, RefreshCw, Users, Zap, Download,
 } from "lucide-react";
 import { api } from "../api/client";
 
@@ -97,6 +97,13 @@ export default function StaffView() {
               Updated {lastRefresh.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
+          <button
+            onClick={() => api.downloadBookingsCsv()}
+            className="btn-secondary text-[13px] px-3 py-2"
+          >
+            <Download size={13} />
+            Export CSV
+          </button>
           <button
             onClick={refresh}
             className="btn-secondary text-[13px] px-3 py-2"

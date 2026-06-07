@@ -22,21 +22,50 @@ logger = logging.getLogger("hillingone.bookings")
 
 @router.get("")
 async def list_user_bookings(
+    page: int = 1,
+    page_size: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List all bookings for the authenticated user with asset info, newest first."""
-    result = await db.execute(
+    """List bookings for the authenticated user. Upcoming always returned in full; past paginated."""
+    page_size = min(page_size, 50)
+    offset = (page - 1) * page_size
+
+    # Always return all upcoming bookings regardless of pagination
+    upcoming_result = await db.execute(
         select(Booking, Asset)
         .outerjoin(Asset, Asset.id == Booking.asset_id)
-        .where(Booking.user_id == current_user.id)
-        .order_by(Booking.start_time.desc())
+        .where(
+            Booking.user_id == current_user.id,
+            Booking.state.in_(["confirmed", "held", "swap_pending"]),
+        )
+        .order_by(Booking.start_time.asc())
     )
-    rows = result.all()
-    return [
+    upcoming = [
         {**b.to_dict(), "asset": a.to_dict() if a else None}
-        for b, a in rows
+        for b, a in upcoming_result.all()
     ]
+
+    # Paginate past bookings
+    past_result = await db.execute(
+        select(Booking, Asset)
+        .outerjoin(Asset, Asset.id == Booking.asset_id)
+        .where(
+            Booking.user_id == current_user.id,
+            Booking.state.in_(["cancelled", "completed"]),
+        )
+        .order_by(Booking.start_time.desc())
+        .offset(offset)
+        .limit(page_size + 1)
+    )
+    past_rows = past_result.all()
+    has_more = len(past_rows) > page_size
+    past = [
+        {**b.to_dict(), "asset": a.to_dict() if a else None}
+        for b, a in past_rows[:page_size]
+    ]
+
+    return {"upcoming": upcoming, "past": past, "page": page, "has_more": has_more}
 
 
 @router.post("/hold")

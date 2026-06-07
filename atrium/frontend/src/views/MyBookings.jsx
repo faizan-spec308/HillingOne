@@ -267,16 +267,38 @@ function BookingCard({ booking, onCancel, onReschedule }) {
 
 /* ─── Main view ────────────────────────────────────────────────────── */
 export default function MyBookings({ user, onBack }) {
-  const [bookings, setBookings]         = useState([]);
+  const [upcoming, setUpcoming]         = useState([]);
+  const [past, setPast]                 = useState([]);
+  const [hasMore, setHasMore]           = useState(false);
+  const [page, setPage]                 = useState(1);
   const [loading, setLoading]           = useState(true);
+  const [loadingMore, setLoadingMore]   = useState(false);
   const [toast, setToast]               = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [reschedTarget, setReschedTarget] = useState(null);
   const [cancelling, setCancelling]     = useState(false);
 
   useEffect(() => {
-    api.listUserBookings().then(setBookings).finally(() => setLoading(false));
+    api.listUserBookings(1).then((res) => {
+      setUpcoming(res.upcoming);
+      setPast(res.past);
+      setHasMore(res.has_more);
+      setPage(1);
+    }).finally(() => setLoading(false));
   }, [user.id]);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await api.listUserBookings(nextPage);
+      setPast((prev) => [...prev, ...res.past]);
+      setHasMore(res.has_more);
+      setPage(nextPage);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const showToast = (type, data) => {
     setToast({ type, data });
@@ -287,7 +309,8 @@ export default function MyBookings({ user, onBack }) {
     setCancelling(true);
     try {
       const res = await api.cancelBooking(cancelTarget.id);
-      setBookings((prev) => prev.map((b) => b.id === cancelTarget.id ? { ...b, state: "cancelled" } : b));
+      setUpcoming((prev) => prev.filter((b) => b.id !== cancelTarget.id));
+      setPast((prev) => [{ ...cancelTarget, state: "cancelled" }, ...prev]);
       showToast("cancel", res.refund || {});
     } catch (ex) {
       showToast("error", { message: ex.message });
@@ -298,13 +321,10 @@ export default function MyBookings({ user, onBack }) {
   };
 
   const handleRescheduled = (updated) => {
-    setBookings((prev) => prev.map((b) => b.id === updated.id ? { ...b, ...updated } : b));
+    setUpcoming((prev) => prev.map((b) => b.id === updated.id ? { ...b, ...updated } : b));
     showToast("reschedule", updated);
     setReschedTarget(null);
   };
-
-  const upcoming = bookings.filter((b) => ["confirmed", "held", "swap_pending"].includes(b.state));
-  const past     = bookings.filter((b) => ["cancelled", "completed"].includes(b.state));
 
   return (
     <>
@@ -361,7 +381,7 @@ export default function MyBookings({ user, onBack }) {
         )}
 
         {/* Empty */}
-        {!loading && bookings.length === 0 && (
+        {!loading && upcoming.length === 0 && past.length === 0 && (
           <div className="text-center py-24 bg-white border border-gray-100 rounded-3xl">
             <div className="text-5xl mb-4">📭</div>
             <p className="text-[18px] font-bold text-gray-800 mb-2">No bookings yet</p>
@@ -393,11 +413,21 @@ export default function MyBookings({ user, onBack }) {
         {!loading && past.length > 0 && (
           <section>
             <p className="text-[11px] font-black uppercase tracking-[0.12em] text-gray-400 mb-4">
-              Past · {past.length}
+              Past · {past.length}{hasMore ? "+" : ""}
             </p>
             <div className="space-y-3">
               {past.map((b) => <BookingCard key={b.id} booking={b} />)}
             </div>
+            {hasMore && (
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="mt-4 w-full py-3 border border-gray-200 rounded-2xl text-[13px] font-semibold text-gray-500 hover:bg-gray-50 transition flex items-center justify-center gap-2"
+              >
+                {loadingMore ? <RefreshCw size={14} className="animate-spin" /> : null}
+                {loadingMore ? "Loading…" : "Load more"}
+              </button>
+            )}
           </section>
         )}
       </div>

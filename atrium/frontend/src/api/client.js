@@ -92,7 +92,23 @@ export const api = {
 
   getBooking: (bookingId) => request(`/api/bookings/${bookingId}`),
 
-  listUserBookings: () => request("/api/bookings"),
+  listUserBookings: (page = 1) => request(`/api/bookings?page=${page}&page_size=20`),
+
+  downloadBookingsCsv: async (params = {}) => {
+    const token = localStorage.getItem("hillingone_token");
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`${BASE}/api/staff/export${qs ? `?${qs}` : ""}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Failed to export");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hillingone-bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 
   downloadIcs: async (bookingId, reference) => {
     const token = localStorage.getItem("hillingone_token");

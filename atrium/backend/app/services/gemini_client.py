@@ -8,7 +8,13 @@ Used by:
 Each call has a deterministic fallback so the system never breaks.
 """
 import json
+import time
 from app.config import settings
+
+# Cache intent parsing results — same query text always maps to same intent.
+# Saves one Gemini call per repeated search. TTL: 10 minutes.
+_intent_cache: dict[str, tuple[float, dict]] = {}
+_INTENT_TTL = 600
 
 
 _client = None
@@ -125,9 +131,16 @@ Return ONLY the message text, nothing else."""
 
 
 async def parse_intent(user_input: str) -> dict:
+    cache_key = user_input.strip().lower()
+    now = time.monotonic()
+    if cache_key in _intent_cache and now - _intent_cache[cache_key][0] < _INTENT_TTL:
+        return _intent_cache[cache_key][1]
+
     client = _get_client()
     if client is None:
-        return _fallback_intent(user_input)
+        result = _fallback_intent(user_input)
+        _intent_cache[cache_key] = (now, result)
+        return result
     try:
         from google.genai import types
         response = await client.aio.models.generate_content(
@@ -138,7 +151,9 @@ async def parse_intent(user_input: str) -> dict:
                 temperature=0.2,
             ),
         )
-        return json.loads(response.text)
+        result = json.loads(response.text)
+        _intent_cache[cache_key] = (now, result)
+        return result
     except Exception:
         return _fallback_intent(user_input)
 

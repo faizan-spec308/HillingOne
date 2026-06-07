@@ -1,7 +1,10 @@
 """Staff router: dashboard, agent feed, override modal."""
+import csv
+import io
 import logging
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 
@@ -171,3 +174,64 @@ async def decision_queue(db: AsyncSession = Depends(get_db)):
         }
         for b, a in rows
     ]
+
+
+@router.get("/export")
+async def export_bookings_csv(
+    from_date: str | None = None,
+    to_date: str | None = None,
+    state: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Export bookings as CSV. Optional filters: from_date, to_date (ISO), state."""
+    stmt = (
+        select(Booking, Asset, User)
+        .outerjoin(Asset, Asset.id == Booking.asset_id)
+        .outerjoin(User, User.id == Booking.user_id)
+        .order_by(Booking.start_time.desc())
+    )
+    if from_date:
+        stmt = stmt.where(Booking.start_time >= datetime.fromisoformat(from_date))
+    if to_date:
+        stmt = stmt.where(Booking.start_time <= datetime.fromisoformat(to_date))
+    if state:
+        stmt = stmt.where(Booking.state == state)
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "reference", "state", "resident_name", "resident_email",
+        "asset_name", "ward", "category",
+        "start_time", "end_time", "duration_hours",
+        "purpose", "attendee_count", "amount_paid_gbp",
+    ])
+    for booking, asset, user in rows:
+        duration = round(
+            (booking.end_time - booking.start_time).total_seconds() / 3600, 2
+        ) if booking.start_time and booking.end_time else ""
+        writer.writerow([
+            booking.reference,
+            booking.state,
+            user.name if user else "",
+            user.email if user else "",
+            asset.name if asset else "",
+            asset.ward if asset else "",
+            asset.category if asset else "",
+            booking.start_time.isoformat() if booking.start_time else "",
+            booking.end_time.isoformat() if booking.end_time else "",
+            duration,
+            booking.purpose or "",
+            booking.attendee_count or "",
+            round(booking.total_amount_pence / 100, 2) if booking.total_amount_pence else "0.00",
+        ])
+
+    output.seek(0)
+    filename = f"hillingone-bookings-{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
