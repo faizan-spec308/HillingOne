@@ -93,7 +93,20 @@ export const api = {
 
   listUserBookings: () => request("/api/bookings"),
 
-  icsUrl: (bookingId) => `${BASE}/api/bookings/${bookingId}/ics`,
+  downloadIcs: async (bookingId, reference) => {
+    const token = localStorage.getItem("hillingone_token");
+    const res = await fetch(`${BASE}/api/bookings/${bookingId}/ics`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Failed to download calendar file");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hillingone-${reference || bookingId}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 
   // Agent
   triggerAgent:    (data) => request("/api/agent/conflict-resolution", { method: "POST", body: JSON.stringify(data) }),

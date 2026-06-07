@@ -38,7 +38,12 @@ export default function SearchBox({ onSearch, loading }) {
     rec.lang     = lang === "ur" ? "ur" : lang === "ar" ? "ar" : lang === "pl" ? "pl-PL" : "en-GB";
     rec.onstart  = () => setListening(true);
     rec.onend    = () => setListening(false);
-    rec.onerror  = () => setListening(false);
+    rec.onerror  = (e) => {
+      setListening(false);
+      if (e.error === "not-allowed") alert("Microphone permission was denied. Please allow microphone access in your browser settings.");
+      else if (e.error === "no-speech") alert("No speech detected. Please try again.");
+      else if (e.error === "network") alert("Voice input requires an internet connection.");
+    };
     rec.onresult = (e) => { setQuery(e.results[0][0].transcript); setListening(false); };
     recRef.current = rec;
     rec.start();

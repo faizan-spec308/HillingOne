@@ -128,14 +128,13 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
 
           {/* Actions */}
           <div className="flex flex-wrap gap-3 pt-1">
-            <a
-              href={api.icsUrl(booking.id)}
-              download
+            <button
+              onClick={() => api.downloadIcs(booking.id, booking.reference)}
               className="btn-primary"
             >
               <Calendar size={15} />
               Add to calendar
-            </a>
+            </button>
             {remindersScheduled > 0 && (
               <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-[13px] font-medium">
                 <Bell size={14} />
