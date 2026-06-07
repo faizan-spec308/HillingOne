@@ -50,8 +50,25 @@ async def search(request: Request, req: SearchRequest, db: AsyncSession = Depend
     if intent.get("capacity"):
         stmt = stmt.where(Asset.capacity >= intent["capacity"])
 
-    result = await db.execute(stmt)
-    available = list(result.scalars().all())
+    # Prefer assets in the requested ward; fall back to all if none found there
+    location = (intent.get("location") or "").strip().lower()
+    if location and location != "anywhere":
+        ward_stmt = stmt.where(Asset.ward.ilike(f"%{location}%"))
+        ward_result = await db.execute(ward_stmt)
+        ward_assets = list(ward_result.scalars().all())
+        if ward_assets:
+            # Put ward-matching assets first, append others for Gemini to deprioritise
+            all_result = await db.execute(stmt)
+            all_assets = list(all_result.scalars().all())
+            ward_ids = {a.id for a in ward_assets}
+            other_assets = [a for a in all_assets if a.id not in ward_ids]
+            available = ward_assets + other_assets
+        else:
+            result = await db.execute(stmt)
+            available = list(result.scalars().all())
+    else:
+        result = await db.execute(stmt)
+        available = list(result.scalars().all())
 
     inventory_dicts = [a.to_dict() for a in available]
     matches = await rank_matches(intent, inventory_dicts)

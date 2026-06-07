@@ -28,7 +28,7 @@ def _get_client():
         return None
 
 
-INTENT_PROMPT = """You are the intent parser for Atrium, Hillingdon Council's intelligent booking system.
+INTENT_PROMPT = """You are the intent parser for HillingOne, Hillingdon Council's intelligent booking system.
 
 Parse this natural language request from a resident or staff member:
 
@@ -39,6 +39,7 @@ Return a JSON object matching this exact schema (no other text):
 {{
   "capacity": <number or null>,
   "location": <Hillingdon ward name or "anywhere" or null>,
+  "venue_type": "office" | "meeting_room" | "hall" | "sports" | "outdoor" | "community" | "studio" | "other" | null,
   "frequency": "one-off" | "weekly" | "monthly" | null,
   "day_of_week": <string or null>,
   "time_of_day": "morning" | "afternoon" | "evening" | null,
@@ -56,31 +57,58 @@ Return a JSON object matching this exact schema (no other text):
   "extracted_summary": "We understood: ..." (human-readable two to three line summary)
 }}
 
+venue_type guidance:
+- "office" or "office space" → "office"
+- "meeting room", "boardroom", "conference" → "meeting_room"
+- "hall", "community hall", "function room" → "hall"
+- "sports hall", "gym", "pitch", "court" → "sports"
+- "park", "garden", "outdoor" → "outdoor"
+- "studio", "recording", "dance" → "studio"
+- generic "community centre" → "community"
+
 If the request is clear and complete, set follow_up_question to null. British English.
 Hillingdon wards include: Botwell, Hayes Town, Yiewsley, Uxbridge, Northwood, Ruislip, Manor, Brunel, Pinkwell, Heathrow Villages, Hillingdon East, West Drayton, Townfield, Charville."""
 
 
-MATCH_PROMPT = """You are Atrium's matching engine. Rank these council assets against the user's intent.
+MATCH_PROMPT = """You are HillingOne's matching engine. Rank council assets against the user's intent using STRICT scoring rules.
 
 USER INTENT:
 {intent_json}
 
-AVAILABLE ASSETS (with availability already filtered):
+AVAILABLE ASSETS (availability already pre-filtered, capacity already pre-filtered):
 {inventory_json}
 
-Return a JSON array of up to 4 ranked matches (no other text):
+SCORING RULES (apply in order — these are hard constraints, not preferences):
+
+1. LOCATION (±35 points):
+   - If intent.location is set and NOT "anywhere": assets in that exact ward get +35. Assets in other wards get -35.
+   - If intent.location is null or "anywhere": location is ignored.
+
+2. VENUE TYPE (±25 points):
+   - If intent.venue_type is set: assets whose category closely matches get +25. Assets that are clearly a different type (e.g. user wants "office", asset is "sports hall") get -25.
+   - Fuzzy matches (e.g. user wants "office", asset is "meeting_room") get +10.
+
+3. AMENITIES (up to +15 points):
+   - +8 if kitchen_required matches
+   - +4 if accessibility_required matches
+   - +3 per relevant equipment match
+
+4. SCORE FLOOR: Never give an asset above 50/100 if it fails both location AND venue type.
+
+Return a JSON array of up to 4 matches, best first (no other text):
 [
   {{
     "asset_id": <string from inventory>,
     "rank": <1 to 4>,
-    "match_score": <0 to 100>,
-    "reasoning": "One sentence British English explaining why this is a strong match. Reference specific facts.",
-    "carbon_estimate_kg": <realistic number based on travel distance>,
+    "match_score": <0 to 100, applying the rules above>,
+    "reasoning": "One sentence British English citing the specific match factors. Be honest if it is not in the requested location.",
+    "carbon_estimate_kg": <realistic number based on travel distance from intent location>,
     "accessibility_match": "full" | "partial" | "none"
   }}
 ]
 
-If no assets fit, return an empty array."""
+If fewer than 4 assets fit acceptably, return only those that do. If none fit, return [].
+Never fabricate asset_ids — only use IDs from the inventory above."""
 
 
 ENCOURAGEMENT_PROMPT = """You are writing a short, warm reminder for a council booking.
@@ -120,7 +148,7 @@ async def rank_matches(intent: dict, inventory: list[dict]) -> list[dict]:
         return []
     client = _get_client()
     if client is None:
-        return _fallback_matches(inventory)
+        return _fallback_matches(inventory, intent)
     try:
         from google.genai import types
         response = await client.aio.models.generate_content(
@@ -136,7 +164,7 @@ async def rank_matches(intent: dict, inventory: list[dict]) -> list[dict]:
         )
         return json.loads(response.text)
     except Exception:
-        return _fallback_matches(inventory)
+        return _fallback_matches(inventory, intent)
 
 
 async def generate_encouragement(
@@ -203,14 +231,31 @@ def _fallback_intent(user_input: str) -> dict:
     }
 
 
-def _fallback_matches(inventory: list[dict]) -> list[dict]:
+def _fallback_matches(inventory: list[dict], intent: dict | None = None) -> list[dict]:
+    location = (intent.get("location") or "").lower() if intent else ""
+    venue_type = (intent.get("venue_type") or "").lower() if intent else ""
+
+    def score(a: dict) -> int:
+        s = 50
+        if location and location != "anywhere" and location in (a.get("ward") or "").lower():
+            s += 35
+        cat = (a.get("category") or "").lower()
+        if venue_type and venue_type in cat:
+            s += 25
+        elif venue_type == "meeting_room" and "office" in cat:
+            s += 10
+        elif venue_type == "office" and "meeting" in cat:
+            s += 10
+        return s
+
+    ranked = sorted(inventory, key=score, reverse=True)[:4]
     out = []
-    for i, a in enumerate(inventory[:4]):
+    for i, a in enumerate(ranked):
         out.append({
             "asset_id": a["id"],
             "rank": i + 1,
-            "match_score": 92 - (i * 8),
-            "reasoning": f"{a['name']} matches the request based on capacity, location, and available amenities.",
+            "match_score": max(30, score(a)),
+            "reasoning": f"{a['name']} is available and matches your request.",
             "carbon_estimate_kg": round(0.3 + i * 0.15, 2),
             "accessibility_match": "full" if (a.get("accessibility") or {}).get("wheelchair_access") else "partial",
         })
