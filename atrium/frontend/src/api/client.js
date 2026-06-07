@@ -30,6 +30,7 @@ async function request(path, options = {}) {
     ...options,
   });
   if (!res.ok) {
+    if (res.status === 429) throw new Error("429: Too many attempts. Please wait a moment and try again.");
     let detail = "";
     try {
       const b = await res.json();

@@ -1,7 +1,7 @@
 """Search router: parse intent + rank matches."""
 import uuid
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, exists
 
@@ -11,12 +11,14 @@ from app.models.booking import Booking
 from app.models.search_log import SearchLog
 from app.schemas.search import SearchRequest
 from app.services.gemini_client import parse_intent, rank_matches
+from app.limiter import limiter
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 
 @router.post("")
-async def search(req: SearchRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/minute")
+async def search(request: Request, req: SearchRequest, db: AsyncSession = Depends(get_db)):
     intent = await parse_intent(req.query)
 
     # Choose a target window for availability filtering

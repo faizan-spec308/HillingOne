@@ -2,7 +2,7 @@
 import re
 import uuid
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import bcrypt as _bcrypt
@@ -14,6 +14,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.dependencies import get_current_user
+from app.limiter import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger("hillingone.auth")
@@ -59,7 +60,8 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/register", status_code=201)
-async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def register(request: Request, req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == str(req.email).lower()))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="email_exists")
@@ -80,7 +82,8 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login")
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == str(req.email).lower()))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash or not _verify(req.password, user.password_hash):
