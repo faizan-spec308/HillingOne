@@ -1,4 +1,5 @@
-"""Atrium FastAPI application entry point."""
+"""HillingOne FastAPI application entry point."""
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,45 +7,43 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import search, bookings, agent, staff, assets, reminders, payments, auth
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger("hillingone")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import bcrypt as _bcrypt
+    if settings.jwt_secret == "atrium-dev-secret-change-in-production":
+        raise RuntimeError("JWT_SECRET is using the insecure default — set a real secret in your environment.")
     from app.database import engine
     from sqlalchemy import text
-
     async with engine.begin() as conn:
-        await conn.execute(text(
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"
-        ))
-        # Give any existing null-hash users a working default password
-        result = await conn.execute(
-            text("SELECT id FROM users WHERE password_hash IS NULL")
-        )
-        null_users = result.fetchall()
-        if null_users:
-            default_hash = _bcrypt.hashpw(b"Atrium2026!", _bcrypt.gensalt()).decode()
-            for (uid,) in null_users:
-                await conn.execute(
-                    text("UPDATE users SET password_hash = :h WHERE id = :id"),
-                    {"h": default_hash, "id": str(uid)},
-                )
+        await conn.execute(text("SELECT 1"))
+    logger.info("startup_ok environment=%s", settings.environment)
     yield
 
 
+_docs_url = None if settings.environment == "production" else "/docs"
+_redoc_url = None if settings.environment == "production" else "/redoc"
+
 app = FastAPI(
-    title="Atrium",
+    title="HillingOne",
     description="The intelligent agentic front door for Hillingdon Council bookings.",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Secret"],
 )
 
 app.include_router(auth.router)
@@ -61,7 +60,7 @@ app.include_router(reminders.router)
 async def health():
     return {
         "status": "healthy",
-        "service": "atrium",
+        "service": "hillingone",
         "version": "1.0.0",
         "agentic_ai": "Conflict Resolution Agent (Gemini 2.5 Flash function calling)",
     }
@@ -70,8 +69,7 @@ async def health():
 @app.get("/")
 async def root():
     return {
-        "service": "Atrium",
+        "service": "HillingOne",
         "tagline": "The intelligent agentic front door for Hillingdon Council bookings",
-        "docs": "/docs",
         "health": "/health",
     }

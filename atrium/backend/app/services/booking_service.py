@@ -63,7 +63,7 @@ class BookingService:
                 Booking.start_time < end,
                 Booking.end_time > start,
             )
-        )
+        ).with_for_update()
         if exclude_booking_id:
             stmt = stmt.where(Booking.id != exclude_booking_id)
         result = await self.db.execute(stmt)

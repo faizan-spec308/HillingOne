@@ -1,4 +1,4 @@
-"""Configuration for Atrium backend.
+"""Configuration for HillingOne backend.
 
 Loads environment variables and provides a singleton settings object.
 """
@@ -11,13 +11,15 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="")
     gemini_model: str = "gemini-2.5-flash"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
-    hold_duration_seconds: int = 60
+    hold_duration_seconds: int = 300
     default_goodwill_credit_percentage: int = 20
     stripe_secret_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")
-    jwt_secret: str = Field(default="atrium-dev-secret-change-in-production")
+    jwt_secret: str = Field(...)
     jwt_algorithm: str = "HS256"
     jwt_expire_days: int = 30
+    admin_secret: str = Field(default="")
+    environment: str = Field(default="development")
 
     @property
     def async_database_url(self) -> str:
@@ -33,8 +35,6 @@ class Settings(BaseSettings):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        # Strip ALL query params — asyncpg doesn't accept URL params like
-        # sslmode or channel_binding. SSL is handled via connect_args instead.
         if "?" in url:
             url = url[: url.index("?")]
         return url

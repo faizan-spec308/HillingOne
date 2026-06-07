@@ -89,7 +89,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
   const handleConfirm = async () => {
     try {
-      const res = await api.confirm(holdBooking.id, user.id, true);
+      const res = await api.confirm(holdBooking.id, true);
       setConfirmed(res);
       setEncouragement(res.encouragement || null);
       setRemindersCount(res.reminders_scheduled || 0);

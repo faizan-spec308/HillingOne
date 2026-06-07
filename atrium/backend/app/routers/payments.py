@@ -1,6 +1,8 @@
 """Payments router — Stripe PaymentIntent creation, webhook handling, and refunds."""
+import asyncio
 import json
 import uuid
+import logging
 import stripe
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -9,11 +11,14 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.database import get_db
+from app.dependencies import get_current_user, require_staff
 from app.models.payment import Payment
 from app.models.booking import Booking
 from app.models.asset import Asset
+from app.models.user import User
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
+logger = logging.getLogger("hillingone.payments")
 
 
 def _get_stripe():
@@ -32,25 +37,27 @@ def _calculate_amount_pence(asset: Asset, start_time: datetime, end_time: dateti
 
 
 @router.post("/create-intent")
-async def create_payment_intent(booking_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Create a Stripe PaymentIntent for a held booking.
-
-    Returns the client_secret needed by the frontend Stripe Elements form,
-    plus the amount in pence and a display string.
-    """
+async def create_payment_intent(
+    booking_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a Stripe PaymentIntent for a held booking owned by the authenticated user."""
     s = _get_stripe()
 
     booking = await db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found.")
+    if str(booking.user_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorised for this booking.")
     if booking.state != "held":
         raise HTTPException(status_code=409, detail="Only held bookings can be paid for.")
 
     asset = await db.get(Asset, booking.asset_id)
     amount = _calculate_amount_pence(asset, booking.start_time, booking.end_time)
 
-    intent = s.PaymentIntent.create(
+    intent = await asyncio.to_thread(
+        s.PaymentIntent.create,
         amount=amount,
         currency="gbp",
         metadata={
@@ -82,36 +89,31 @@ async def create_payment_intent(booking_id: str, db: AsyncSession = Depends(get_
 
 @router.post("/webhook")
 async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    """
-    Handle incoming Stripe webhook events.
+    """Handle incoming Stripe webhook events. Signature verification is mandatory."""
+    if not settings.stripe_webhook_secret:
+        raise HTTPException(status_code=400, detail="Webhook secret not configured on this server.")
 
-    Listens for payment_intent.succeeded to auto-confirm bookings,
-    and payment_intent.payment_failed to mark payments as failed.
-    Verifies the Stripe-Signature header when STRIPE_WEBHOOK_SECRET is set.
-    """
     s = _get_stripe()
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
 
     try:
-        if settings.stripe_webhook_secret:
-            event = s.Webhook.construct_event(payload, sig, settings.stripe_webhook_secret)
-        else:
-            event = json.loads(payload)
+        event = s.Webhook.construct_event(payload, sig, settings.stripe_webhook_secret)
     except Exception as exc:
+        logger.warning("webhook_signature_failed err=%s", str(exc))
         raise HTTPException(status_code=400, detail=str(exc))
 
     intent_obj = event["data"]["object"]
 
     if event["type"] == "payment_intent.succeeded":
-        await _on_payment_succeeded(intent_obj, db)
+        await _on_payment_succeeded(intent_obj, db, s)
     elif event["type"] == "payment_intent.payment_failed":
         await _on_payment_failed(intent_obj, db)
 
     return {"received": True}
 
 
-async def _on_payment_succeeded(intent: dict, db: AsyncSession) -> None:
+async def _on_payment_succeeded(intent: dict, db: AsyncSession, s) -> None:
     result = await db.execute(
         select(Payment).where(Payment.stripe_payment_intent_id == intent["id"])
     )
@@ -127,6 +129,18 @@ async def _on_payment_succeeded(intent: dict, db: AsyncSession) -> None:
     if booking and booking.state == "held":
         booking.state = "confirmed"
         booking.confirmed_at = datetime.utcnow()
+        logger.info("payment_succeeded_confirmed booking_id=%s", str(booking.id))
+    elif booking and booking.state != "held":
+        # Hold expired before payment completed — refund immediately
+        logger.warning(
+            "payment_succeeded_but_hold_expired booking_id=%s state=%s — issuing refund",
+            str(booking.id), booking.state,
+        )
+        try:
+            await asyncio.to_thread(s.Refund.create, payment_intent=intent["id"])
+            payment.status = "refunded"
+        except Exception as exc:
+            logger.error("auto_refund_failed booking_id=%s err=%s", str(booking.id), str(exc))
 
     await db.commit()
 
@@ -143,13 +157,12 @@ async def _on_payment_failed(intent: dict, db: AsyncSession) -> None:
 
 
 @router.post("/refund/{booking_id}")
-async def refund_booking(booking_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Issue a full Stripe refund for a booking.
-
-    Looks up the most recent succeeded payment for the booking
-    and creates a Stripe refund. Safe to call even if no payment exists.
-    """
+async def refund_booking(
+    booking_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_staff: User = Depends(require_staff),
+):
+    """Issue a full Stripe refund for a booking. Staff only."""
     s = _get_stripe()
 
     result = await db.execute(
@@ -163,12 +176,15 @@ async def refund_booking(booking_id: str, db: AsyncSession = Depends(get_db)):
     if not payment:
         return {"refunded": False, "message": "No completed payment found for this booking."}
 
-    refund = s.Refund.create(payment_intent=payment.stripe_payment_intent_id)
+    refund = await asyncio.to_thread(
+        s.Refund.create, payment_intent=payment.stripe_payment_intent_id
+    )
     payment.status = "refunded"
     payment.refund_id = refund.id
     payment.updated_at = datetime.utcnow()
     await db.commit()
 
+    logger.info("refund_issued booking_id=%s staff_id=%s amount=%d", booking_id, str(current_staff.id), payment.amount_pence)
     return {
         "refunded": True,
         "refund_id": refund.id,

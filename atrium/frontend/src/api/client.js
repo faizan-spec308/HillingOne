@@ -1,5 +1,20 @@
 const BASE = import.meta.env.VITE_API_BASE || "";
 
+const ERROR_MESSAGES = {
+  slot_unavailable:            "This slot was just taken. Please choose another time.",
+  hold_expired:                "Your hold timed out. Please search again.",
+  invalid_credentials:         "Incorrect email or password.",
+  email_exists:                "An account with this email already exists.",
+  booking_not_found:           "Booking not found.",
+  not_booking_owner:           "You are not authorised to modify this booking.",
+  cannot_book_past_slot:       "You cannot book a slot in the past.",
+  minimum_booking_30_minutes:  "Bookings must be at least 30 minutes long.",
+  maximum_booking_12_hours:    "Bookings cannot exceed 12 hours.",
+  not_authenticated:           "Please sign in to continue.",
+  not_swap_pending:            "This booking is no longer awaiting a swap decision.",
+  cannot_reschedule:           "This booking cannot be rescheduled in its current state.",
+};
+
 function getToken() {
   return localStorage.getItem("hillingone_token");
 }
@@ -16,8 +31,13 @@ async function request(path, options = {}) {
   });
   if (!res.ok) {
     let detail = "";
-    try { const b = await res.json(); detail = b.detail || JSON.stringify(b); }
-    catch { detail = res.statusText; }
+    try {
+      const b = await res.json();
+      const raw = b.detail || JSON.stringify(b);
+      detail = ERROR_MESSAGES[raw] || raw;
+    } catch {
+      detail = res.statusText;
+    }
     throw new Error(`${res.status}: ${detail}`);
   }
   if (res.headers.get("content-type")?.includes("application/json")) return res.json();
@@ -42,36 +62,36 @@ export const api = {
   hold: (data) =>
     request("/api/bookings/hold", { method: "POST", body: JSON.stringify(data) }),
 
-  confirm: (bookingId, userId, enableReminders = true) =>
+  confirm: (bookingId, enableReminders = true) =>
     request(`/api/bookings/${bookingId}/confirm`, {
       method: "POST",
-      body: JSON.stringify({ user_id: userId, enable_reminders: enableReminders }),
+      body: JSON.stringify({ enable_reminders: enableReminders }),
     }),
 
-  cancelBooking: (bookingId, userId) =>
-    request(`/api/bookings/${bookingId}?user_id=${userId}`, { method: "DELETE" }),
+  cancelBooking: (bookingId) =>
+    request(`/api/bookings/${bookingId}`, { method: "DELETE" }),
 
-  rescheduleBooking: (bookingId, userId, startTime, endTime) =>
+  rescheduleBooking: (bookingId, startTime, endTime) =>
     request(`/api/bookings/${bookingId}/reschedule`, {
       method: "PATCH",
-      body: JSON.stringify({ user_id: userId, start_time: startTime, end_time: endTime }),
+      body: JSON.stringify({ start_time: startTime, end_time: endTime }),
     }),
 
-  acceptSwap: (bookingId, userId) =>
+  acceptSwap: (bookingId) =>
     request(`/api/bookings/${bookingId}/swap-accept`, {
       method: "POST",
-      body: JSON.stringify({ booking_id: bookingId, user_id: userId, accept: true }),
+      body: JSON.stringify({ booking_id: bookingId, accept: true }),
     }),
 
-  declineSwap: (bookingId, userId) =>
+  declineSwap: (bookingId) =>
     request(`/api/bookings/${bookingId}/swap-decline`, {
       method: "POST",
-      body: JSON.stringify({ booking_id: bookingId, user_id: userId, accept: false }),
+      body: JSON.stringify({ booking_id: bookingId, accept: false }),
     }),
 
   getBooking: (bookingId) => request(`/api/bookings/${bookingId}`),
 
-  listUserBookings: (userId) => request(`/api/bookings?user_id=${userId}`),
+  listUserBookings: () => request("/api/bookings"),
 
   icsUrl: (bookingId) => `${BASE}/api/bookings/${bookingId}/ics`,
 
@@ -88,8 +108,7 @@ export const api = {
   listAssets: () => request("/api/assets"),
 
   // Reminders
-  listReminders: (userId) =>
-    request(userId ? `/api/reminders/all?user_id=${userId}` : "/api/reminders/all"),
+  listReminders: () => request("/api/reminders/all"),
 
   // Payments
   createPaymentIntent: (bookingId) =>

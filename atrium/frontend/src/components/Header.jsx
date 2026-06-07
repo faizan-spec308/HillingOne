@@ -118,7 +118,7 @@ export default function Header({ userName, role, isStaff }) {
           </div>
 
           {/* Notifications bell */}
-          <button className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition">
+          <button aria-label="Notifications" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition">
             <Bell size={18} />
           </button>
 

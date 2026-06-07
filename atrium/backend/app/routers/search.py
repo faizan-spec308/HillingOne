@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, exists
 
 from app.database import get_db
 from app.models.asset import Asset
@@ -32,25 +32,24 @@ async def search(req: SearchRequest, db: AsyncSession = Depends(get_db)):
     duration = intent.get("duration_hours") or 2
     end = base + timedelta(hours=duration)
 
-    # Pull all active assets, broad filter
-    stmt = select(Asset).where(Asset.is_active == True)  # noqa: E712
-    if intent.get("capacity"):
-        stmt = stmt.where(Asset.capacity >= intent["capacity"])
-    result = await db.execute(stmt)
-    candidates = list(result.scalars().all())
-
-    # Filter by availability for the chosen window
-    available = []
-    for asset in candidates:
-        b_stmt = select(Booking).where(
-            Booking.asset_id == asset.id,
+    # Single anti-join query: get all active assets that have no conflicting bookings
+    conflict_sub = (
+        select(Booking.id).where(
+            Booking.asset_id == Asset.id,
             Booking.state.in_(["confirmed", "held", "swap_pending"]),
             Booking.start_time < end,
             Booking.end_time > base,
-        )
-        b_res = await db.execute(b_stmt)
-        if not b_res.scalars().first():
-            available.append(asset)
+        ).correlate(Asset)
+    )
+    stmt = select(Asset).where(
+        Asset.is_active == True,  # noqa: E712
+        ~exists(conflict_sub),
+    )
+    if intent.get("capacity"):
+        stmt = stmt.where(Asset.capacity >= intent["capacity"])
+
+    result = await db.execute(stmt)
+    available = list(result.scalars().all())
 
     inventory_dicts = [a.to_dict() for a in available]
     matches = await rank_matches(intent, inventory_dicts)
@@ -74,7 +73,7 @@ async def search(req: SearchRequest, db: AsyncSession = Depends(get_db)):
     return {
         "intent": intent,
         "matches": matches,
-        "total_inventory_searched": len(candidates),
+        "total_inventory_searched": len(available),
         "search_log_id": str(sl.id),
         "search_window": {
             "start": base.isoformat(),

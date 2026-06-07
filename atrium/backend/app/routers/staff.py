@@ -1,4 +1,5 @@
 """Staff router: dashboard, agent feed, override modal."""
+import logging
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,15 +17,20 @@ from app.models.agent_run import AgentRun
 from app.models.search_log import SearchLog
 
 router = APIRouter(prefix="/api/staff", tags=["staff"], dependencies=[Depends(require_staff)])
+logger = logging.getLogger("hillingone.staff")
 
 
 @router.post("/override")
-async def staff_override(req: StaffOverrideRequest, db: AsyncSession = Depends(get_db)):
+async def staff_override(
+    req: StaffOverrideRequest,
+    db: AsyncSession = Depends(get_db),
+    current_staff: User = Depends(require_staff),
+):
     svc = BookingService(db)
     try:
         result = await svc.staff_override(
             booking_id=req.booking_id,
-            staff_user_id=req.staff_user_id,
+            staff_user_id=str(current_staff.id),
             reason=req.reason,
             details=req.details,
             alternative_asset_id=req.alternative_asset_id,
@@ -37,28 +43,39 @@ async def staff_override(req: StaffOverrideRequest, db: AsyncSession = Depends(g
 @router.get("/dashboard")
 async def dashboard(db: AsyncSession = Depends(get_db)):
     """Live agent feed + utilisation stats + key metrics."""
-    # Recent audit log entries (this becomes the agent feed)
+    # Recent audit log entries
     feed_stmt = select(AuditLog).order_by(desc(AuditLog.created_at)).limit(15)
     feed_result = await db.execute(feed_stmt)
     feed = [a.to_dict() for a in feed_result.scalars().all()]
 
-    # Asset utilisation
+    week_ago = datetime.utcnow() - timedelta(days=7)
+
+    # Asset utilisation — single GROUP BY query for booking counts + total hours
+    count_stmt = (
+        select(
+            Booking.asset_id,
+            func.count().label("b_count"),
+            func.sum(
+                func.extract("epoch", Booking.end_time - Booking.start_time) / 3600
+            ).label("hours_booked"),
+        )
+        .where(Booking.state == "confirmed", Booking.start_time >= week_ago)
+        .group_by(Booking.asset_id)
+    )
+    count_result = await db.execute(count_stmt)
+    booking_stats = {str(row.asset_id): (row.b_count, float(row.hours_booked or 0)) for row in count_result}
+
     asset_stmt = select(Asset).where(Asset.is_active == True)  # noqa: E712
     asset_result = await db.execute(asset_stmt)
     assets = list(asset_result.scalars().all())
 
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    # 84 available hours per week (12h/day × 7 days)
+    AVAILABLE_HOURS_PER_WEEK = 84
+
     asset_util = []
     for asset in assets:
-        # Count confirmed bookings in past week
-        b_stmt = select(func.count()).select_from(Booking).where(
-            Booking.asset_id == asset.id,
-            Booking.state == "confirmed",
-            Booking.start_time >= week_ago,
-        )
-        b_count = (await db.execute(b_stmt)).scalar() or 0
-        # Available hours per week (assume 12h/day, 7 days = 84h)
-        utilisation_pct = min(100, int((b_count * 2 / 84) * 100))
+        b_count, hours_booked = booking_stats.get(str(asset.id), (0, 0.0))
+        utilisation_pct = min(100, int((hours_booked / AVAILABLE_HOURS_PER_WEEK) * 100))
         if utilisation_pct < 30:
             colour = "blue"
         elif utilisation_pct < 70:
@@ -68,6 +85,7 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
         asset_util.append({
             **asset.to_dict(),
             "weekly_bookings": b_count,
+            "hours_booked": round(hours_booked, 1),
             "utilisation_pct": utilisation_pct,
             "colour": colour,
         })
@@ -107,9 +125,7 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
         ],
         "metrics": {
             "weekly_bookings": total_bookings,
-            "estimated_staff_hours_saved": total_bookings * 0.7,
-            "phone_calls_avoided": int(total_bookings * 1.1),
-            "interfaces_replaced": 17,
+            "weekly_hours_booked": sum(v[1] for v in booking_stats.values()),
         },
         "agent_feed": feed,
         "asset_utilisation": asset_util,
@@ -128,15 +144,30 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
 
 @router.get("/decision-queue")
 async def decision_queue(db: AsyncSession = Depends(get_db)):
-    pending_stmt = select(Booking).where(Booking.state == "swap_pending")
-    pending_result = await db.execute(pending_stmt)
-    items = []
-    for b in pending_result.scalars().all():
-        asset = await db.get(Asset, b.asset_id)
-        alt = await db.get(Asset, b.alternative_offered_id) if b.alternative_offered_id else None
-        items.append({
+    """Return pending swap decisions with asset data using a single JOIN query."""
+    stmt = (
+        select(Booking, Asset)
+        .outerjoin(Asset, Asset.id == Booking.asset_id)
+        .where(Booking.state == "swap_pending")
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    # Gather alternative asset IDs in one query
+    alt_ids = [b.alternative_offered_id for b, _ in rows if b.alternative_offered_id]
+    alt_assets: dict = {}
+    if alt_ids:
+        alt_stmt = select(Asset).where(Asset.id.in_(alt_ids))
+        alt_result = await db.execute(alt_stmt)
+        alt_assets = {str(a.id): a for a in alt_result.scalars().all()}
+
+    return [
+        {
             "booking": b.to_dict(),
-            "asset": asset.to_dict() if asset else None,
-            "alternative": alt.to_dict() if alt else None,
-        })
-    return items
+            "asset": a.to_dict() if a else None,
+            "alternative": alt_assets[str(b.alternative_offered_id)].to_dict()
+                           if b.alternative_offered_id and str(b.alternative_offered_id) in alt_assets
+                           else None,
+        }
+        for b, a in rows
+    ]

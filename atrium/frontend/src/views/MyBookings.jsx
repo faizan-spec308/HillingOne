@@ -138,7 +138,7 @@ function RescheduleModal({ booking, user, onClose, onSuccess }) {
     try {
       const ns = new Date(`${date}T${start}:00`).toISOString();
       const ne = new Date(`${date}T${end}:00`).toISOString();
-      const updated = await api.rescheduleBooking(booking.id, user.id, ns, ne);
+      const updated = await api.rescheduleBooking(booking.id, ns, ne);
       onSuccess({ ...booking, ...updated });
     } catch (ex) {
       setErr(ex.message.includes("slot_unavailable")
@@ -275,7 +275,7 @@ export default function MyBookings({ user, onBack }) {
   const [cancelling, setCancelling]     = useState(false);
 
   useEffect(() => {
-    api.listUserBookings(user.id).then(setBookings).finally(() => setLoading(false));
+    api.listUserBookings().then(setBookings).finally(() => setLoading(false));
   }, [user.id]);
 
   const showToast = (type, data) => {
@@ -286,7 +286,7 @@ export default function MyBookings({ user, onBack }) {
   const handleCancel = async () => {
     setCancelling(true);
     try {
-      const res = await api.cancelBooking(cancelTarget.id, user.id);
+      const res = await api.cancelBooking(cancelTarget.id);
       setBookings((prev) => prev.map((b) => b.id === cancelTarget.id ? { ...b, state: "cancelled" } : b));
       showToast("cancel", res.refund || {});
     } catch (ex) {

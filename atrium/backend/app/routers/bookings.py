@@ -1,5 +1,6 @@
 """Bookings router."""
 import uuid
+import logging
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +8,7 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.database import get_db
+from app.dependencies import get_current_user
 from app.schemas.search import HoldRequest, ConfirmRequest, SwapResponseRequest, RescheduleRequest
 from app.services.booking_service import BookingService
 from app.services.reminder_service import ReminderService, generate_ics
@@ -15,31 +17,39 @@ from app.models.asset import Asset
 from app.models.user import User
 
 router = APIRouter(prefix="/api/bookings", tags=["bookings"])
+logger = logging.getLogger("hillingone.bookings")
 
 
 @router.get("")
-async def list_user_bookings(user_id: str, db: AsyncSession = Depends(get_db)):
-    """List all bookings for a user with asset info, newest first."""
+async def list_user_bookings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all bookings for the authenticated user with asset info, newest first."""
     result = await db.execute(
-        select(Booking)
-        .where(Booking.user_id == uuid.UUID(user_id))
+        select(Booking, Asset)
+        .outerjoin(Asset, Asset.id == Booking.asset_id)
+        .where(Booking.user_id == current_user.id)
         .order_by(Booking.start_time.desc())
     )
-    bookings = result.scalars().all()
-    out = []
-    for b in bookings:
-        asset = await db.get(Asset, b.asset_id)
-        out.append({**b.to_dict(), "asset": asset.to_dict() if asset else None})
-    return out
+    rows = result.all()
+    return [
+        {**b.to_dict(), "asset": a.to_dict() if a else None}
+        for b, a in rows
+    ]
 
 
 @router.post("/hold")
-async def hold(req: HoldRequest, db: AsyncSession = Depends(get_db)):
+async def hold(
+    req: HoldRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     svc = BookingService(db)
     try:
         booking = await svc.create_held_booking(
             asset_id=req.asset_id,
-            user_id=req.user_id,
+            user_id=str(current_user.id),
             start=req.start_time,
             end=req.end_time,
             purpose=req.purpose,
@@ -47,16 +57,22 @@ async def hold(req: HoldRequest, db: AsyncSession = Depends(get_db)):
             is_recurring=req.is_recurring,
             recurrence_weeks=req.recurrence_weeks,
         )
+        logger.info("hold_created booking_id=%s user_id=%s", str(booking.id), str(current_user.id))
         return booking.to_dict()
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.post("/{booking_id}/confirm")
-async def confirm(booking_id: str, req: ConfirmRequest, db: AsyncSession = Depends(get_db)):
+async def confirm(
+    booking_id: str,
+    req: ConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     svc = BookingService(db)
     try:
-        booking = await svc.confirm_booking(booking_id, req.user_id)
+        booking = await svc.confirm_booking(booking_id, str(current_user.id))
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -67,28 +83,28 @@ async def confirm(booking_id: str, req: ConfirmRequest, db: AsyncSession = Depen
         response["reminders_scheduled"] = len(reminders)
         if reminders:
             response["encouragement"] = reminders[0].encouragement
+    logger.info("booking_confirmed booking_id=%s user_id=%s", booking_id, str(current_user.id))
     return response
 
 
 @router.delete("/{booking_id}")
-async def cancel_user(booking_id: str, user_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Cancel a booking and automatically refund any Stripe payment.
-
-    If a succeeded payment exists for this booking, a full refund is issued
-    via Stripe before the booking is cancelled.
-    """
+async def cancel_user(
+    booking_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cancel a booking. Automatically refunds any Stripe payment."""
     svc = BookingService(db)
     try:
-        booking = await svc.user_cancel(booking_id, user_id)
+        booking = await svc.user_cancel(booking_id, str(current_user.id))
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        code = 403 if str(e) == "not_booking_owner" else 400
+        raise HTTPException(status_code=code, detail=str(e))
 
-    # Auto-refund if a payment was made
     refund_info = None
     if settings.stripe_secret_key:
         try:
-            import uuid as _uuid
+            import asyncio
             import stripe as _stripe
             from sqlalchemy import select as _select
             from app.models.payment import Payment
@@ -96,18 +112,22 @@ async def cancel_user(booking_id: str, user_id: str, db: AsyncSession = Depends(
             _stripe.api_key = settings.stripe_secret_key
             result = await db.execute(
                 _select(Payment).where(
-                    Payment.booking_id == _uuid.UUID(booking_id),
+                    Payment.booking_id == uuid.UUID(booking_id),
                     Payment.status == "succeeded",
                 )
             )
             payment = result.scalar_one_or_none()
             if payment:
-                refund = _stripe.Refund.create(payment_intent=payment.stripe_payment_intent_id)
+                refund = await asyncio.to_thread(
+                    _stripe.Refund.create,
+                    payment_intent=payment.stripe_payment_intent_id,
+                )
                 payment.status = "refunded"
                 payment.refund_id = refund.id
                 await db.commit()
                 refund_info = {"refunded": True, "amount": f"£{payment.amount_pence / 100:.2f}"}
-        except Exception:
+        except Exception as exc:
+            logger.error("refund_error booking_id=%s err=%s", booking_id, str(exc))
             refund_info = {"refunded": False, "message": "Cancellation processed; refund requires manual review."}
 
     result = booking.to_dict()
@@ -117,10 +137,15 @@ async def cancel_user(booking_id: str, user_id: str, db: AsyncSession = Depends(
 
 
 @router.patch("/{booking_id}/reschedule")
-async def reschedule_booking(booking_id: str, req: RescheduleRequest, db: AsyncSession = Depends(get_db)):
+async def reschedule_booking(
+    booking_id: str,
+    req: RescheduleRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     svc = BookingService(db)
     try:
-        booking = await svc.reschedule(booking_id, req.user_id, req.start_time, req.end_time)
+        booking = await svc.reschedule(booking_id, str(current_user.id), req.start_time, req.end_time)
         return booking.to_dict()
     except ValueError as e:
         code = 409 if str(e) == "slot_unavailable" else 400
@@ -128,29 +153,45 @@ async def reschedule_booking(booking_id: str, req: RescheduleRequest, db: AsyncS
 
 
 @router.post("/{booking_id}/swap-accept")
-async def swap_accept(booking_id: str, req: SwapResponseRequest, db: AsyncSession = Depends(get_db)):
+async def swap_accept(
+    booking_id: str,
+    req: SwapResponseRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     svc = BookingService(db)
     try:
-        return await svc.accept_swap(booking_id, req.user_id)
+        return await svc.accept_swap(booking_id, str(current_user.id))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{booking_id}/swap-decline")
-async def swap_decline(booking_id: str, req: SwapResponseRequest, db: AsyncSession = Depends(get_db)):
+async def swap_decline(
+    booking_id: str,
+    req: SwapResponseRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     svc = BookingService(db)
     try:
-        booking = await svc.decline_swap(booking_id, req.user_id)
+        booking = await svc.decline_swap(booking_id, str(current_user.id))
         return {"booking": booking.to_dict(), "message": "Booking remains confirmed. Staff alerted to seek alternative."}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{booking_id}/ics")
-async def calendar_invite(booking_id: str, db: AsyncSession = Depends(get_db)):
+async def calendar_invite(
+    booking_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     booking = await db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if str(booking.user_id) != str(current_user.id) and current_user.role not in ("staff", "councillor", "admin"):
+        raise HTTPException(status_code=403, detail="Not authorised to access this booking")
     asset = await db.get(Asset, booking.asset_id)
     user = await db.get(User, booking.user_id)
     ics_bytes = generate_ics(booking, asset, user)
@@ -158,16 +199,22 @@ async def calendar_invite(booking_id: str, db: AsyncSession = Depends(get_db)):
         content=ics_bytes,
         media_type="text/calendar",
         headers={
-            "Content-Disposition": f'attachment; filename="atrium-{booking.reference}.ics"'
+            "Content-Disposition": f'attachment; filename="hillingone-{booking.reference}.ics"'
         },
     )
 
 
 @router.get("/{booking_id}")
-async def get_booking(booking_id: str, db: AsyncSession = Depends(get_db)):
+async def get_booking(
+    booking_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     booking = await db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if str(booking.user_id) != str(current_user.id) and current_user.role not in ("staff", "councillor", "admin"):
+        raise HTTPException(status_code=403, detail="Not authorised to access this booking")
     asset = await db.get(Asset, booking.asset_id)
     user = await db.get(User, booking.user_id)
     return {

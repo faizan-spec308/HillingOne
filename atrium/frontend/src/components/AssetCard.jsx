@@ -142,6 +142,7 @@ export default function AssetCard({ match, onBook }) {
             {/* CTA */}
             <button
               onClick={() => onBook(asset)}
+              aria-label={`Book ${asset.name}`}
               className="btn-primary w-full justify-center"
             >
               {t("card_book")}

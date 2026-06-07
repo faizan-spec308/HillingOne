@@ -5,7 +5,7 @@ from typing import Any
 
 
 class SearchRequest(BaseModel):
-    query: str = Field(..., min_length=1)
+    query: str = Field(..., min_length=1, max_length=500)
     user_id: str | None = None
     date_iso: str | None = None
 
@@ -46,41 +46,37 @@ class SearchResponse(BaseModel):
 
 class HoldRequest(BaseModel):
     asset_id: str
-    user_id: str
     start_time: datetime
     end_time: datetime
-    purpose: str | None = None
-    attendee_count: int | None = None
+    purpose: str | None = Field(None, max_length=500)
+    attendee_count: int | None = Field(None, ge=1)
     is_recurring: bool = False
     recurrence_weeks: int | None = None
 
 
 class ConfirmRequest(BaseModel):
-    user_id: str
     enable_reminders: bool = True
 
 
 class StaffOverrideRequest(BaseModel):
     booking_id: str
     staff_user_id: str
-    reason: str
-    details: str
+    reason: str = Field(..., max_length=200)
+    details: str = Field(..., max_length=1000)
     alternative_asset_id: str | None = None
 
 
 class AgentTriggerRequest(BaseModel):
     confirmed_booking_id: str
-    priority_request_summary: str
+    priority_request_summary: str = Field(..., max_length=500)
     requesting_user_id: str | None = None
 
 
 class SwapResponseRequest(BaseModel):
     booking_id: str
-    user_id: str
     accept: bool
 
 
 class RescheduleRequest(BaseModel):
-    user_id: str
     start_time: datetime
     end_time: datetime
