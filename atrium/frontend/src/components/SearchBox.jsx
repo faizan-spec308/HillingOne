@@ -3,7 +3,7 @@ import { Search, Mic, Sparkles, ArrowRight, MapPin, Users, Clock } from "lucide-
 import { useLanguage } from "../context/LanguageContext";
 
 export default function SearchBox({ onSearch, loading }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const [query,     setQuery]     = useState("");
   const [listening, setListening] = useState(false);
