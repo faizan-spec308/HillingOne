@@ -21,46 +21,61 @@ def upgrade():
         WHERE state IN ('held', 'confirmed', 'swap_pending');
     """)
 
-    # Performance indexes for audit log and search log date queries
+    # Performance indexes for audit log and search log date queries.
+    # Table is named "search_logs" (plural) per migration 0001.
     op.execute("""
         CREATE INDEX IF NOT EXISTS idx_audit_log_created
         ON audit_log (created_at DESC);
     """)
     op.execute("""
         CREATE INDEX IF NOT EXISTS idx_search_log_created
-        ON search_log (created_at DESC);
+        ON search_logs (created_at DESC);
     """)
 
-    # CHECK constraints for data integrity
+    # CHECK constraints — use DO blocks so re-running is safe
     op.execute("""
-        ALTER TABLE bookings
-            ADD CONSTRAINT IF NOT EXISTS chk_booking_times
-            CHECK (end_time > start_time);
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_booking_times') THEN
+                ALTER TABLE bookings ADD CONSTRAINT chk_booking_times CHECK (end_time > start_time);
+            END IF;
+        END $$;
     """)
     op.execute("""
-        ALTER TABLE bookings
-            ADD CONSTRAINT IF NOT EXISTS chk_booking_state
-            CHECK (state IN ('open','held','confirmed','swap_pending','cancelled','completed'));
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_booking_state') THEN
+                ALTER TABLE bookings ADD CONSTRAINT chk_booking_state
+                    CHECK (state IN ('open','held','confirmed','swap_pending','cancelled','completed'));
+            END IF;
+        END $$;
     """)
     op.execute("""
-        ALTER TABLE users
-            ADD CONSTRAINT IF NOT EXISTS chk_user_role
-            CHECK (role IN ('resident','staff','councillor','admin'));
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_role') THEN
+                ALTER TABLE users ADD CONSTRAINT chk_user_role
+                    CHECK (role IN ('resident','staff','councillor','admin'));
+            END IF;
+        END $$;
     """)
     op.execute("""
-        ALTER TABLE assets
-            ADD CONSTRAINT IF NOT EXISTS chk_capacity
-            CHECK (capacity > 0);
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_capacity') THEN
+                ALTER TABLE assets ADD CONSTRAINT chk_capacity CHECK (capacity > 0);
+            END IF;
+        END $$;
     """)
     op.execute("""
-        ALTER TABLE assets
-            ADD CONSTRAINT IF NOT EXISTS chk_rate
-            CHECK (hourly_rate >= 0);
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_rate') THEN
+                ALTER TABLE assets ADD CONSTRAINT chk_rate CHECK (hourly_rate >= 0);
+            END IF;
+        END $$;
     """)
     op.execute("""
-        ALTER TABLE payments
-            ADD CONSTRAINT IF NOT EXISTS chk_amount
-            CHECK (amount_pence > 0);
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_amount') THEN
+                ALTER TABLE payments ADD CONSTRAINT chk_amount CHECK (amount_pence > 0);
+            END IF;
+        END $$;
     """)
 
 
