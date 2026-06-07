@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Network, ArrowLeft } from "lucide-react";
+import { Sparkles, Network, ArrowLeft, Calendar, Clock, PoundSterling } from "lucide-react";
 import SearchBox from "../components/SearchBox";
 import AssetCard from "../components/AssetCard";
 import BookingConfirmation from "./BookingConfirmation";
@@ -11,6 +11,7 @@ const STAGE_PATHS = {
   search:    "/",
   loading:   "/search",
   results:   "/results",
+  datetime:  "/book",
   hold:      "/hold",
   payment:   "/pay",
   confirmed: "/confirmed",
@@ -53,15 +54,20 @@ export default function ResidentView({ user, onViewMyBookings }) {
     }
   };
 
-  const handleBook = async (asset) => {
-    setHolding(true);
+  // Step 1: user clicks Book → show datetime picker
+  const handleBook = (asset) => {
     setHoldAsset(asset);
+    setStage("datetime");
+  };
+
+  // Step 2: user confirms date/time → create the hold
+  const handleHold = async (startTime, endTime) => {
+    setHolding(true);
     try {
       const booking = await api.hold({
-        asset_id: asset.id,
-        user_id: user.id,
-        start_time: searchWindow.start,
-        end_time: searchWindow.end,
+        asset_id: holdAsset.id,
+        start_time: startTime,
+        end_time: endTime,
         purpose: intent?.purpose_summary || "Booking via HillingOne",
         attendee_count: intent?.capacity || null,
       });
@@ -206,12 +212,26 @@ export default function ResidentView({ user, onViewMyBookings }) {
           <div className="space-y-4">
             {matches.map((m, i) => (
               <div key={m.asset_id} style={{ animationDelay: `${i * 80}ms` }}>
-                <AssetCard match={m} onBook={handleBook} />
+                <AssetCard match={m} onBook={handleBook} searchWindow={searchWindow} />
               </div>
             ))}
           </div>
         )}
       </div>
+    );
+  }
+
+  /* ── DateTime picker ──────────────────────────────────────────────────── */
+  if (stage === "datetime") {
+    return (
+      <DateTimePicker
+        asset={holdAsset}
+        searchWindow={searchWindow}
+        loading={holding}
+        error={error}
+        onConfirm={handleHold}
+        onBack={() => setStage("results")}
+      />
     );
   }
 
@@ -271,6 +291,138 @@ export default function ResidentView({ user, onViewMyBookings }) {
   );
 }
 
+/* ── DateTime picker ─────────────────────────────────────────────────────── */
+function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack }) {
+  const toLocal = (iso) => {
+    const d = new Date(iso);
+    const pad = (n) => String(n).padStart(2, "0");
+    return {
+      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    };
+  };
+
+  const sw = searchWindow || { start: new Date(Date.now() + 172800000).toISOString(), end: new Date(Date.now() + 179200000).toISOString() };
+  const startLocal = toLocal(sw.start);
+  const endLocal   = toLocal(sw.end);
+
+  const [date,  setDate]  = useState(startLocal.date);
+  const [start, setStart] = useState(startLocal.time);
+  const [end,   setEnd]   = useState(endLocal.time);
+  const [err,   setErr]   = useState(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const rate  = Number(asset?.hourly_rate || 0);
+
+  const durationHours = (() => {
+    const s = new Date(`${date}T${start}`);
+    const e = new Date(`${date}T${end}`);
+    const diff = (e - s) / 3600000;
+    return diff > 0 ? diff : 0;
+  })();
+
+  const totalCost = (rate * durationHours).toFixed(2);
+  const isFree    = rate === 0;
+
+  const handleConfirm = () => {
+    setErr(null);
+    if (!date) { setErr("Please select a date."); return; }
+    if (start >= end) { setErr("End time must be after start time."); return; }
+    if (durationHours < 0.5) { setErr("Minimum booking is 30 minutes."); return; }
+    if (durationHours > 12)  { setErr("Maximum booking is 12 hours."); return; }
+    const startIso = new Date(`${date}T${start}:00`).toISOString();
+    const endIso   = new Date(`${date}T${end}:00`).toISOString();
+    onConfirm(startIso, endIso);
+  };
+
+  return (
+    <div className="max-w-md mx-auto px-6 py-10 fade-in-up">
+      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-hillingdon-navy mb-6 transition font-medium">
+        <ArrowLeft size={14} /> Back to results
+      </button>
+
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+        {/* Asset header */}
+        <div className="p-5 border-b border-gray-100">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+            {(asset?.category || "").replace(/_/g, " ")}
+          </p>
+          <h2 className="text-[18px] font-black text-gray-900">{asset?.name}</h2>
+          {asset?.ward && <p className="text-[13px] text-gray-400 mt-0.5">{asset.ward}, Hillingdon</p>}
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Date */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">
+              <Calendar size={12} /> Date
+            </label>
+            <input
+              type="date"
+              min={today}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
+            />
+          </div>
+
+          {/* Time range */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">
+              <Clock size={12} /> Time
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[11px] text-gray-400 mb-1">From</p>
+                <input type="time" value={start} onChange={(e) => setStart(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition" />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400 mb-1">To</p>
+                <input type="time" value={end} onChange={(e) => setEnd(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition" />
+              </div>
+            </div>
+          </div>
+
+          {/* Price summary */}
+          {durationHours > 0 && (
+            <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+              <div>
+                <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Duration</p>
+                <p className="text-[15px] font-bold text-gray-900">{durationHours % 1 === 0 ? durationHours : durationHours.toFixed(1)} hrs</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <PoundSterling size={18} className="text-teal-600" />
+                <div className="text-right">
+                  <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Total</p>
+                  <p className="text-[20px] font-black text-teal-700">{isFree ? "Free" : `£${totalCost}`}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Errors */}
+          {(err || error) && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700">{err || error}</div>
+          )}
+
+          <button
+            onClick={handleConfirm}
+            disabled={loading || durationHours <= 0}
+            className="btn-primary w-full justify-center"
+          >
+            {loading ? "Reserving…" : "Hold this space"}
+          </button>
+          <p className="text-[11px] text-gray-400 text-center">
+            You'll have 5 minutes to complete your booking after holding.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Hold screen ──────────────────────────────────────────────────────────── */
 function HoldScreen({ booking, asset, onConfirm, onCancel }) {
   const { t } = useLanguage();
@@ -312,6 +464,29 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
         <h2 className="text-[20px] font-bold text-gray-900 mb-1">
           {t("hold_title")} {asset.name}
         </h2>
+
+        {/* Booking details */}
+        {booking.start_time && (
+          <div className="text-left bg-gray-50 rounded-xl px-4 py-3 mb-4 space-y-1">
+            <p className="text-[12px] text-gray-500">
+              <span className="font-semibold text-gray-700">Date: </span>
+              {new Date(booking.start_time).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+            <p className="text-[12px] text-gray-500">
+              <span className="font-semibold text-gray-700">Time: </span>
+              {new Date(booking.start_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+              {" – "}
+              {new Date(booking.end_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+            {booking.total_amount_pence > 0 && (
+              <p className="text-[12px] text-gray-500">
+                <span className="font-semibold text-gray-700">Total: </span>
+                £{(booking.total_amount_pence / 100).toFixed(2)}
+              </p>
+            )}
+          </div>
+        )}
+
         <p className="text-[14px] text-gray-500 mb-6 leading-relaxed">
           {t("hold_sub")}{" "}
           <strong>{secondsLeft} {t("hold_sub2")}</strong>

@@ -1,4 +1,4 @@
-import { MapPin, Users, Accessibility, Utensils, Wifi, Car, Leaf, ChevronRight, Star } from "lucide-react";
+import { MapPin, Users, Accessibility, Utensils, Wifi, Car, Leaf, ChevronRight, Star, Clock } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 
 const CATEGORY_EMOJI = {
@@ -24,7 +24,7 @@ const AMENITY_CHIP = ({ icon: Icon, label, color }) => (
   </span>
 );
 
-export default function AssetCard({ match, onBook }) {
+export default function AssetCard({ match, onBook, searchWindow }) {
   const { t } = useLanguage();
   const asset  = match.asset || {};
   const score  = match.match_score ?? 0;
@@ -138,6 +138,21 @@ export default function AssetCard({ match, onBook }) {
                 <AMENITY_CHIP icon={Leaf} label={`${match.carbon_estimate_kg} kg CO₂`} color="bg-emerald-50 text-emerald-700 border-emerald-200" />
               )}
             </div>
+
+            {/* Proposed time window */}
+            {searchWindow?.start && (
+              <div className="flex items-center gap-2 text-[12px] text-gray-500 bg-gray-50 rounded-xl px-3 py-2 mb-3">
+                <Clock size={11} className="text-gray-400 flex-shrink-0" />
+                <span>
+                  {new Date(searchWindow.start).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                  {" · "}
+                  {new Date(searchWindow.start).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                  {" – "}
+                  {new Date(searchWindow.end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <span className="ml-auto text-teal-600 font-semibold">Edit time</span>
+              </div>
+            )}
 
             {/* CTA */}
             <button
