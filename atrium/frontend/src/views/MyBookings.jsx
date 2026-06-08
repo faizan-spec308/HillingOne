@@ -277,6 +277,7 @@ export default function MyBookings({ user, onBack }) {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [reschedTarget, setReschedTarget] = useState(null);
   const [cancelling, setCancelling]     = useState(false);
+  const [filter, setFilter]             = useState("all");
 
   useEffect(() => {
     api.listUserBookings(1).then((res) => {
@@ -356,12 +357,43 @@ export default function MyBookings({ user, onBack }) {
         </button>
 
         {/* Hero */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-[28px] font-black text-gray-900 tracking-tight">My Bookings</h1>
           <p className="text-[14px] text-gray-400 mt-1">
-            {loading ? "Loading your reservations…" : `${upcoming.length} upcoming · ${past.length} past`}
+            {loading ? "Loading your reservations…" : `${upcoming.length} upcoming · ${past.filter(b => b.state !== "cancelled").length} past · ${past.filter(b => b.state === "cancelled").length} cancelled`}
           </p>
         </div>
+
+        {/* Filter tabs */}
+        {!loading && (
+          <div className="flex items-center gap-1 mb-6 border-b border-gray-200">
+            {[
+              { id: "all",       label: "All",       count: upcoming.length + past.length },
+              { id: "upcoming",  label: "Upcoming",  count: upcoming.length },
+              { id: "past",      label: "Past",      count: past.filter(b => b.state !== "cancelled").length },
+              { id: "cancelled", label: "Cancelled", count: past.filter(b => b.state === "cancelled").length },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors ${
+                  filter === tab.id
+                    ? "border-teal-600 text-teal-700"
+                    : "border-transparent text-gray-400 hover:text-gray-700"
+                }`}
+              >
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold ${
+                    filter === tab.id ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-400"
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Skeletons */}
         {loading && (
@@ -380,7 +412,7 @@ export default function MyBookings({ user, onBack }) {
           </div>
         )}
 
-        {/* Empty */}
+        {/* Empty state */}
         {!loading && upcoming.length === 0 && past.length === 0 && (
           <div className="text-center py-24 bg-white border border-gray-100 rounded-3xl">
             <div className="text-5xl mb-4">📭</div>
@@ -390,12 +422,14 @@ export default function MyBookings({ user, onBack }) {
           </div>
         )}
 
-        {/* Upcoming */}
-        {!loading && upcoming.length > 0 && (
+        {/* Upcoming section */}
+        {!loading && (filter === "all" || filter === "upcoming") && upcoming.length > 0 && (
           <section className="mb-8">
-            <p className="text-[11px] font-black uppercase tracking-[0.12em] text-gray-400 mb-4">
-              Upcoming · {upcoming.length}
-            </p>
+            {filter === "all" && (
+              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-gray-400 mb-4">
+                Upcoming · {upcoming.length}
+              </p>
+            )}
             <div className="space-y-3">
               {upcoming.map((b) => (
                 <BookingCard
@@ -409,26 +443,73 @@ export default function MyBookings({ user, onBack }) {
           </section>
         )}
 
-        {/* Past */}
-        {!loading && past.length > 0 && (
-          <section>
-            <p className="text-[11px] font-black uppercase tracking-[0.12em] text-gray-400 mb-4">
-              Past · {past.length}{hasMore ? "+" : ""}
-            </p>
-            <div className="space-y-3">
-              {past.map((b) => <BookingCard key={b.id} booking={b} />)}
-            </div>
-            {hasMore && (
-              <button
-                onClick={loadMore}
-                disabled={loadingMore}
-                className="mt-4 w-full py-3 border border-gray-200 rounded-2xl text-[13px] font-semibold text-gray-500 hover:bg-gray-50 transition flex items-center justify-center gap-2"
-              >
-                {loadingMore ? <RefreshCw size={14} className="animate-spin" /> : null}
-                {loadingMore ? "Loading…" : "Load more"}
-              </button>
-            )}
-          </section>
+        {/* Past section (non-cancelled) */}
+        {!loading && (filter === "all" || filter === "past") && (() => {
+          const shown = past.filter(b => b.state !== "cancelled");
+          if (shown.length === 0) return null;
+          return (
+            <section className="mb-8">
+              {filter === "all" && (
+                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-gray-400 mb-4">
+                  Past · {shown.length}{hasMore ? "+" : ""}
+                </p>
+              )}
+              <div className="space-y-3">
+                {shown.map((b) => <BookingCard key={b.id} booking={b} />)}
+              </div>
+              {hasMore && (filter === "all" || filter === "past") && (
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="mt-4 w-full py-3 border border-gray-200 rounded-2xl text-[13px] font-semibold text-gray-500 hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                >
+                  {loadingMore ? <RefreshCw size={14} className="animate-spin" /> : null}
+                  {loadingMore ? "Loading…" : "Load more"}
+                </button>
+              )}
+            </section>
+          );
+        })()}
+
+        {/* Cancelled section */}
+        {!loading && (filter === "all" || filter === "cancelled") && (() => {
+          const shown = past.filter(b => b.state === "cancelled");
+          if (shown.length === 0) {
+            if (filter !== "cancelled") return null;
+            return (
+              <div className="text-center py-16 bg-white border border-gray-100 rounded-3xl">
+                <p className="text-[16px] font-bold text-gray-700 mb-1">No cancelled bookings</p>
+                <p className="text-[13px] text-gray-400">Any cancelled reservations will appear here.</p>
+              </div>
+            );
+          }
+          return (
+            <section>
+              {filter === "all" && (
+                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-gray-400 mb-4">
+                  Cancelled · {shown.length}
+                </p>
+              )}
+              <div className="space-y-3">
+                {shown.map((b) => <BookingCard key={b.id} booking={b} />)}
+              </div>
+            </section>
+          );
+        })()}
+
+        {/* Empty state for a specific filter */}
+        {!loading && filter === "upcoming" && upcoming.length === 0 && (
+          <div className="text-center py-16 bg-white border border-gray-100 rounded-3xl">
+            <p className="text-[16px] font-bold text-gray-700 mb-1">No upcoming bookings</p>
+            <p className="text-[13px] text-gray-400 mb-5">Book a space to get started.</p>
+            <button onClick={onBack} className="btn-primary">Find a space</button>
+          </div>
+        )}
+        {!loading && filter === "past" && past.filter(b => b.state !== "cancelled").length === 0 && past.length > 0 && (
+          <div className="text-center py-16 bg-white border border-gray-100 rounded-3xl">
+            <p className="text-[16px] font-bold text-gray-700 mb-1">No past bookings</p>
+            <p className="text-[13px] text-gray-400">Completed reservations will appear here.</p>
+          </div>
         )}
       </div>
 
