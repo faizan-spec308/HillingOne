@@ -139,6 +139,8 @@ export const api = {
 
   // Assets (public)
   listAssets: () => request("/api/assets"),
+  getAssetAvailability: (assetId, fromDate, toDate) =>
+    request(`/api/assets/${assetId}/bookings?from_date=${fromDate}&to_date=${toDate}`),
 
   // Asset management (staff)
   staffListAssets:   ()           => request("/api/staff/assets"),

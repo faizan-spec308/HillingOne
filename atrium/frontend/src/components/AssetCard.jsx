@@ -1,4 +1,4 @@
-import { MapPin, Users, Accessibility, Utensils, Wifi, Car, Leaf, ChevronRight, Star, Clock } from "lucide-react";
+import { MapPin, Users, Accessibility, Utensils, Wifi, Car, Leaf, ChevronRight, Star, Clock, CalendarDays } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 
 const CATEGORY_EMOJI = {
@@ -24,7 +24,7 @@ const AMENITY_CHIP = ({ icon: Icon, label, color }) => (
   </span>
 );
 
-export default function AssetCard({ match, onBook, searchWindow }) {
+export default function AssetCard({ match, onBook, onViewCalendar, searchWindow }) {
   const { t } = useLanguage();
   const asset  = match.asset || {};
   const score  = match.match_score ?? 0;
@@ -155,14 +155,26 @@ export default function AssetCard({ match, onBook, searchWindow }) {
             )}
 
             {/* CTA */}
-            <button
-              onClick={() => onBook(asset)}
-              aria-label={`Book ${asset.name}`}
-              className="btn-primary w-full justify-center"
-            >
-              {t("card_book")}
-              <ChevronRight size={15} />
-            </button>
+            <div className="flex gap-2">
+              {onViewCalendar && (
+                <button
+                  onClick={() => onViewCalendar(asset)}
+                  aria-label={`View ${asset.name} availability`}
+                  className="btn-secondary flex-shrink-0 px-3 text-[13px]"
+                  title="View availability calendar"
+                >
+                  <CalendarDays size={14} />
+                </button>
+              )}
+              <button
+                onClick={() => onBook(asset)}
+                aria-label={`Book ${asset.name}`}
+                className="btn-primary flex-1 justify-center"
+              >
+                {t("card_book")}
+                <ChevronRight size={15} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

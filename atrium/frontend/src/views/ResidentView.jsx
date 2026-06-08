@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Sparkles, Network, ArrowLeft, Calendar, Clock, PoundSterling } from "lucide-react";
 import SearchBox from "../components/SearchBox";
 import AssetCard from "../components/AssetCard";
+import AssetCalendar from "../components/AssetCalendar";
 import BookingConfirmation from "./BookingConfirmation";
 import PaymentForm from "../components/PaymentForm";
 import { api } from "../api/client";
@@ -38,6 +39,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
   const [error, setError] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState(null);
+  const [calendarAsset, setCalendarAsset] = useState(null);
 
   const handleSearch = async (query) => {
     setError(null);
@@ -54,9 +56,13 @@ export default function ResidentView({ user, onViewMyBookings }) {
     }
   };
 
-  // Step 1: user clicks Book → show datetime picker
-  const handleBook = (asset) => {
+  // Step 1: user clicks Book → show datetime picker (optionally pre-filled from calendar)
+  const handleBook = (asset, preStart, preEnd) => {
     setHoldAsset(asset);
+    if (preStart && preEnd) {
+      setSearchWindow({ start: preStart, end: preEnd });
+    }
+    setCalendarAsset(null);
     setStage("datetime");
   };
 
@@ -209,10 +215,22 @@ export default function ResidentView({ user, onViewMyBookings }) {
             </button>
           </div>
         ) : (
+          {calendarAsset && (
+            <AssetCalendar
+              asset={calendarAsset}
+              onClose={() => setCalendarAsset(null)}
+              onSelectSlot={handleBook}
+            />
+          )}
           <div className="space-y-4">
             {matches.map((m, i) => (
               <div key={m.asset_id} style={{ animationDelay: `${i * 80}ms` }}>
-                <AssetCard match={m} onBook={handleBook} searchWindow={searchWindow} />
+                <AssetCard
+                  match={m}
+                  onBook={handleBook}
+                  onViewCalendar={setCalendarAsset}
+                  searchWindow={searchWindow}
+                />
               </div>
             ))}
           </div>

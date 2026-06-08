@@ -1,4 +1,5 @@
 """Assets router."""
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -26,10 +27,23 @@ async def get_asset(asset_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{asset_id}/bookings")
-async def asset_bookings(asset_id: str, db: AsyncSession = Depends(get_db)):
+async def asset_bookings(
+    asset_id: str,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return active bookings for an asset. Optional ISO date range filters."""
     stmt = select(Booking).where(
         Booking.asset_id == asset_id,
         Booking.state.in_(["confirmed", "held", "swap_pending"]),
     )
+    if from_date:
+        stmt = stmt.where(Booking.end_time >= datetime.fromisoformat(from_date))
+    if to_date:
+        stmt = stmt.where(Booking.start_time <= datetime.fromisoformat(to_date))
     result = await db.execute(stmt)
-    return [b.to_dict() for b in result.scalars().all()]
+    return [
+        {"start_time": b.start_time.isoformat(), "end_time": b.end_time.isoformat()}
+        for b in result.scalars().all()
+    ]
