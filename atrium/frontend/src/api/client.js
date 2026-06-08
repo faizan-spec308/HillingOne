@@ -4,6 +4,7 @@ const ERROR_MESSAGES = {
   slot_unavailable:            "This slot was just taken. Please choose another time.",
   hold_expired:                "Your hold timed out. Please search again.",
   invalid_credentials:         "Incorrect email or password.",
+  account_locked:              "Too many failed attempts. Your account is locked for 15 minutes.",
   email_exists:                "An account with this email already exists.",
   booking_not_found:           "Booking not found.",
   not_booking_owner:           "You are not authorised to modify this booking.",
@@ -52,6 +53,8 @@ export const api = {
 
   register: (name, email, password, ward) =>
     request("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password, ward }) }),
+
+  logout: () => request("/api/auth/logout", { method: "POST" }),
 
   me: () => request("/api/auth/me"),
 

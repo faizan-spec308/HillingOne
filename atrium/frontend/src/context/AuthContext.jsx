@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
+import { api } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -18,7 +19,8 @@ export function AuthProvider({ children }) {
     setUser(user);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await api.logout(); } catch { /* token may already be invalid — still clear locally */ }
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setToken(null);

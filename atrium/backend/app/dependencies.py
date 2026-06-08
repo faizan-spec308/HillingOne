@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.security import is_blacklisted
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -22,8 +23,13 @@ async def get_current_user(
     )
     if not credentials:
         raise exc
+
+    token = credentials.credentials
+    if is_blacklisted(token):
+        raise exc
+
     try:
-        payload = jwt.decode(credentials.credentials, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         user_id: str = payload.get("sub")
         if not user_id:
             raise exc

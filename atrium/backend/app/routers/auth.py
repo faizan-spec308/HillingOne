@@ -3,6 +3,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import bcrypt as _bcrypt
@@ -15,6 +16,10 @@ from app.database import get_db
 from app.models.user import User
 from app.dependencies import get_current_user
 from app.limiter import limiter
+from app.security import (
+    record_failed_login, is_locked_out, clear_failed_logins,
+    failed_attempt_count, blacklist_token, LOCKOUT_LIMIT,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger("hillingone.auth")
@@ -84,13 +89,48 @@ async def register(request: Request, req: RegisterRequest, db: AsyncSession = De
 @router.post("/login")
 @limiter.limit("5/minute")
 async def login(request: Request, req: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == str(req.email).lower()))
+    email = str(req.email).lower()
+
+    if is_locked_out(email):
+        logger.warning("login_blocked_lockout email=%s", email)
+        raise HTTPException(
+            status_code=429,
+            detail="account_locked",
+        )
+
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
+
     if not user or not user.password_hash or not _verify(req.password, user.password_hash):
-        logger.warning("login_failed email=%s", str(req.email))
-        raise HTTPException(status_code=401, detail="invalid_credentials")
+        record_failed_login(email)
+        attempts = failed_attempt_count(email)
+        remaining = max(0, LOCKOUT_LIMIT - attempts)
+        logger.warning("login_failed email=%s attempts=%d", email, attempts)
+        raise HTTPException(
+            status_code=401,
+            detail="invalid_credentials" if remaining > 0 else "account_locked",
+        )
+
+    clear_failed_logins(email)
     logger.info("login_success user_id=%s", str(user.id))
     return {"token": _make_token(user), "user": user.to_dict()}
+
+
+@router.post("/logout")
+async def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
+    current_user: User = Depends(get_current_user),
+):
+    from jose import jwt as _jwt
+    token = credentials.credentials
+    try:
+        payload = _jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        exp = float(payload.get("exp", 0))
+    except Exception:
+        exp = 0.0
+    blacklist_token(token, exp)
+    logger.info("logout user_id=%s", str(current_user.id))
+    return {"detail": "logged_out"}
 
 
 @router.get("/me")
