@@ -1,10 +1,13 @@
-"""Staff router: dashboard, agent feed, override modal."""
+"""Staff router: dashboard, agent feed, override modal, asset management."""
 import csv
 import io
 import logging
+import uuid
 from datetime import datetime, timedelta
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 
@@ -18,6 +21,18 @@ from app.models.booking import Booking
 from app.models.asset import Asset
 from app.models.agent_run import AgentRun
 from app.models.search_log import SearchLog
+
+
+class AssetUpsertRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    category: str = Field(..., min_length=1, max_length=100)
+    ward: str = Field(..., min_length=1, max_length=100)
+    capacity: int = Field(..., ge=1, le=10000)
+    hourly_rate: float = Field(0.0, ge=0)
+    description: str | None = Field(None, max_length=2000)
+    amenities: dict = Field(default_factory=dict)
+    accessibility: dict = Field(default_factory=dict)
+    image_url: str | None = Field(None, max_length=500)
 
 router = APIRouter(prefix="/api/staff", tags=["staff"], dependencies=[Depends(require_staff)])
 logger = logging.getLogger("hillingone.staff")
@@ -235,3 +250,79 @@ async def export_bookings_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ── Asset management ───────────────────────────────────────────────────────
+
+@router.get("/assets")
+async def list_all_assets(db: AsyncSession = Depends(get_db)):
+    """List all assets including inactive ones — staff only."""
+    result = await db.execute(select(Asset).order_by(Asset.ward, Asset.name))
+    return [a.to_dict() for a in result.scalars().all()]
+
+
+@router.post("/assets", status_code=201)
+async def create_asset(
+    req: AssetUpsertRequest,
+    db: AsyncSession = Depends(get_db),
+    current_staff: User = Depends(require_staff),
+):
+    asset = Asset(
+        id=uuid.uuid4(),
+        name=req.name,
+        category=req.category,
+        ward=req.ward,
+        capacity=req.capacity,
+        hourly_rate=Decimal(str(req.hourly_rate)),
+        description=req.description,
+        amenities=req.amenities,
+        accessibility=req.accessibility,
+        image_url=req.image_url,
+        is_active=True,
+    )
+    db.add(asset)
+    await db.commit()
+    await db.refresh(asset)
+    logger.info("asset_created id=%s name=%s by=%s", str(asset.id), asset.name, str(current_staff.id))
+    return asset.to_dict()
+
+
+@router.patch("/assets/{asset_id}")
+async def update_asset(
+    asset_id: str,
+    req: AssetUpsertRequest,
+    db: AsyncSession = Depends(get_db),
+    current_staff: User = Depends(require_staff),
+):
+    asset = await db.get(Asset, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset.name = req.name
+    asset.category = req.category
+    asset.ward = req.ward
+    asset.capacity = req.capacity
+    asset.hourly_rate = Decimal(str(req.hourly_rate))
+    asset.description = req.description
+    asset.amenities = req.amenities
+    asset.accessibility = req.accessibility
+    asset.image_url = req.image_url
+    await db.commit()
+    await db.refresh(asset)
+    logger.info("asset_updated id=%s by=%s", asset_id, str(current_staff.id))
+    return asset.to_dict()
+
+
+@router.patch("/assets/{asset_id}/toggle")
+async def toggle_asset(
+    asset_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_staff: User = Depends(require_staff),
+):
+    asset = await db.get(Asset, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset.is_active = not asset.is_active
+    await db.commit()
+    await db.refresh(asset)
+    logger.info("asset_toggled id=%s active=%s by=%s", asset_id, asset.is_active, str(current_staff.id))
+    return asset.to_dict()

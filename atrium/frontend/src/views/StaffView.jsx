@@ -2,13 +2,276 @@ import { useEffect, useState } from "react";
 import {
   Activity, MapPin, AlertTriangle, TrendingUp,
   ShieldCheck, Clock, RefreshCw, Users, Zap, Download,
+  Plus, Edit2, ToggleLeft, ToggleRight, X, CheckCircle2, Building2,
 } from "lucide-react";
 import { api } from "../api/client";
+
+const WARDS = [
+  "Botwell","Brunel","Charville","Heathrow Villages","Hayes Town",
+  "Hillingdon East","Manor","Northwood","Pinkwell","Ruislip",
+  "Townfield","Uxbridge","West Drayton","Yiewsley",
+];
+
+const CATEGORIES = [
+  "community_centre","meeting_room","sports_hall","library_space",
+  "office","outdoor_space","studio","youth_centre","other",
+];
+
+/* ── Asset form modal ─────────────────────────────────────────────── */
+function AssetModal({ asset, onClose, onSaved }) {
+  const blank = { name:"", category:"community_centre", ward:"Uxbridge", capacity:20,
+    hourly_rate:0, description:"", image_url:"",
+    amenities:{ wifi:false, kitchen:false, parking:false },
+    accessibility:{ wheelchair_access:false, hearing_loop:false } };
+
+  const [form, setForm]     = useState(asset ? {
+    ...asset,
+    amenities: asset.amenities || {},
+    accessibility: asset.accessibility || {},
+  } : blank);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState(null);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const setAmenity = (k, v) => setForm(f => ({ ...f, amenities: { ...f.amenities, [k]: v } }));
+  const setAccess  = (k, v) => setForm(f => ({ ...f, accessibility: { ...f.accessibility, [k]: v } }));
+
+  const save = async () => {
+    if (!form.name.trim()) { setErr("Name is required."); return; }
+    setSaving(true); setErr(null);
+    try {
+      const payload = {
+        name: form.name.trim(), category: form.category, ward: form.ward,
+        capacity: Number(form.capacity), hourly_rate: Number(form.hourly_rate),
+        description: form.description || null, image_url: form.image_url || null,
+        amenities: form.amenities, accessibility: form.accessibility,
+      };
+      const saved = asset
+        ? await api.staffUpdateAsset(asset.id, payload)
+        : await api.staffCreateAsset(payload);
+      onSaved(saved, !asset);
+    } catch (e) { setErr(e.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backdropFilter:"blur(4px)", background:"rgba(15,23,42,0.5)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-[18px] font-black text-gray-900">{asset ? "Edit asset" : "Add new asset"}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Name</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
+          </div>
+          {/* Category + Ward */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Category</label>
+              <select value={form.category} onChange={e => set("category", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500">
+                {CATEGORIES.map(c => <option key={c} value={c}>{c.replace(/_/g," ")}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Ward</label>
+              <select value={form.ward} onChange={e => set("ward", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500">
+                {WARDS.map(w => <option key={w} value={w}>{w}</option>)}
+              </select>
+            </div>
+          </div>
+          {/* Capacity + Rate */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Capacity</label>
+              <input type="number" min="1" value={form.capacity} onChange={e => set("capacity", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Hourly rate (£)</label>
+              <input type="number" min="0" step="0.50" value={form.hourly_rate} onChange={e => set("hourly_rate", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
+            </div>
+          </div>
+          {/* Description */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Description</label>
+            <textarea rows={3} value={form.description || ""} onChange={e => set("description", e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 resize-none" />
+          </div>
+          {/* Image URL */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Image URL (optional)</label>
+            <input value={form.image_url || ""} onChange={e => set("image_url", e.target.value)}
+              placeholder="https://..."
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
+          </div>
+          {/* Amenities */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Amenities</label>
+            <div className="flex flex-wrap gap-3">
+              {[["wifi","Wi-Fi"],["kitchen","Kitchen"],["parking","Parking"]].map(([k,label]) => (
+                <label key={k} className="flex items-center gap-2 text-[13px] text-gray-700 cursor-pointer">
+                  <input type="checkbox" checked={!!form.amenities[k]} onChange={e => setAmenity(k, e.target.checked)}
+                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+          {/* Accessibility */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Accessibility</label>
+            <div className="flex flex-wrap gap-3">
+              {[["wheelchair_access","Wheelchair access"],["hearing_loop","Hearing loop"]].map(([k,label]) => (
+                <label key={k} className="flex items-center gap-2 text-[13px] text-gray-700 cursor-pointer">
+                  <input type="checkbox" checked={!!form.accessibility[k]} onChange={e => setAccess(k, e.target.checked)}
+                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {err && <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700">{err}</div>}
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[14px] font-semibold rounded-xl transition">
+              Cancel
+            </button>
+            <button onClick={save} disabled={saving}
+              className="btn-primary flex-1 justify-center text-[14px]">
+              {saving ? "Saving…" : asset ? "Save changes" : "Create asset"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Asset management panel ───────────────────────────────────────── */
+function AssetManagement() {
+  const [assets, setAssets]     = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [editing, setEditing]   = useState(null);   // asset or null
+  const [adding, setAdding]     = useState(false);
+  const [toast, setToast]       = useState(null);
+
+  useEffect(() => {
+    api.staffListAssets().then(setAssets).finally(() => setLoading(false));
+  }, []);
+
+  const showToast = (msg, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleSaved = (saved, isNew) => {
+    if (isNew) setAssets(prev => [saved, ...prev]);
+    else setAssets(prev => prev.map(a => a.id === saved.id ? saved : a));
+    setEditing(null); setAdding(false);
+    showToast(isNew ? `${saved.name} created.` : `${saved.name} updated.`);
+  };
+
+  const handleToggle = async (asset) => {
+    try {
+      const updated = await api.staffToggleAsset(asset.id);
+      setAssets(prev => prev.map(a => a.id === updated.id ? updated : a));
+      showToast(`${updated.name} ${updated.is_active ? "activated" : "deactivated"}.`);
+    } catch (e) { showToast(e.message, false); }
+  };
+
+  return (
+    <div>
+      {(adding || editing) && (
+        <AssetModal
+          asset={editing}
+          onClose={() => { setEditing(null); setAdding(false); }}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {toast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-5 py-3 rounded-2xl shadow-xl text-[13px] font-semibold ${toast.ok ? "bg-white border border-emerald-200 text-emerald-800" : "bg-red-50 border border-red-200 text-red-700"}`}>
+          {toast.ok ? <CheckCircle2 size={15} className="text-emerald-500" /> : <AlertTriangle size={15} />}
+          {toast.msg}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-[13px] text-gray-500">{assets.length} assets total</p>
+        <button onClick={() => setAdding(true)} className="btn-primary text-[13px] px-4 py-2">
+          <Plus size={14} /> Add asset
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="skeleton h-14 rounded-xl" />)}</div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100 text-left">
+                <th className="px-5 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Name</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Ward</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Category</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide text-right">Cap.</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide text-right">Rate</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Status</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {assets.map(a => (
+                <tr key={a.id} className={`transition-colors hover:bg-gray-50 ${!a.is_active ? "opacity-50" : ""}`}>
+                  <td className="px-5 py-3 text-[13px] font-semibold text-gray-900">{a.name}</td>
+                  <td className="px-4 py-3 text-[12px] text-gray-500">{a.ward}</td>
+                  <td className="px-4 py-3 text-[12px] text-gray-500">{a.category.replace(/_/g," ")}</td>
+                  <td className="px-4 py-3 text-[13px] text-gray-700 text-right">{a.capacity}</td>
+                  <td className="px-4 py-3 text-[13px] text-gray-700 text-right">
+                    {a.hourly_rate === 0 ? <span className="text-emerald-600 font-semibold">Free</span> : `£${a.hourly_rate.toFixed(2)}`}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${a.is_active ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${a.is_active ? "bg-emerald-500" : "bg-gray-400"}`} />
+                      {a.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => setEditing(a)}
+                        className="p-1.5 text-gray-400 hover:text-hillingdon-navy hover:bg-blue-50 rounded-lg transition">
+                        <Edit2 size={13} />
+                      </button>
+                      <button onClick={() => handleToggle(a)}
+                        className={`p-1.5 rounded-lg transition ${a.is_active ? "text-gray-400 hover:text-red-500 hover:bg-red-50" : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"}`}>
+                        {a.is_active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function StaffView() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const refresh = async () => {
     try {
@@ -84,35 +347,60 @@ export default function StaffView() {
     <div className="max-w-[1400px] mx-auto px-6 py-6 fade-in-up">
 
       {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-[22px] font-bold text-gray-900">Staff Dashboard</h2>
+          <h2 className="text-[22px] font-bold text-gray-900">Staff Portal</h2>
           <p className="text-[13px] text-gray-500 mt-0.5">
-            Live overview of Hillingdon Council bookings and asset utilisation
+            Hillingdon Council — live bookings, assets and utilisation
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {lastRefresh && (
+          {activeTab === "dashboard" && lastRefresh && (
             <span className="text-[12px] text-gray-400">
               Updated {lastRefresh.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
-          <button
-            onClick={() => api.downloadBookingsCsv()}
-            className="btn-secondary text-[13px] px-3 py-2"
-          >
-            <Download size={13} />
-            Export CSV
-          </button>
-          <button
-            onClick={refresh}
-            className="btn-secondary text-[13px] px-3 py-2"
-          >
-            <RefreshCw size={13} />
-            Refresh
-          </button>
+          {activeTab === "dashboard" && (
+            <>
+              <button onClick={() => api.downloadBookingsCsv()} className="btn-secondary text-[13px] px-3 py-2">
+                <Download size={13} />
+                Export CSV
+              </button>
+              <button onClick={refresh} className="btn-secondary text-[13px] px-3 py-2">
+                <RefreshCw size={13} />
+                Refresh
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 mb-6 border-b border-gray-200">
+        {[
+          { id: "dashboard", label: "Dashboard",     icon: <Activity size={14} /> },
+          { id: "assets",    label: "Manage Assets", icon: <Building2 size={14} /> },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors ${
+              activeTab === tab.id
+                ? "border-teal-600 text-teal-700"
+                : "border-transparent text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Manage Assets tab */}
+      {activeTab === "assets" && <AssetManagement />}
+
+      {/* Dashboard tab content below — hidden when on assets tab */}
+      {activeTab === "dashboard" && (<>
 
       {/* Operating principles strip */}
       <div
@@ -289,6 +577,7 @@ export default function StaffView() {
 
         </div>
       </div>
+      </>)}
     </div>
   );
 }

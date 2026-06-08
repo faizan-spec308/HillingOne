@@ -137,8 +137,14 @@ export const api = {
   staffOverride:  (data) => request("/api/staff/override", { method: "POST", body: JSON.stringify(data) }),
   decisionQueue:  () => request("/api/staff/decision-queue"),
 
-  // Assets
+  // Assets (public)
   listAssets: () => request("/api/assets"),
+
+  // Asset management (staff)
+  staffListAssets:   ()           => request("/api/staff/assets"),
+  staffCreateAsset:  (data)       => request("/api/staff/assets", { method: "POST", body: JSON.stringify(data) }),
+  staffUpdateAsset:  (id, data)   => request(`/api/staff/assets/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  staffToggleAsset:  (id)         => request(`/api/staff/assets/${id}/toggle`, { method: "PATCH" }),
 
   // Reminders
   listReminders: () => request("/api/reminders/all"),
