@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Activity, MapPin, AlertTriangle, TrendingUp,
   ShieldCheck, Clock, RefreshCw, Users, Zap, Download,
@@ -32,6 +33,11 @@ function AssetModal({ asset, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState(null);
 
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setAmenity = (k, v) => setForm(f => ({ ...f, amenities: { ...f.amenities, [k]: v } }));
   const setAccess  = (k, v) => setForm(f => ({ ...f, accessibility: { ...f.accessibility, [k]: v } }));
@@ -54,8 +60,8 @@ function AssetModal({ asset, onClose, onSaved }) {
     finally { setSaving(false); }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ backdropFilter:"blur(4px)", background:"rgba(15,23,42,0.5)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -153,7 +159,8 @@ function AssetModal({ asset, onClose, onSaved }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
