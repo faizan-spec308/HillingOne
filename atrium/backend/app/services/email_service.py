@@ -1,0 +1,213 @@
+"""Transactional email via Resend."""
+import asyncio
+import logging
+from datetime import datetime
+
+logger = logging.getLogger("hillingone.email")
+
+FROM_ADDRESS = "onboarding@resend.dev"
+BRAND_COLOR  = "#0D9488"
+
+
+def _fmt_dt(dt: datetime) -> str:
+    return dt.strftime("%-d %B %Y") if hasattr(dt, "strftime") else str(dt)
+
+
+def _fmt_time(dt: datetime) -> str:
+    return dt.strftime("%H:%M") if hasattr(dt, "strftime") else str(dt)
+
+
+def _base(title: str, body_html: str) -> str:
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{title}</title>
+</head>
+<body style="margin:0;padding:0;background:#F3F4F6;font-family:Inter,system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0"
+               style="background:#ffffff;border-radius:16px;overflow:hidden;
+                      box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:{BRAND_COLOR};padding:28px 40px;">
+              <span style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">
+                HillingOne
+              </span>
+              <span style="font-size:13px;color:rgba(255,255,255,0.7);margin-left:8px;">
+                by Hillingdon Council
+              </span>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 40px;">
+              {body_html}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 40px 28px;border-top:1px solid #E5E7EB;">
+              <p style="margin:0;font-size:12px;color:#9CA3AF;">
+                HillingOne · London Borough of Hillingdon<br />
+                This is an automated message — please do not reply to this email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+
+def _detail_row(label: str, value: str) -> str:
+    return f"""
+<tr>
+  <td style="padding:10px 0;border-bottom:1px solid #F3F4F6;">
+    <span style="font-size:12px;font-weight:600;color:#9CA3AF;text-transform:uppercase;
+                 letter-spacing:0.05em;">{label}</span><br />
+    <span style="font-size:15px;font-weight:600;color:#111827;">{value}</span>
+  </td>
+</tr>
+"""
+
+
+def booking_confirmed_html(user_name: str, booking: object, asset: object) -> str:
+    start = booking.start_time
+    end   = booking.end_time
+    body  = f"""
+<h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#111827;">
+  Booking confirmed ✓
+</h1>
+<p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
+  Hi {user_name}, your space is reserved and protected.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background:#F9FAFB;border-radius:12px;padding:20px 24px;margin-bottom:28px;">
+  <tr>
+    <td style="padding:0 0 16px;">
+      <span style="font-size:13px;font-weight:700;color:#374151;">Booking reference</span><br />
+      <span style="font-size:22px;font-weight:900;font-family:monospace;color:{BRAND_COLOR};">
+        {booking.reference}
+      </span>
+    </td>
+  </tr>
+  {_detail_row("Venue", getattr(asset, "name", "—"))}
+  {_detail_row("Date", _fmt_dt(start))}
+  {_detail_row("Time", f"{_fmt_time(start)} – {_fmt_time(end)}")}
+  {_detail_row("Location", f"{getattr(asset, 'ward', '')}, Hillingdon")}
+</table>
+
+<p style="margin:0;font-size:13px;color:#6B7280;line-height:1.6;">
+  You can cancel this booking at any time from <strong>My Bookings</strong> in the app.
+  A full refund is issued automatically if you cancel more than 24 hours before your booking.
+</p>
+"""
+    return _base("Booking confirmed — HillingOne", body)
+
+
+def booking_cancelled_html(user_name: str, booking: object, asset: object,
+                           refund_amount: str | None = None) -> str:
+    refund_block = ""
+    if refund_amount:
+        refund_block = f"""
+<div style="margin-top:20px;padding:16px 20px;background:#ECFDF5;border-radius:10px;
+            border:1px solid #A7F3D0;">
+  <span style="font-size:14px;font-weight:600;color:#065F46;">
+    ✓ {refund_amount} refund has been issued to your original payment method.
+  </span>
+</div>
+"""
+    body = f"""
+<h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#111827;">
+  Booking cancelled
+</h1>
+<p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
+  Hi {user_name}, your booking has been cancelled.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background:#F9FAFB;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+  {_detail_row("Venue", getattr(asset, "name", "—"))}
+  {_detail_row("Reference", booking.reference)}
+</table>
+
+{refund_block}
+
+<p style="margin-top:20px;font-size:13px;color:#6B7280;line-height:1.6;">
+  You can make a new booking any time at <a href="https://hilling-one.vercel.app"
+  style="color:{BRAND_COLOR};font-weight:600;">hilling-one.vercel.app</a>.
+</p>
+"""
+    return _base("Booking cancelled — HillingOne", body)
+
+
+def booking_rescheduled_html(user_name: str, booking: object, asset: object,
+                              refund_amount: str | None = None) -> str:
+    start = booking.start_time
+    end   = booking.end_time
+    refund_block = ""
+    if refund_amount:
+        refund_block = f"""
+<div style="margin-top:20px;padding:16px 20px;background:#ECFDF5;border-radius:10px;
+            border:1px solid #A7F3D0;">
+  <span style="font-size:14px;font-weight:600;color:#065F46;">
+    ✓ {refund_amount} partial refund has been issued for the shorter duration.
+  </span>
+</div>
+"""
+    body = f"""
+<h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#111827;">
+  Booking rescheduled
+</h1>
+<p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
+  Hi {user_name}, your booking has been moved to a new time.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background:#F9FAFB;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+  {_detail_row("Venue", getattr(asset, "name", "—"))}
+  {_detail_row("Reference", booking.reference)}
+  {_detail_row("New date", _fmt_dt(start))}
+  {_detail_row("New time", f"{_fmt_time(start)} – {_fmt_time(end)}")}
+</table>
+
+{refund_block}
+"""
+    return _base("Booking rescheduled — HillingOne", body)
+
+
+async def send_email(to: str, subject: str, html: str) -> None:
+    """Fire-and-forget email send. Logs errors but never raises."""
+    from app.config import settings
+    if not settings.resend_api_key:
+        logger.debug("resend_api_key not set — skipping email to %s", to)
+        return
+    try:
+        import resend as _resend
+        _resend.api_key = settings.resend_api_key
+        await asyncio.to_thread(
+            _resend.Emails.send,
+            {
+                "from": FROM_ADDRESS,
+                "to": [to],
+                "subject": subject,
+                "html": html,
+            },
+        )
+        logger.info("email_sent to=%s subject=%s", to, subject)
+    except Exception as exc:
+        logger.error("email_error to=%s err=%s", to, str(exc))

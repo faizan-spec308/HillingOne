@@ -14,6 +14,12 @@ from app.dependencies import get_current_user
 from app.schemas.search import HoldRequest, ConfirmRequest, SwapResponseRequest, RescheduleRequest
 from app.services.booking_service import BookingService, _now
 from app.services.reminder_service import ReminderService, generate_ics
+from app.services.email_service import (
+    send_email,
+    booking_confirmed_html,
+    booking_cancelled_html,
+    booking_rescheduled_html,
+)
 from app.models.booking import Booking
 from app.models.asset import Asset
 from app.models.payment import Payment
@@ -116,6 +122,14 @@ async def confirm(
         if reminders:
             response["encouragement"] = reminders[0].encouragement
     logger.info("booking_confirmed booking_id=%s user_id=%s", booking_id, str(current_user.id))
+
+    asset = await db.get(Asset, booking.asset_id)
+    asyncio.create_task(send_email(
+        to=current_user.email,
+        subject=f"Booking confirmed — {asset.name if asset else 'HillingOne'}",
+        html=booking_confirmed_html(current_user.name, booking, asset),
+    ))
+
     return response
 
 
@@ -165,6 +179,17 @@ async def cancel_user(
     result = booking.to_dict()
     if refund_info:
         result["refund"] = refund_info
+
+    cancel_asset = await db.get(Asset, booking.asset_id)
+    asyncio.create_task(send_email(
+        to=current_user.email,
+        subject="Your HillingOne booking has been cancelled",
+        html=booking_cancelled_html(
+            current_user.name, booking, cancel_asset,
+            refund_info.get("amount") if refund_info else None,
+        ),
+    ))
+
     return result
 
 
@@ -268,6 +293,13 @@ async def reschedule_booking(
     if refund_display:
         result["refunded"] = True
         result["refund_amount"] = refund_display
+
+    asyncio.create_task(send_email(
+        to=current_user.email,
+        subject=f"Booking rescheduled — {asset.name if asset else 'HillingOne'}",
+        html=booking_rescheduled_html(current_user.name, booking, asset, refund_display),
+    ))
+
     return result
 
 
@@ -322,6 +354,13 @@ async def reschedule_confirm(
     await db.refresh(booking)
 
     logger.info("reschedule_confirm booking_id=%s pi=%s", booking_id, req.payment_intent_id)
+
+    asyncio.create_task(send_email(
+        to=current_user.email,
+        subject=f"Booking rescheduled — {asset.name if asset else 'HillingOne'}",
+        html=booking_rescheduled_html(current_user.name, booking, asset),
+    ))
+
     return {**booking.to_dict(), "asset": asset.to_dict() if asset else None}
 
 

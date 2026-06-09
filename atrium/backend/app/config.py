@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_days: int = 30
     admin_secret: str = Field(default="")
+    resend_api_key: str = Field(default="")
     environment: str = Field(default="development")
 
     @property
