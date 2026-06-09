@@ -1,8 +1,10 @@
 """Bookings router."""
+import asyncio
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -10,10 +12,11 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.schemas.search import HoldRequest, ConfirmRequest, SwapResponseRequest, RescheduleRequest
-from app.services.booking_service import BookingService
+from app.services.booking_service import BookingService, _now
 from app.services.reminder_service import ReminderService, generate_ics
 from app.models.booking import Booking
 from app.models.asset import Asset
+from app.models.payment import Payment
 from app.models.user import User
 
 router = APIRouter(prefix="/api/bookings", tags=["bookings"])
@@ -165,6 +168,14 @@ async def cancel_user(
     return result
 
 
+def _pence(asset: Asset | None, start: datetime, end: datetime) -> int:
+    """Calculate booking cost in pence for a given asset and time range."""
+    if asset and asset.hourly_rate and float(asset.hourly_rate) > 0:
+        hours = (end - start).total_seconds() / 3600
+        return max(100, int(float(asset.hourly_rate) * hours * 100))
+    return 0  # free asset
+
+
 @router.patch("/{booking_id}/reschedule")
 async def reschedule_booking(
     booking_id: str,
@@ -172,13 +183,146 @@ async def reschedule_booking(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Reschedule a booking. Handles price difference: upcharge via Stripe intent, refund via partial refund."""
+    booking = await db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="booking_not_found")
+    if str(booking.user_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="not_booking_owner")
+    if booking.state not in ("confirmed", "held"):
+        raise HTTPException(status_code=409, detail="cannot_reschedule")
+
+    # 24-hour cutoff — cannot change within 24h of the booking start
+    if _now() >= booking.start_time - timedelta(hours=24):
+        raise HTTPException(status_code=400, detail="reschedule_too_late")
+
+    new_start = req.start_time.replace(tzinfo=None) if req.start_time.tzinfo else req.start_time
+    new_end   = req.end_time.replace(tzinfo=None)   if req.end_time.tzinfo   else req.end_time
+
+    asset      = await db.get(Asset, booking.asset_id)
+    orig_pence = _pence(asset, booking.start_time, booking.end_time)
+    new_pence  = _pence(asset, new_start, new_end)
+    diff_pence = new_pence - orig_pence
+
+    # ── Upcharge: need to collect more money before rescheduling ────────────
+    if diff_pence > 0 and settings.stripe_secret_key:
+        import stripe as _stripe
+        _stripe.api_key = settings.stripe_secret_key
+        intent = await asyncio.to_thread(
+            _stripe.PaymentIntent.create,
+            amount=diff_pence,
+            currency="gbp",
+            metadata={
+                "booking_id":  booking_id,
+                "type":        "reschedule_upcharge",
+                "new_start":   new_start.isoformat(),
+                "new_end":     new_end.isoformat(),
+            },
+            description=f"HillingOne reschedule — {asset.name if asset else booking_id}",
+        )
+        return {
+            "requires_payment": True,
+            "client_secret":    intent.client_secret,
+            "payment_intent_id": intent.id,
+            "amount_pence":     diff_pence,
+            "amount_display":   f"£{diff_pence / 100:.2f}",
+        }
+
+    # ── Partial refund: duration shortened ──────────────────────────────────
+    refund_display = None
+    if diff_pence < 0 and settings.stripe_secret_key:
+        refund_pence = abs(diff_pence)
+        pay_result = await db.execute(
+            select(Payment).where(
+                Payment.booking_id == uuid.UUID(booking_id),
+                Payment.status == "succeeded",
+            )
+        )
+        payment = pay_result.scalar_one_or_none()
+        if payment:
+            try:
+                import stripe as _stripe
+                _stripe.api_key = settings.stripe_secret_key
+                cap = min(refund_pence, payment.amount_pence)
+                await asyncio.to_thread(
+                    _stripe.Refund.create,
+                    payment_intent=payment.stripe_payment_intent_id,
+                    amount=cap,
+                )
+                payment.amount_pence -= cap
+                await db.commit()
+                refund_display = f"£{cap / 100:.2f}"
+                logger.info("partial_refund booking_id=%s amount_pence=%d", booking_id, cap)
+            except Exception as exc:
+                logger.error("partial_refund_error booking_id=%s err=%s", booking_id, str(exc))
+
+    # ── Do the actual reschedule ─────────────────────────────────────────────
     svc = BookingService(db)
     try:
-        booking = await svc.reschedule(booking_id, str(current_user.id), req.start_time, req.end_time)
-        return booking.to_dict()
+        booking = await svc.reschedule(booking_id, str(current_user.id), new_start, new_end)
     except ValueError as e:
         code = 409 if str(e) == "slot_unavailable" else 400
         raise HTTPException(status_code=code, detail=str(e))
+
+    result = {**booking.to_dict(), "asset": asset.to_dict() if asset else None}
+    if refund_display:
+        result["refunded"] = True
+        result["refund_amount"] = refund_display
+    return result
+
+
+class RescheduleConfirmRequest(BaseModel):
+    payment_intent_id: str
+    new_start: datetime
+    new_end: datetime
+
+
+@router.post("/{booking_id}/reschedule-confirm")
+async def reschedule_confirm(
+    booking_id: str,
+    req: RescheduleConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Called after Stripe payment for a reschedule upcharge succeeds on the client."""
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Stripe not configured")
+
+    import stripe as _stripe
+    _stripe.api_key = settings.stripe_secret_key
+
+    intent = await asyncio.to_thread(_stripe.PaymentIntent.retrieve, req.payment_intent_id)
+    if intent.status != "succeeded":
+        raise HTTPException(status_code=402, detail="Payment has not been completed")
+    if intent.metadata.get("booking_id") != booking_id:
+        raise HTTPException(status_code=403, detail="Payment intent does not match this booking")
+
+    new_start = req.new_start.replace(tzinfo=None) if req.new_start.tzinfo else req.new_start
+    new_end   = req.new_end.replace(tzinfo=None)   if req.new_end.tzinfo   else req.new_end
+
+    svc = BookingService(db)
+    try:
+        booking = await svc.reschedule(booking_id, str(current_user.id), new_start, new_end)
+    except ValueError as e:
+        code = 409 if str(e) == "slot_unavailable" else 400
+        raise HTTPException(status_code=code, detail=str(e))
+
+    # Record the additional payment
+    asset = await db.get(Asset, booking.asset_id)
+    db.add(Payment(
+        id=uuid.uuid4(),
+        booking_id=uuid.UUID(booking_id),
+        stripe_payment_intent_id=req.payment_intent_id,
+        amount_pence=intent.amount,
+        currency="gbp",
+        status="succeeded",
+        stripe_charge_id=intent.get("latest_charge") or "",
+    ))
+    await db.commit()
+    await db.refresh(booking)
+
+    logger.info("reschedule_confirm booking_id=%s pi=%s", booking_id, req.payment_intent_id)
+    return {**booking.to_dict(), "asset": asset.to_dict() if asset else None}
 
 
 @router.post("/{booking_id}/swap-accept")

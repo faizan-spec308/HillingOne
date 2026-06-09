@@ -14,6 +14,7 @@ const ERROR_MESSAGES = {
   not_authenticated:           "Please sign in to continue.",
   not_swap_pending:            "This booking is no longer awaiting a swap decision.",
   cannot_reschedule:           "This booking cannot be rescheduled in its current state.",
+  reschedule_too_late:         "Bookings cannot be changed within 24 hours of the start time.",
 };
 
 function getToken() {
@@ -85,6 +86,12 @@ export const api = {
     request(`/api/bookings/${bookingId}/reschedule`, {
       method: "PATCH",
       body: JSON.stringify({ start_time: startTime, end_time: endTime }),
+    }),
+
+  rescheduleConfirm: (bookingId, paymentIntentId, startTime, endTime) =>
+    request(`/api/bookings/${bookingId}/reschedule-confirm`, {
+      method: "POST",
+      body: JSON.stringify({ payment_intent_id: paymentIntentId, new_start: startTime, new_end: endTime }),
     }),
 
   acceptSwap: (bookingId) =>

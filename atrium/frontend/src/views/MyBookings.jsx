@@ -3,8 +3,15 @@ import { createPortal } from "react-dom";
 import {
   Calendar, MapPin, Clock, X, ArrowLeft, CheckCircle2,
   RefreshCw, Edit2, AlertTriangle, Users, ChevronRight,
+  TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { api } from "../api/client";
+
+const stripePromise = loadStripe(
+  "pk_test_51Tdu5YQwQUDdwUxjCQ5M2ucTRi7kp9yaCkfmUvkR9rwJNKbcpOEBhZVEYD5lcOcw7Gllzgj4ky0pPS1UKsHZjAPt00KXyYf3YG"
+);
 
 /* ─── helpers ──────────────────────────────────────────────────────── */
 const fmtDate  = (iso) => new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -47,6 +54,7 @@ function Toast({ toast, onClose }) {
                 : "Your booking has been cancelled. No payment was taken."
             )}
             {toast.type === "reschedule" && `Rescheduled to ${fmtShort(toast.data.start_time)}, ${fmtTime(toast.data.start_time)} – ${fmtTime(toast.data.end_time)}`}
+            {toast.type === "reschedule_refund" && `Rescheduled. A refund of ${toast.data.refund_amount} will appear within 5–10 business days.`}
           </p>
         </div>
         <button onClick={onClose} className="text-gray-300 hover:text-gray-500 flex-shrink-0 mt-0.5">
@@ -116,82 +124,190 @@ function CancelModal({ booking, onClose, onConfirm, loading }) {
   );
 }
 
+/* ─── Stripe inline checkout (for reschedule upcharge) ─────────────── */
+function RescheduleCheckout({ clientSecret, amountDisplay, onPaid, onBack }) {
+  const stripe   = useStripe();
+  const elements = useElements();
+  const [busy, setBusy]  = useState(false);
+  const [err,  setErr]   = useState(null);
+
+  const pay = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setBusy(true); setErr(null);
+    const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: "if_required" });
+    if (error) { setErr(error.message); setBusy(false); }
+    else if (paymentIntent?.status === "succeeded") onPaid(paymentIntent.id);
+    else { setErr("Payment did not complete. Please try again."); setBusy(false); }
+  };
+
+  return (
+    <form onSubmit={pay} className="space-y-4">
+      <PaymentElement options={{ layout: "tabs" }} />
+      {err && <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700">{err}</div>}
+      <div className="flex gap-3">
+        <button type="button" onClick={onBack} disabled={busy} className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[14px] font-semibold rounded-2xl transition">
+          Back
+        </button>
+        <button type="submit" disabled={busy || !stripe} className="btn-primary flex-1 justify-center text-[14px]">
+          {busy ? <><RefreshCw size={13} className="animate-spin" /> Processing…</> : <>Pay {amountDisplay}</>}
+        </button>
+      </div>
+      <p className="text-[11px] text-center text-gray-400">Test card: 4242 4242 4242 4242 · any future date · any CVC</p>
+    </form>
+  );
+}
+
 /* ─── Reschedule modal ─────────────────────────────────────────────── */
-function RescheduleModal({ booking, user, onClose, onSuccess }) {
-  const s = new Date(booking.start_time);
-  const e = new Date(booking.end_time);
+function RescheduleModal({ booking, onClose, onSuccess }) {
+  const s   = new Date(booking.start_time);
+  const e   = new Date(booking.end_time);
   const pad = (d) => d.toISOString().slice(0, 10);
   const hm  = (d) => d.toTimeString().slice(0, 5);
 
-  const [date, setDate]     = useState(pad(s));
-  const [start, setStart]   = useState(hm(s));
-  const [end, setEnd]       = useState(hm(e));
-  const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState(null);
+  const [date,  setDate]  = useState(pad(s));
+  const [start, setStart] = useState(hm(s));
+  const [end,   setEnd]   = useState(hm(e));
+  const [saving, setSaving]         = useState(false);
+  const [err,    setErr]            = useState(null);
+  const [payment, setPayment]       = useState(null); // {clientSecret, paymentIntentId, amountDisplay, newStart, newEnd}
   const today = new Date().toISOString().slice(0, 10);
 
-  const save = async () => {
+  const rate = parseFloat(booking.asset?.hourly_rate ?? 0);
+  const origHours = (e - s) / 3_600_000;
+
+  const newStart = date && start ? new Date(`${date}T${start}:00`) : null;
+  const newEnd   = date && end   ? new Date(`${date}T${end}:00`)   : null;
+  const newHours = newStart && newEnd && newEnd > newStart ? (newEnd - newStart) / 3_600_000 : 0;
+  const diffGbp  = rate > 0 && newHours > 0 ? (newHours - origHours) * rate : 0;
+
+  const submit = async () => {
     setErr(null);
-    if (!date) { setErr("Please select a date."); return; }
-    if (start >= end) { setErr("End time must be after start time."); return; }
+    if (!date)         { setErr("Please select a date."); return; }
+    if (start >= end)  { setErr("End time must be after start time."); return; }
+    if (newHours < 0.5){ setErr("Minimum booking is 30 minutes."); return; }
+    if (newHours > 12) { setErr("Maximum booking is 12 hours."); return; }
     setSaving(true);
     try {
-      const ns = new Date(`${date}T${start}:00`).toISOString();
-      const ne = new Date(`${date}T${end}:00`).toISOString();
-      const updated = await api.rescheduleBooking(booking.id, ns, ne);
-      onSuccess({ ...booking, ...updated });
+      const ns = newStart.toISOString();
+      const ne = newEnd.toISOString();
+      const res = await api.rescheduleBooking(booking.id, ns, ne);
+
+      if (res.requires_payment) {
+        setPayment({ clientSecret: res.client_secret, paymentIntentId: res.payment_intent_id,
+                     amountDisplay: res.amount_display, newStart: ns, newEnd: ne });
+      } else {
+        onSuccess({ ...booking, ...res });
+      }
     } catch (ex) {
-      setErr(ex.message.includes("slot_unavailable")
-        ? "That time slot is already booked. Try a different time."
-        : "Unable to reschedule. Please try again.");
-    } finally {
+      setErr(ex.message);
+    } finally { setSaving(false); }
+  };
+
+  const handlePaid = async (paymentIntentId) => {
+    setSaving(true); setErr(null);
+    try {
+      const res = await api.rescheduleConfirm(booking.id, paymentIntentId, payment.newStart, payment.newEnd);
+      onSuccess({ ...booking, ...res });
+    } catch (ex) {
+      setErr(ex.message);
       setSaving(false);
     }
   };
 
+  const stripeOptions = payment ? {
+    clientSecret: payment.clientSecret,
+    appearance: { theme: "stripe", variables: { colorPrimary: "#0D9488", borderRadius: "12px", fontFamily: "Inter, sans-serif" } },
+  } : null;
+
   return (
     <Modal onClose={onClose}>
       <div className="px-7 pt-7 pb-6">
-        <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-5">
+        <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
           <Edit2 size={20} className="text-hillingdon-navy" />
         </div>
-        <h2 className="text-[20px] font-black text-gray-900 mb-1">Edit booking time</h2>
-        <p className="text-[13px] text-gray-500 mb-6">{booking.asset?.name}</p>
+        <h2 className="text-[20px] font-black text-gray-900 mb-0.5">
+          {payment ? "Pay to confirm reschedule" : "Edit booking time"}
+        </h2>
+        <p className="text-[13px] text-gray-500 mb-5">{booking.asset?.name}</p>
 
-        <div className="space-y-4 mb-5">
-          <div>
-            <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">Date</label>
-            <input type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-hillingdon-navy/30 focus:border-hillingdon-navy transition" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">From</label>
-              <input type="time" value={start} onChange={(e) => setStart(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-hillingdon-navy/30 focus:border-hillingdon-navy transition" />
+        {!payment ? (
+          <>
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">Date</label>
+                <input type="date" min={today} value={date} onChange={ev => setDate(ev.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">From</label>
+                  <input type="time" value={start} onChange={ev => setStart(ev.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition" />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">To</label>
+                  <input type="time" value={end} onChange={ev => setEnd(ev.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">To</label>
-              <input type="time" value={end} onChange={(e) => setEnd(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-hillingdon-navy/30 focus:border-hillingdon-navy transition" />
-            </div>
-          </div>
-        </div>
 
-        {err && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700">{err}</div>
+            {/* Live price diff */}
+            {rate > 0 && newHours > 0 && Math.abs(diffGbp) >= 0.01 && (
+              <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl mb-4 text-[13px] font-semibold ${
+                diffGbp > 0
+                  ? "bg-amber-50 border border-amber-100 text-amber-800"
+                  : "bg-emerald-50 border border-emerald-100 text-emerald-800"
+              }`}>
+                {diffGbp > 0
+                  ? <TrendingUp size={15} className="text-amber-500 flex-shrink-0" />
+                  : <TrendingDown size={15} className="text-emerald-500 flex-shrink-0" />
+                }
+                {diffGbp > 0
+                  ? `Additional charge: £${diffGbp.toFixed(2)}`
+                  : `You'll be refunded: £${Math.abs(diffGbp).toFixed(2)}`
+                }
+                <span className="ml-auto text-[11px] font-normal opacity-70">
+                  {newHours.toFixed(1)}h @ £{rate.toFixed(2)}/h
+                </span>
+              </div>
+            )}
+            {rate > 0 && newHours > 0 && Math.abs(diffGbp) < 0.01 && newHours !== origHours && (
+              <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl mb-4 text-[13px] font-semibold bg-gray-50 border border-gray-100 text-gray-600">
+                <Minus size={14} className="text-gray-400 flex-shrink-0" /> No price change
+              </div>
+            )}
+
+            {err && <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700">{err}</div>}
+
+            <div className="flex gap-3">
+              <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[14px] font-semibold rounded-2xl transition">
+                Cancel
+              </button>
+              <button onClick={submit} disabled={saving} className="btn-primary flex-1 justify-center text-[14px]">
+                {saving
+                  ? <><RefreshCw size={13} className="animate-spin" /> Checking…</>
+                  : diffGbp > 0 && rate > 0
+                    ? `Pay £${diffGbp.toFixed(2)} & reschedule`
+                    : "Save changes"
+                }
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {err && <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700">{err}</div>}
+            <Elements stripe={stripePromise} options={stripeOptions}>
+              <RescheduleCheckout
+                clientSecret={payment.clientSecret}
+                amountDisplay={payment.amountDisplay}
+                onPaid={handlePaid}
+                onBack={() => { setPayment(null); setErr(null); }}
+              />
+            </Elements>
+          </>
         )}
-
-        <div className="flex gap-3">
-          <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[14px] font-semibold rounded-2xl transition">
-            Cancel
-          </button>
-          <button onClick={save} disabled={saving} className="flex-1 px-4 py-3 text-white text-[14px] font-semibold rounded-2xl transition flex items-center justify-center gap-2 btn-primary"
-            style={{ padding: "12px 16px" }}>
-            {saving && <RefreshCw size={14} className="animate-spin" />}
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </div>
       </div>
     </Modal>
   );
@@ -323,7 +439,7 @@ export default function MyBookings({ user, onBack }) {
 
   const handleRescheduled = (updated) => {
     setUpcoming((prev) => prev.map((b) => b.id === updated.id ? { ...b, ...updated } : b));
-    showToast("reschedule", updated);
+    showToast(updated.refunded ? "reschedule_refund" : "reschedule", updated);
     setReschedTarget(null);
   };
 
@@ -344,7 +460,6 @@ export default function MyBookings({ user, onBack }) {
       {reschedTarget && (
         <RescheduleModal
           booking={reschedTarget}
-          user={user}
           onClose={() => setReschedTarget(null)}
           onSuccess={handleRescheduled}
         />
