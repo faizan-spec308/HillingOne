@@ -139,7 +139,13 @@ async def cancel_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Cancel a booking. Automatically refunds any Stripe payment."""
+    """Cancel a booking. Refund is 50% if within 24h of start, otherwise full."""
+    # Check the 24h window before cancelling so we can apply the right refund
+    booking_pre = await db.get(Booking, booking_id)
+    if not booking_pre:
+        raise HTTPException(status_code=404, detail="booking_not_found")
+    late_cancel = _now() >= booking_pre.start_time - timedelta(hours=24)
+
     svc = BookingService(db)
     try:
         booking = await svc.user_cancel(booking_id, str(current_user.id))
@@ -150,10 +156,8 @@ async def cancel_user(
     refund_info = None
     if settings.stripe_secret_key:
         try:
-            import asyncio
             import stripe as _stripe
             from sqlalchemy import select as _select
-            from app.models.payment import Payment
 
             _stripe.api_key = settings.stripe_secret_key
             result = await db.execute(
@@ -164,14 +168,20 @@ async def cancel_user(
             )
             payment = result.scalar_one_or_none()
             if payment:
+                refund_pence = payment.amount_pence // 2 if late_cancel else payment.amount_pence
                 refund = await asyncio.to_thread(
                     _stripe.Refund.create,
                     payment_intent=payment.stripe_payment_intent_id,
+                    amount=refund_pence,
                 )
                 payment.status = "refunded"
                 payment.refund_id = refund.id
                 await db.commit()
-                refund_info = {"refunded": True, "amount": f"£{payment.amount_pence / 100:.2f}"}
+                refund_info = {
+                    "refunded": True,
+                    "amount": f"£{refund_pence / 100:.2f}",
+                    "partial": late_cancel,
+                }
         except Exception as exc:
             logger.error("refund_error booking_id=%s err=%s", booking_id, str(exc))
             refund_info = {"refunded": False, "message": "Cancellation processed; refund requires manual review."}
@@ -187,6 +197,7 @@ async def cancel_user(
         html=booking_cancelled_html(
             current_user.name, booking, cancel_asset,
             refund_info.get("amount") if refund_info else None,
+            late_cancel=late_cancel,
         ),
     ))
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Lock, Calendar, Bell, ArrowLeft, Sparkles, MapPin, Clock, Users, X, RefreshCw } from "lucide-react";
+import { CheckCircle2, Lock, Calendar, Bell, ArrowLeft, Sparkles, MapPin, Clock, Users, X, RefreshCw, AlertTriangle } from "lucide-react";
 import { api } from "../api/client";
 import { useTheme } from "../context/ThemeContext";
 
@@ -185,15 +185,25 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
           </div>
         </div>
       ) : (
-        <div className="mt-5 flex justify-center">
-          <button
-            onClick={handleCancel}
-            disabled={cancelling}
-            className="inline-flex items-center gap-2 text-[13px] text-red-500 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-xl transition font-medium"
-          >
-            {cancelling ? <RefreshCw size={14} className="animate-spin" /> : <X size={14} />}
-            {cancelling ? "Cancelling…" : "Cancel this booking"}
-          </button>
+        <div className="mt-5">
+          {new Date(booking.start_time) - Date.now() < 24 * 60 * 60 * 1000 && (
+            <div className="mb-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+              <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[13px] text-amber-800 leading-relaxed">
+                Your booking starts within 24 hours. Cancelling now will result in a <strong>50% refund</strong> only.
+              </p>
+            </div>
+          )}
+          <div className="flex justify-center">
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="inline-flex items-center gap-2 text-[13px] text-red-500 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-xl transition font-medium"
+            >
+              {cancelling ? <RefreshCw size={14} className="animate-spin" /> : <X size={14} />}
+              {cancelling ? "Cancelling…" : "Cancel this booking"}
+            </button>
+          </div>
         </div>
       )}
 

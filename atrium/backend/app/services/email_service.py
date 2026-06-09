@@ -120,14 +120,25 @@ def booking_confirmed_html(user_name: str, booking: object, asset: object) -> st
 
 
 def booking_cancelled_html(user_name: str, booking: object, asset: object,
-                           refund_amount: str | None = None) -> str:
+                           refund_amount: str | None = None,
+                           late_cancel: bool = False) -> str:
     refund_block = ""
     if refund_amount:
-        refund_block = f"""
+        if late_cancel:
+            refund_block = f"""
+<div style="margin-top:20px;padding:16px 20px;background:#FFFBEB;border-radius:10px;
+            border:1px solid #FCD34D;">
+  <span style="font-size:14px;font-weight:600;color:#92400E;">
+    ⚠ {refund_amount} partial refund issued — 50% applies when cancelling within 24 hours of the booking.
+  </span>
+</div>
+"""
+        else:
+            refund_block = f"""
 <div style="margin-top:20px;padding:16px 20px;background:#ECFDF5;border-radius:10px;
             border:1px solid #A7F3D0;">
   <span style="font-size:14px;font-weight:600;color:#065F46;">
-    ✓ {refund_amount} refund has been issued to your original payment method.
+    ✓ {refund_amount} full refund has been issued to your original payment method.
   </span>
 </div>
 """

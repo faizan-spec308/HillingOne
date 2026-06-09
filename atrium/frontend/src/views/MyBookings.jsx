@@ -92,11 +92,13 @@ function Modal({ onClose, children }) {
 
 /* ─── Cancel modal ─────────────────────────────────────────────────── */
 function CancelModal({ booking, onClose, onConfirm, loading }) {
+  const lateCancel = new Date(booking.start_time) - Date.now() < 24 * 60 * 60 * 1000;
+
   return (
     <Modal onClose={onClose}>
       <div className="px-7 pt-7 pb-6">
-        <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mb-5">
-          <AlertTriangle size={22} className="text-red-500" />
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 ${lateCancel ? "bg-amber-50" : "bg-red-50"}`}>
+          <AlertTriangle size={22} className={lateCancel ? "text-amber-500" : "text-red-500"} />
         </div>
         <h2 className="text-[20px] font-black text-gray-900 mb-1">Cancel booking?</h2>
         <p className="text-[14px] font-semibold text-gray-800 mb-0.5">{booking.asset?.name}</p>
@@ -104,12 +106,21 @@ function CancelModal({ booking, onClose, onConfirm, loading }) {
           {fmtDate(booking.start_time)}<br />
           {fmtTime(booking.start_time)} – {fmtTime(booking.end_time)}
         </p>
-        <div className="bg-emerald-50 rounded-2xl px-4 py-3.5 mb-6 flex items-start gap-2.5">
-          <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-          <p className="text-[13px] text-emerald-800 leading-relaxed">
-            Any payment will be <strong>fully refunded</strong> to your card within 5–10 business days.
-          </p>
-        </div>
+        {lateCancel ? (
+          <div className="bg-amber-50 rounded-2xl px-4 py-3.5 mb-6 flex items-start gap-2.5">
+            <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-[13px] text-amber-800 leading-relaxed">
+              Your booking starts within 24 hours. You will only receive a <strong>50% refund</strong> on any payment made.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-emerald-50 rounded-2xl px-4 py-3.5 mb-6 flex items-start gap-2.5">
+            <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+            <p className="text-[13px] text-emerald-800 leading-relaxed">
+              Any payment will be <strong>fully refunded</strong> to your card within 5–10 business days.
+            </p>
+          </div>
+        )}
         <div className="flex gap-3">
           <button onClick={onClose} disabled={loading} className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[14px] font-semibold rounded-2xl transition">
             Keep it
