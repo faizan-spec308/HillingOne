@@ -144,6 +144,72 @@ body {
   background-size: 200% 100% !important;
 }
 
+/* ── Dark mode: semantic colour overrides ───────────────────────
+   Covers emerald/amber/red/blue/teal tint boxes used by status
+   badges, info banners, calendar cells, and toast notifications.
+   ──────────────────────────────────────────────────────────────── */
+/* Backgrounds */
+.dark .bg-emerald-50  { background-color: rgba(6,78,59,0.22)    !important; }
+.dark .bg-emerald-100 { background-color: rgba(6,78,59,0.35)    !important; }
+.dark .bg-amber-50    { background-color: rgba(120,53,15,0.22)   !important; }
+.dark .bg-amber-100   { background-color: rgba(120,53,15,0.35)   !important; }
+.dark .bg-red-50      { background-color: rgba(153,27,27,0.18)   !important; }
+.dark .bg-red-100     { background-color: rgba(153,27,27,0.28)   !important; }
+.dark .bg-blue-50     { background-color: rgba(29,78,216,0.14)   !important; }
+.dark .bg-blue-100    { background-color: rgba(29,78,216,0.22)   !important; }
+.dark .bg-teal-50     { background-color: rgba(13,148,136,0.14)  !important; }
+.dark .bg-teal-100    { background-color: rgba(13,148,136,0.22)  !important; }
+.dark .bg-hillingdon-navy-tint { background-color: rgba(13,148,136,0.14) !important; }
+.dark .bg-gray-50     { background-color: var(--bg) !important; }
+
+/* Borders */
+.dark .border-emerald-100 { border-color: rgba(52,211,153,0.15) !important; }
+.dark .border-emerald-200 { border-color: rgba(52,211,153,0.25) !important; }
+.dark .border-amber-100   { border-color: rgba(252,211,77,0.15) !important; }
+.dark .border-amber-200   { border-color: rgba(252,211,77,0.25) !important; }
+.dark .border-red-100     { border-color: rgba(248,113,113,0.2) !important; }
+.dark .border-red-200     { border-color: rgba(248,113,113,0.3) !important; }
+.dark .border-blue-100    { border-color: rgba(147,197,253,0.15) !important; }
+.dark .border-blue-200    { border-color: rgba(147,197,253,0.22) !important; }
+.dark .border-teal-100    { border-color: rgba(13,148,136,0.2)  !important; }
+.dark .border-teal-200    { border-color: rgba(13,148,136,0.3)  !important; }
+.dark .border-gray-50     { border-color: var(--border)         !important; }
+.dark .divide-gray-50   > * + * { border-color: var(--border)   !important; }
+
+/* Text */
+.dark .text-emerald-500 { color: #34D399 !important; }
+.dark .text-emerald-600 { color: #34D399 !important; }
+.dark .text-emerald-700 { color: #34D399 !important; }
+.dark .text-emerald-800 { color: #6EE7B7 !important; }
+.dark .text-amber-500   { color: #FCD34D !important; }
+.dark .text-amber-600   { color: #FCD34D !important; }
+.dark .text-amber-700   { color: #FCD34D !important; }
+.dark .text-amber-800   { color: #FDE68A !important; }
+.dark .text-red-500     { color: #F87171 !important; }
+.dark .text-red-600     { color: #F87171 !important; }
+.dark .text-red-700     { color: #FCA5A5 !important; }
+.dark .text-blue-700    { color: #93C5FD !important; }
+.dark .text-teal-500    { color: #2DD4BF !important; }
+.dark .text-teal-600    { color: #2DD4BF !important; }
+.dark .text-teal-700    { color: #2DD4BF !important; }
+
+/* Ring colours (used by status pills via ring-1 ring-{color}) */
+.dark .ring-emerald-200 { --tw-ring-color: rgba(52,211,153,0.2)  !important; }
+.dark .ring-amber-200   { --tw-ring-color: rgba(252,211,77,0.2)  !important; }
+.dark .ring-red-100     { --tw-ring-color: rgba(248,113,113,0.15) !important; }
+.dark .ring-blue-200    { --tw-ring-color: rgba(147,197,253,0.15) !important; }
+.dark .ring-gray-200    { --tw-ring-color: rgba(255,255,255,0.06) !important; }
+
+/* Hover variants for icon action buttons */
+.dark .hover\:bg-blue-50:hover    { background-color: rgba(29,78,216,0.14)  !important; }
+.dark .hover\:bg-emerald-50:hover { background-color: rgba(6,78,59,0.22)    !important; }
+.dark .hover\:bg-teal-50:hover    { background-color: rgba(13,148,136,0.14) !important; }
+.dark .hover\:bg-amber-50:hover   { background-color: rgba(120,53,15,0.22)  !important; }
+
+/* Dark scrollbar */
+.dark ::-webkit-scrollbar-thumb { background: #30363D; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #484F58; }
+
 h1, h2, h3, h4 {
   font-family: "Plus Jakarta Sans", "Inter", sans-serif;
   line-height: 1.2;

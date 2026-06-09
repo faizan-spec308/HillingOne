@@ -2,6 +2,7 @@ import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Lock, CreditCard, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
 
 // Publishable key is intentionally public — safe to embed in frontend code
 const stripePromise = loadStripe(
@@ -90,14 +91,16 @@ function CheckoutForm({ amountDisplay, onSuccess, onBack }) {
 }
 
 export default function PaymentForm({ clientSecret, amountDisplay, onSuccess, onBack }) {
+  const { isDark } = useTheme();
+
   const options = {
     clientSecret,
     appearance: {
-      theme: "stripe",
+      theme: isDark ? "night" : "stripe",
       variables: {
         colorPrimary: "#0D9488",
-        colorBackground: "#ffffff",
-        colorText: "#111827",
+        colorBackground: isDark ? "#161B22" : "#ffffff",
+        colorText: isDark ? "#E6EDF3" : "#111827",
         borderRadius: "12px",
         fontFamily: "Inter, system-ui, sans-serif",
         fontSizeBase: "14px",

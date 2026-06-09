@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Lock, Calendar, Bell, ArrowLeft, Sparkles, MapPin, Clock, Users, X, RefreshCw } from "lucide-react";
 import { api } from "../api/client";
+import { useTheme } from "../context/ThemeContext";
 
 export default function BookingConfirmation({ booking, asset, onBack, encouragement, remindersScheduled, paymentAmount, user, onViewMyBookings }) {
+  const { isDark } = useTheme();
   const [_now, setNow] = useState(Date.now());
   const [cancelling, setCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
@@ -49,7 +51,9 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
         {/* Success header */}
         <div
           className="px-8 py-10 text-center"
-          style={{ background: "linear-gradient(165deg, #ECFDF5 0%, #D1FAE5 100%)" }}
+          style={{ background: isDark
+            ? "linear-gradient(165deg, rgba(6,78,59,0.4) 0%, rgba(6,78,59,0.2) 100%)"
+            : "linear-gradient(165deg, #ECFDF5 0%, #D1FAE5 100%)" }}
         >
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm"
