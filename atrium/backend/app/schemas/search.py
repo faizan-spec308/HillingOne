@@ -60,7 +60,6 @@ class ConfirmRequest(BaseModel):
 
 class StaffOverrideRequest(BaseModel):
     booking_id: str
-    staff_user_id: str
     reason: str = Field(..., max_length=200)
     details: str = Field(..., max_length=1000)
     alternative_asset_id: str | None = None
