@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import AuthPage from "./views/AuthPage";
 import Header from "./components/Header";
 import ResidentView from "./views/ResidentView";
 import StaffView from "./views/StaffView";
 import MyBookings from "./views/MyBookings";
+import SettingsView from "./views/SettingsView";
 
 function AppShell() {
   const { user, isStaff } = useAuth();
@@ -26,6 +28,7 @@ function AppShell() {
           <Route path="/confirmed"element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
 
           <Route path="/bookings" element={<MyBookings user={user} onBack={() => navigate("/")} />} />
+          <Route path="/settings" element={<SettingsView />} />
           <Route path="/staff"    element={isStaff ? <StaffView /> : <Navigate to="/" replace />} />
           <Route path="*"         element={<Navigate to="/" replace />} />
         </Routes>
@@ -36,10 +39,12 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppShell />
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

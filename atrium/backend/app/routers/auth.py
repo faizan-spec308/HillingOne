@@ -138,6 +138,60 @@ async def me(current_user: User = Depends(get_current_user)):
     return current_user.to_dict()
 
 
+class UpdateProfileRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    email: EmailStr
+    ward: str | None = Field(None, max_length=100)
+
+
+@router.patch("/me")
+async def update_profile(
+    req: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    new_email = str(req.email).lower()
+    if new_email != current_user.email:
+        existing = (await db.execute(select(User).where(User.email == new_email))).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=409, detail="email_exists")
+    current_user.name  = req.name
+    current_user.email = new_email
+    current_user.ward  = req.ward
+    await db.commit()
+    await db.refresh(current_user)
+    logger.info("profile_updated user_id=%s", str(current_user.id))
+    return current_user.to_dict()
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_strength(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one number")
+        return v
+
+
+@router.patch("/password")
+async def change_password(
+    req: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not current_user.password_hash or not _verify(req.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="invalid_credentials")
+    current_user.password_hash = _hash(req.new_password)
+    await db.commit()
+    logger.info("password_changed user_id=%s", str(current_user.id))
+    return {"ok": True}
+
+
 class CreateStaffRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     email: EmailStr

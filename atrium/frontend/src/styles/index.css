@@ -23,6 +23,20 @@
   --text-3:       #6B7280;
 }
 
+/* ── Dark mode tokens ───────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+  --surface:      #1E293B;
+  --border:       #334155;
+  --border-focus: #2DD4BF;
+  --text-1:       #F1F5F9;
+  --text-2:       #CBD5E1;
+  --text-3:       #94A3B8;
+  --bg:           #0F172A;
+  --bg-card:      #1E293B;
+  --bg-hover:     #293548;
+}
+
 /* ── Base ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
@@ -33,9 +47,46 @@ body {
   margin: 0;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--text-1);
-  background: #ffffff;
+  background: var(--bg, #ffffff);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   line-height: 1.6;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ── Global dark mode overrides ─────────────────────────────── */
+/* These flip the most common Tailwind utility classes app-wide  */
+.dark .bg-white           { background-color: var(--bg-card)  !important; }
+.dark .bg-gray-50         { background-color: var(--bg)        !important; }
+.dark .bg-gray-100        { background-color: var(--bg-hover)  !important; }
+.dark .bg-gray-200        { background-color: #334155          !important; }
+.dark .min-h-screen       { background-color: var(--bg)        !important; }
+
+.dark .border-gray-100    { border-color: var(--border) !important; }
+.dark .border-gray-200    { border-color: var(--border) !important; }
+.dark .divide-gray-50     > * + * { border-color: var(--border) !important; }
+.dark .divide-gray-100    > * + * { border-color: var(--border) !important; }
+
+.dark .text-gray-900      { color: var(--text-1) !important; }
+.dark .text-gray-800      { color: var(--text-1) !important; }
+.dark .text-gray-700      { color: var(--text-2) !important; }
+.dark .text-gray-600      { color: var(--text-2) !important; }
+.dark .text-gray-500      { color: var(--text-3) !important; }
+.dark .text-gray-400      { color: var(--text-3) !important; }
+.dark .text-gray-300      { color: #64748B      !important; }
+
+.dark .hover\:bg-gray-50:hover  { background-color: var(--bg-hover) !important; }
+.dark .hover\:bg-gray-100:hover { background-color: var(--bg-hover) !important; }
+.dark .hover\:bg-gray-200:hover { background-color: #334155         !important; }
+
+.dark .shadow-civic       { box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important; }
+.dark .shadow-sm          { box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important; }
+
+/* Header */
+.dark header.bg-white     { background-color: #1E293B !important; }
+
+/* Skeleton */
+.dark .skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #293548 50%, #1e293b 75%) !important;
 }
 
 h1, h2, h3, h4 {
@@ -110,7 +161,7 @@ h1, h2, h3, h4 {
   color: var(--text-2);
   font-size: 14px;
   font-weight: 500;
-  background: #fff;
+  background: var(--bg-card, #fff);
   transition: all 0.18s ease;
   cursor: pointer;
 }
@@ -165,11 +216,11 @@ h1, h2, h3, h4 {
   padding: 11px 16px;
   font-size: 14px;
   color: var(--text-1);
-  background: #fff;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  background: var(--bg-card, #fff);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.2s;
   font-family: inherit;
 }
-.input-base::placeholder { color: #9ca3af; }
+.input-base::placeholder { color: var(--text-3, #9ca3af); }
 .input-base:focus {
   outline: none;
   border-color: var(--brand);

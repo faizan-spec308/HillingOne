@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe } from "lucide-react";
+import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe, Settings } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -160,6 +160,13 @@ export default function Header({ userName, role, isStaff }) {
                 >
                   <BookOpen size={14} className="text-gray-400" />
                   {t("nav_my_bookings")}
+                </button>
+                <button
+                  onClick={() => { setDropdownOpen(false); navigate("/settings"); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left"
+                >
+                  <Settings size={14} className="text-gray-400" />
+                  Settings
                 </button>
                 <div className="border-t border-gray-100" />
                 <button

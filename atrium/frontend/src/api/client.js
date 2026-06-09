@@ -58,6 +58,12 @@ export const api = {
 
   me: () => request("/api/auth/me"),
 
+  updateProfile: (name, email, ward) =>
+    request("/api/auth/me", { method: "PATCH", body: JSON.stringify({ name, email, ward }) }),
+
+  changePassword: (current_password, new_password) =>
+    request("/api/auth/password", { method: "PATCH", body: JSON.stringify({ current_password, new_password }) }),
+
   // Search
   search: (query, userId = null) =>
     request("/api/search", { method: "POST", body: JSON.stringify({ query, user_id: userId }) }),
