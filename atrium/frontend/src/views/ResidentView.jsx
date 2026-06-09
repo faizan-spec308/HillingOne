@@ -215,25 +215,27 @@ export default function ResidentView({ user, onViewMyBookings }) {
             </button>
           </div>
         ) : (
-          {calendarAsset && (
-            <AssetCalendar
-              asset={calendarAsset}
-              onClose={() => setCalendarAsset(null)}
-              onSelectSlot={handleBook}
-            />
-          )}
-          <div className="space-y-4">
-            {matches.map((m, i) => (
-              <div key={m.asset_id} style={{ animationDelay: `${i * 80}ms` }}>
-                <AssetCard
-                  match={m}
-                  onBook={handleBook}
-                  onViewCalendar={setCalendarAsset}
-                  searchWindow={searchWindow}
-                />
-              </div>
-            ))}
-          </div>
+          <>
+            {calendarAsset && (
+              <AssetCalendar
+                asset={calendarAsset}
+                onClose={() => setCalendarAsset(null)}
+                onSelectSlot={handleBook}
+              />
+            )}
+            <div className="space-y-4">
+              {matches.map((m, i) => (
+                <div key={m.asset_id} style={{ animationDelay: `${i * 80}ms` }}>
+                  <AssetCard
+                    match={m}
+                    onBook={handleBook}
+                    onViewCalendar={setCalendarAsset}
+                    searchWindow={searchWindow}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     );
