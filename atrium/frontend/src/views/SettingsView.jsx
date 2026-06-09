@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ArrowLeft, User, Lock, Bell, Moon, Sun, Monitor,
-  CheckCircle2, AlertTriangle, ChevronRight, Save,
-} from "lucide-react";
+import { ArrowLeft, User, Lock, Bell, Moon, Sun, CheckCircle2, AlertTriangle, Save } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { api } from "../api/client";
@@ -50,7 +47,7 @@ function Field({ label, children }) {
   );
 }
 
-const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[14px] text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition dark:bg-[#1E293B] dark:border-[#334155] dark:text-[#F1F5F9]";
+const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[14px] text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition dark:bg-[#1C2128] dark:border-[#30363D] dark:text-[#E6EDF3]";
 
 /* ── Profile section ───────────────────────────────────────────── */
 function ProfileSection({ user, onSaved, showToast }) {
@@ -143,44 +140,41 @@ function AppearanceSection() {
   const { theme, toggle } = useTheme();
 
   const modes = [
-    { id: "light", label: "Light",  icon: Sun },
-    { id: "dark",  label: "Dark",   icon: Moon },
-    { id: "system", label: "System", icon: Monitor },
+    { id: "light", label: "Light", icon: Sun,  desc: "Always light" },
+    { id: "dark",  label: "Dark",  icon: Moon, desc: "Always dark"  },
   ];
 
   const handleSelect = (id) => {
-    if (id === "system") {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      localStorage.removeItem("hillingone_theme");
-      document.documentElement.classList.toggle("dark", prefersDark);
-    } else if (id === "dark") {
-      if (theme !== "dark") toggle();
-    } else {
-      if (theme !== "light") toggle();
-    }
+    if (id === "dark"  && theme !== "dark")  toggle();
+    if (id === "light" && theme !== "light") toggle();
   };
-
-  const active = theme;
 
   return (
     <SectionCard title="Appearance" icon={Moon}>
       <p className="text-[13px] text-gray-500 mb-4">Choose how HillingOne looks to you.</p>
-      <div className="grid grid-cols-3 gap-3">
-        {modes.map(({ id, label, icon: Icon }) => {
-          const isActive = id === "system" ? false : active === id;
+      <div className="grid grid-cols-2 gap-3">
+        {modes.map(({ id, label, icon: Icon, desc }) => {
+          const isActive = theme === id;
           return (
             <button
               key={id}
               onClick={() => handleSelect(id)}
-              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+              className={`flex flex-col items-center gap-2.5 p-5 rounded-xl border-2 transition-all ${
                 isActive
-                  ? "border-teal-500 bg-teal-50 text-teal-700"
+                  ? "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-950 dark:border-teal-500 dark:text-teal-400"
                   : "border-gray-200 hover:border-gray-300 text-gray-500"
               }`}
             >
-              <Icon size={20} />
-              <span className="text-[12px] font-semibold">{label}</span>
-              {isActive && <span className="text-[10px] font-bold text-teal-600 uppercase tracking-wide">Active</span>}
+              <Icon size={22} />
+              <div className="text-center">
+                <span className="block text-[13px] font-bold">{label}</span>
+                <span className="block text-[11px] opacity-60 mt-0.5">{desc}</span>
+              </div>
+              {isActive && (
+                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/50 rounded-full uppercase tracking-wide">
+                  Active
+                </span>
+              )}
             </button>
           );
         })}

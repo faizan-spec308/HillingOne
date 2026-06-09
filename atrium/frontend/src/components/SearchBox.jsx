@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Search, Mic, Sparkles, ArrowRight, MapPin, Users, Clock } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
+import { useTheme } from "../context/ThemeContext";
 
 export default function SearchBox({ onSearch, loading }) {
   const { t, lang } = useLanguage();
+  const { isDark } = useTheme();
 
   const [query,     setQuery]     = useState("");
   const [listening, setListening] = useState(false);
@@ -54,7 +56,9 @@ export default function SearchBox({ onSearch, loading }) {
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <div
         className="relative overflow-hidden border-b border-gray-100"
-        style={{ background: "linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)" }}
+        style={{ background: isDark
+          ? "linear-gradient(180deg, #0A0F16 0%, #0E1117 100%)"
+          : "linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)" }}
       >
         {/* Dot pattern */}
         <div
@@ -88,12 +92,19 @@ export default function SearchBox({ onSearch, loading }) {
 
           {/* Search card */}
           <div
-            className="bg-white rounded-2xl overflow-hidden transition-all duration-300"
+            className="rounded-2xl overflow-hidden transition-all duration-300"
             style={{
-              border: focused ? "1.5px solid #0D9488" : "1.5px solid #e5e7eb",
+              background: isDark ? "#161B22" : "#ffffff",
+              border: focused
+                ? "1.5px solid #0D9488"
+                : isDark ? "1.5px solid #30363D" : "1.5px solid #e5e7eb",
               boxShadow: focused
-                ? "0 0 0 4px rgba(13,148,136,0.10), 0 8px 32px rgba(13,148,136,0.14)"
-                : "0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
+                ? isDark
+                  ? "0 0 0 4px rgba(13,148,136,0.15), 0 8px 32px rgba(0,0,0,0.4)"
+                  : "0 0 0 4px rgba(13,148,136,0.10), 0 8px 32px rgba(13,148,136,0.14)"
+                : isDark
+                  ? "0 0 0 1px rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)"
+                  : "0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
             }}
           >
             {/* Textarea */}
@@ -159,7 +170,12 @@ export default function SearchBox({ onSearch, loading }) {
               <button
                 key={q}
                 onClick={() => { setQuery(q); submit(q); }}
-                className="px-3.5 py-1.5 text-[12.5px] bg-white border border-gray-200 rounded-full text-gray-600 hover:border-hillingdon-navy hover:text-hillingdon-navy hover:bg-hillingdon-navy-tint transition shadow-sm font-medium"
+                className="px-3.5 py-1.5 text-[12.5px] rounded-full transition shadow-sm font-medium hover:border-hillingdon-navy hover:text-hillingdon-navy"
+                style={{
+                  background: isDark ? "#1C2128" : "#ffffff",
+                  border: `1px solid ${isDark ? "#30363D" : "#e5e7eb"}`,
+                  color: isDark ? "#8B949E" : "#4b5563",
+                }}
               >
                 {q}
               </button>
@@ -169,7 +185,7 @@ export default function SearchBox({ onSearch, loading }) {
       </div>
 
       {/* ── Stats strip ──────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100">
+      <div className="border-b border-gray-100" style={{ background: isDark ? "#161B22" : "#ffffff" }}>
         <div className="max-w-3xl mx-auto px-6 py-4">
           <div className="grid grid-cols-4 divide-x divide-gray-100">
             {STATS.map(({ icon: Icon, value, labelKey }) => (

@@ -3,10 +3,12 @@ import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe, Settings } from "lu
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Header({ userName, role, isStaff }) {
   const { logout } = useAuth();
   const { lang, setLang, t, languages } = useLanguage();
+  const { isDark } = useTheme();
   const navigate  = useNavigate();
   const location  = useLocation();
 
@@ -39,8 +41,12 @@ export default function Header({ userName, role, isStaff }) {
 
   return (
     <header
-      className="bg-white sticky top-0 z-30"
-      style={{ borderBottom: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
+      className="sticky top-0 z-30"
+      style={{
+        background: isDark ? "#0E1117" : "#ffffff",
+        borderBottom: `1px solid ${isDark ? "#21262D" : "#E2E8F0"}`,
+        boxShadow: isDark ? "none" : "0 1px 3px rgba(0,0,0,0.05)",
+      }}
     >
       <div className="px-6 py-3 flex items-center justify-between gap-4 w-full">
 
@@ -95,7 +101,14 @@ export default function Header({ userName, role, isStaff }) {
             </button>
 
             {langOpen && (
-              <div className="absolute right-0 top-full mt-2 w-44 bg-white border border-gray-100 rounded-2xl shadow-lg overflow-hidden z-50">
+              <div
+                className="absolute right-0 top-full mt-2 w-44 rounded-2xl overflow-hidden z-50"
+                style={{
+                  background: isDark ? "#161B22" : "#ffffff",
+                  border: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}`,
+                  boxShadow: isDark ? "0 0 0 1px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)",
+                }}
+              >
                 {Object.entries(languages).map(([code, { name, flag }]) => (
                   <button
                     key={code}
@@ -149,7 +162,14 @@ export default function Header({ userName, role, isStaff }) {
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-lg overflow-hidden z-50">
+              <div
+                className="absolute right-0 top-full mt-2 w-52 rounded-2xl overflow-hidden z-50"
+                style={{
+                  background: isDark ? "#161B22" : "#ffffff",
+                  border: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}`,
+                  boxShadow: isDark ? "0 0 0 1px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)",
+                }}
+              >
                 <div className="px-4 py-3 border-b border-gray-100">
                   <p className="text-[13px] font-bold text-gray-900">{userName}</p>
                   <p className="text-[11px] text-gray-400 capitalize">{role}</p>

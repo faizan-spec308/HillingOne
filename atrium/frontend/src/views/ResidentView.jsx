@@ -7,6 +7,7 @@ import BookingConfirmation from "./BookingConfirmation";
 import PaymentForm from "../components/PaymentForm";
 import { api } from "../api/client";
 import { useLanguage } from "../context/LanguageContext";
+import { useTheme } from "../context/ThemeContext";
 
 const STAGE_PATHS = {
   search:    "/",
@@ -20,6 +21,7 @@ const STAGE_PATHS = {
 
 export default function ResidentView({ user, onViewMyBookings }) {
   const { t } = useLanguage();
+  const { isDark } = useTheme();
   const [stage, setStageRaw] = useState("search"); // search | loading | results | hold | payment | confirmed
 
   const setStage = (s) => {
@@ -175,7 +177,9 @@ export default function ResidentView({ user, onViewMyBookings }) {
         {intent?.extracted_summary && (
           <div
             className="rounded-2xl p-5 mb-6 border"
-            style={{ background: "#EBF4FF", borderColor: "#BFDBFE" }}
+            style={isDark
+              ? { background: "#0D1F2D", borderColor: "#1E4A6E" }
+              : { background: "#EBF4FF", borderColor: "#BFDBFE" }}
           >
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-xl bg-hillingdon-navy flex items-center justify-center flex-shrink-0">

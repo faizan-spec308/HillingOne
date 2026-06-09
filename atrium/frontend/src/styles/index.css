@@ -26,15 +26,16 @@
 /* ── Dark mode tokens ───────────────────────────────────────── */
 .dark {
   color-scheme: dark;
-  --surface:      #1E293B;
-  --border:       #334155;
-  --border-focus: #2DD4BF;
-  --text-1:       #F1F5F9;
-  --text-2:       #CBD5E1;
-  --text-3:       #94A3B8;
-  --bg:           #0F172A;
-  --bg-card:      #1E293B;
-  --bg-hover:     #293548;
+  --bg:           #0E1117;
+  --bg-card:      #161B22;
+  --bg-hover:     #1C2128;
+  --surface:      #161B22;
+  --surface-2:    #21262D;
+  --border:       #30363D;
+  --border-focus: #0D9488;
+  --text-1:       #E6EDF3;
+  --text-2:       #8B949E;
+  --text-3:       #6E7681;
 }
 
 /* ── Base ───────────────────────────────────────────────────── */
@@ -57,12 +58,13 @@ body {
 /* These flip the most common Tailwind utility classes app-wide  */
 .dark .bg-white           { background-color: var(--bg-card)  !important; }
 .dark .bg-gray-50         { background-color: var(--bg)        !important; }
-.dark .bg-gray-100        { background-color: var(--bg-hover)  !important; }
-.dark .bg-gray-200        { background-color: #334155          !important; }
+.dark .bg-gray-100        { background-color: var(--surface-2) !important; }
+.dark .bg-gray-200        { background-color: var(--surface-2) !important; }
 .dark .min-h-screen       { background-color: var(--bg)        !important; }
 
 .dark .border-gray-100    { border-color: var(--border) !important; }
 .dark .border-gray-200    { border-color: var(--border) !important; }
+.dark .border-gray-300    { border-color: var(--border) !important; }
 .dark .divide-gray-50     > * + * { border-color: var(--border) !important; }
 .dark .divide-gray-100    > * + * { border-color: var(--border) !important; }
 
@@ -72,21 +74,74 @@ body {
 .dark .text-gray-600      { color: var(--text-2) !important; }
 .dark .text-gray-500      { color: var(--text-3) !important; }
 .dark .text-gray-400      { color: var(--text-3) !important; }
-.dark .text-gray-300      { color: #64748B      !important; }
+.dark .text-gray-300      { color: #6E7681      !important; }
 
 .dark .hover\:bg-gray-50:hover  { background-color: var(--bg-hover) !important; }
 .dark .hover\:bg-gray-100:hover { background-color: var(--bg-hover) !important; }
-.dark .hover\:bg-gray-200:hover { background-color: #334155         !important; }
+.dark .hover\:bg-gray-200:hover { background-color: var(--surface-2) !important; }
+.dark .hover\:bg-red-50:hover   { background-color: rgba(239,68,68,0.1) !important; }
+.dark .hover\:text-red-500:hover,
+.dark .text-red-500             { color: #F87171 !important; }
 
-.dark .shadow-civic       { box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important; }
+.dark .shadow-civic       { box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 4px 16px rgba(0,0,0,0.3) !important; }
 .dark .shadow-sm          { box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important; }
 
+/* bg-gray-50/60 (toolbar in SearchBox) */
+.dark .bg-gray-50\/60     { background-color: var(--surface-2) !important; }
+
+/* Civic card in dark mode */
+.dark .civic-card {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 4px 16px rgba(0,0,0,0.25) !important;
+}
+.dark .civic-card:hover {
+  box-shadow: 0 0 0 1px rgba(13,148,136,0.3), 0 8px 32px rgba(0,0,0,0.35) !important;
+}
+
+/* Asset card dark */
+.dark .bg-white.rounded-2xl.border.border-gray-200 {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
 /* Header */
-.dark header.bg-white     { background-color: #1E293B !important; }
+.dark header.bg-white {
+  background-color: #0E1117 !important;
+  border-bottom-color: var(--border) !important;
+  box-shadow: 0 1px 0 var(--border) !important;
+}
+
+/* Nav tab pill container */
+.dark .bg-gray-100.rounded-xl { background-color: var(--surface-2) !important; }
+.dark .nav-tab.active {
+  background: var(--bg-card) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+.dark .nav-tab:not(.active) { color: var(--text-3) !important; }
+.dark .nav-tab:not(.active):hover { background: rgba(255,255,255,0.05) !important; color: var(--text-2) !important; }
+
+/* All form inputs/selects/textareas */
+.dark input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-1) !important;
+  border-color: var(--border) !important;
+}
+.dark input::placeholder, .dark textarea::placeholder { color: var(--text-3) !important; }
+
+/* Dropdown panels */
+.dark .border.border-gray-100.rounded-2xl.shadow-lg {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 12px 48px rgba(0,0,0,0.5) !important;
+}
 
 /* Skeleton */
 .dark .skeleton {
-  background: linear-gradient(90deg, #1e293b 25%, #293548 50%, #1e293b 75%) !important;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--bg-hover) 50%, var(--surface-2) 75%) !important;
+  background-size: 200% 100% !important;
 }
 
 h1, h2, h3, h4 {
