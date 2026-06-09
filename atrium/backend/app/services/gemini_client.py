@@ -85,25 +85,25 @@ MATCH_PROMPT = """You are HillingOne's matching engine. Rank council assets agai
 USER INTENT:
 {intent_json}
 
-AVAILABLE ASSETS (availability already pre-filtered, capacity already pre-filtered):
+AVAILABLE ASSETS (availability already pre-filtered, capacity already pre-filtered — all assets in this list are valid candidates):
 {inventory_json}
 
-SCORING RULES (apply in order — these are hard constraints, not preferences):
+SCORING RULES (apply in order):
 
-1. LOCATION (±35 points):
-   - If intent.location is set and NOT "anywhere": assets in that exact ward get +35. Assets in other wards get -35.
-   - If intent.location is null or "anywhere": location is ignored.
-
-2. VENUE TYPE (±25 points):
-   - If intent.venue_type is set: assets whose category closely matches get +25. Assets that are clearly a different type (e.g. user wants "office", asset is "sports hall") get -25.
+1. VENUE TYPE (±25 points):
+   - If intent.venue_type is set: assets whose category closely matches get +25. Assets that are clearly a different type get -25.
    - Fuzzy matches (e.g. user wants "office", asset is "meeting_room") get +10.
+   - If intent.venue_type is null: ignore venue type scoring.
 
-3. AMENITIES (up to +15 points):
+2. AMENITIES (up to +15 points):
    - +8 if kitchen_required matches
    - +4 if accessibility_required matches
    - +3 per relevant equipment match
 
-4. SCORE FLOOR: Never give an asset above 50/100 if it fails both location AND venue type.
+3. SCORE FLOOR: If the asset fails the venue type check and no amenities match, cap at 40/100.
+
+NOTE: Location has already been pre-filtered by the backend. All assets in the inventory are
+either in the requested ward, or location was not specified. Do NOT penalise for location.
 
 Return a JSON array of up to 4 matches, best first (no other text):
 [
@@ -111,8 +111,8 @@ Return a JSON array of up to 4 matches, best first (no other text):
     "asset_id": <string from inventory>,
     "rank": <1 to 4>,
     "match_score": <0 to 100, applying the rules above>,
-    "reasoning": "One sentence British English citing the specific match factors. Be honest if it is not in the requested location.",
-    "carbon_estimate_kg": <realistic number based on travel distance from intent location>,
+    "reasoning": "One sentence British English citing the specific match factors.",
+    "carbon_estimate_kg": <realistic small number, e.g. 0.3 to 1.2>,
     "accessibility_match": "full" | "partial" | "none"
   }}
 ]
