@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AuthPage from "./views/AuthPage";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 import ResidentView from "./views/ResidentView";
 import StaffView from "./views/StaffView";
 import MyBookings from "./views/MyBookings";
@@ -33,6 +34,7 @@ function AppShell() {
           <Route path="*"         element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }
