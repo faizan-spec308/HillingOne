@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Calendar, MapPin, Clock, X, ArrowLeft, CheckCircle2,
@@ -80,8 +80,8 @@ function Modal({ onClose, children }) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
-        style={{ animation: "scaleIn 0.2s ease" }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-y-auto"
+        style={{ animation: "scaleIn 0.2s ease", maxHeight: "90vh" }}
       >
         {children}
       </div>
@@ -171,7 +171,14 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
   const [saving, setSaving]         = useState(false);
   const [err,    setErr]            = useState(null);
   const [payment, setPayment]       = useState(null); // {clientSecret, paymentIntentId, amountDisplay, newStart, newEnd}
-  const today = new Date().toISOString().slice(0, 10);
+  const today    = new Date().toISOString().slice(0, 10);
+  const payRef   = useRef(null);
+
+  useLayoutEffect(() => {
+    if (payment && payRef.current) {
+      payRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [payment]);
 
   const rate = parseFloat(booking.asset?.hourly_rate ?? 0);
   const origHours = (e - s) / 3_600_000;
@@ -296,7 +303,7 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
             </div>
           </>
         ) : (
-          <>
+          <div ref={payRef}>
             {err && <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700">{err}</div>}
             <Elements stripe={stripePromise} options={stripeOptions}>
               <RescheduleCheckout
@@ -306,7 +313,7 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
                 onBack={() => { setPayment(null); setErr(null); }}
               />
             </Elements>
-          </>
+          </div>
         )}
       </div>
     </Modal>
