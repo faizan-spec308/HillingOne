@@ -266,10 +266,85 @@ function AccessibilityModal({ onClose }) {
   );
 }
 
+/* ─── Cookie Policy modal ───────────────────────────────────────────── */
+function CookieModal({ onClose }) {
+  return (
+    <Modal title="Cookie Policy" onClose={onClose}>
+      <div className="space-y-5 text-[13px] text-gray-600 leading-relaxed">
+        <p className="text-[12px] text-gray-400">Last updated: June 2026</p>
+
+        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
+          <span className="text-emerald-600 text-[18px] flex-shrink-0">✓</span>
+          <p className="text-[13px] text-emerald-800">
+            <strong>HillingOne uses essential cookies only.</strong> We do not use any advertising,
+            analytics, or tracking cookies. No third-party trackers are loaded on this site.
+          </p>
+        </div>
+
+        <section>
+          <h3 className="text-[14px] font-bold text-gray-900 mb-3">What are cookies?</h3>
+          <p>Cookies are small text files stored on your device by your browser. They help websites remember your preferences and keep you signed in between visits.</p>
+        </section>
+
+        <section>
+          <h3 className="text-[14px] font-bold text-gray-900 mb-3">Cookies we use</h3>
+          <div className="space-y-3">
+            <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[13px] font-bold text-gray-900">Authentication (localStorage)</span>
+                <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">Essential</span>
+              </div>
+              <p className="text-[12px] text-gray-500">Keeps you signed in during your session. Stored in browser localStorage, not a cookie. Expires after 30 days or when you sign out.</p>
+            </div>
+            <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[13px] font-bold text-gray-900">Theme preference (localStorage)</span>
+                <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">Essential</span>
+              </div>
+              <p className="text-[12px] text-gray-500">Remembers whether you prefer light or dark mode. Stored locally on your device and never sent to our servers.</p>
+            </div>
+            <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[13px] font-bold text-gray-900">Stripe (payment security)</span>
+                <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">Essential</span>
+              </div>
+              <p className="text-[12px] text-gray-500">Stripe sets cookies solely for fraud prevention and payment security when you make a booking. These are strictly necessary to process payments and are governed by <a href="https://stripe.com/gb/privacy" target="_blank" rel="noopener noreferrer" className="text-teal-600 font-medium">Stripe's Privacy Policy</a>.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-[14px] font-bold text-gray-900 mb-2">Cookies we do NOT use</h3>
+          <ul className="list-disc list-inside space-y-1 text-gray-500">
+            <li>Google Analytics or any usage tracking</li>
+            <li>Advertising or retargeting cookies</li>
+            <li>Social media tracking pixels</li>
+            <li>Third-party personalisation cookies</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3 className="text-[14px] font-bold text-gray-900 mb-2">Managing cookies</h3>
+          <p>You can clear cookies and localStorage at any time through your browser settings. Note that clearing your authentication token will sign you out. Essential cookies cannot be disabled without breaking core site functionality.</p>
+        </section>
+
+        <section>
+          <h3 className="text-[14px] font-bold text-gray-900 mb-2">Contact</h3>
+          <p>For questions about this policy email <a href="mailto:hillingone@hillingdon.gov.uk" className="text-teal-600 font-medium">hillingone@hillingdon.gov.uk</a>.</p>
+        </section>
+      </div>
+    </Modal>
+  );
+}
+
 /* ─── Footer ────────────────────────────────────────────────────────── */
-export default function Footer() {
+export default function Footer({ cookieModalOpen = false, onCookieModalClose = () => {} }) {
   const { isDark } = useTheme();
   const [modal, setModal] = useState(null);
+
+  // Controlled cookie modal from banner
+  const showCookieModal = cookieModalOpen || modal === "cookies";
+  const closeCookieModal = () => { onCookieModalClose(); setModal(null); };
 
   const linkCls = "text-[13px] transition cursor-pointer hover:text-teal-600";
   const headingCls = "text-[11px] font-bold uppercase tracking-widest mb-3";
@@ -347,7 +422,7 @@ export default function Footer() {
                   </span>
                 </li>
                 <li>
-                  <span className={linkCls} style={{ color: textMuted }}>
+                  <span className={linkCls} style={{ color: textMuted }} onClick={() => setModal("cookies")}>
                     Cookie policy
                   </span>
                 </li>
@@ -451,6 +526,7 @@ export default function Footer() {
       {modal === "privacy"       && <PrivacyModal       onClose={() => setModal(null)} />}
       {modal === "terms"         && <TermsModal         onClose={() => setModal(null)} />}
       {modal === "accessibility" && <AccessibilityModal onClose={() => setModal(null)} />}
+      {showCookieModal           && <CookieModal        onClose={closeCookieModal} />}
     </>
   );
 }

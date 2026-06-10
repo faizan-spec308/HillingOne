@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AuthPage from "./views/AuthPage";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import CookieBanner from "./components/CookieBanner";
 import ResidentView from "./views/ResidentView";
 import StaffView from "./views/StaffView";
 import MyBookings from "./views/MyBookings";
@@ -12,6 +14,7 @@ import SettingsView from "./views/SettingsView";
 function AppShell() {
   const { user, isStaff } = useAuth();
   const navigate = useNavigate();
+  const [cookieModal, setCookieModal] = useState(false);
 
   if (!user) return <AuthPage />;
 
@@ -34,7 +37,8 @@ function AppShell() {
           <Route path="*"         element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <Footer />
+      <Footer cookieModalOpen={cookieModal} onCookieModalClose={() => setCookieModal(false)} />
+      <CookieBanner onOpenPolicy={() => setCookieModal(true)} />
     </div>
   );
 }
