@@ -284,6 +284,44 @@ export default function SettingsView() {
         <p className="text-[14px] mt-1" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>Manage your account, appearance and preferences.</p>
       </div>
 
+      {/* Profile hero card */}
+      {user && (() => {
+        const initials = user.name
+          ? user.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
+          : "?";
+        const bdr  = isDark ? "#30363D" : "#E5E7EB";
+        const surf = isDark ? "#161B22" : "#ffffff";
+        const t1   = isDark ? "#E6EDF3" : "#111827";
+        const t2   = isDark ? "#8B949E" : "#6B7280";
+        return (
+          <div className="rounded-2xl px-6 py-5 mb-6 flex items-center gap-5"
+            style={{ background: surf, border: `1px solid ${bdr}` }}>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-[22px] font-black flex-shrink-0"
+              style={{ background: user.role === "staff" || user.role === "councillor"
+                ? "linear-gradient(135deg,#0F766E,#0D9488)"
+                : "linear-gradient(135deg,#059669,#10B981)" }}>
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[18px] font-black truncate" style={{ color: t1 }}>{user.name}</p>
+              <p className="text-[13px] truncate" style={{ color: t2 }}>{user.email}</p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full capitalize"
+                  style={{ background: isDark ? "rgba(13,148,136,0.15)" : "#CCFBF1", color: "#0D9488" }}>
+                  {user.role}
+                </span>
+                {user.ward && (
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full"
+                    style={{ background: isDark ? "#21262D" : "#F3F4F6", color: t2 }}>
+                    {user.ward}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <ProfileSection user={user} onSaved={handleSaved} showToast={showToast} />
       <PasswordSection showToast={showToast} />
       <AppearanceSection />
