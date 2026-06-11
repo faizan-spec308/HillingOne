@@ -49,9 +49,9 @@ class HoldRequest(BaseModel):
     start_time: datetime
     end_time: datetime
     purpose: str | None = Field(None, max_length=500)
-    attendee_count: int | None = Field(None, ge=1)
+    attendee_count: int | None = Field(None, ge=1, le=10000)
     is_recurring: bool = False
-    recurrence_weeks: int | None = None
+    recurrence_weeks: int | None = Field(None, ge=1, le=52)
 
 
 class ConfirmRequest(BaseModel):

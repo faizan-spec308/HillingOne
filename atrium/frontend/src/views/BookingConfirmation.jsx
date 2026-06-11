@@ -34,19 +34,26 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
   const dayLabel = startTime.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
   const timeRange = `${startTime.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} – ${endTime.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
 
+  const t1 = isDark ? "#E6EDF3" : "#111827";
+  const t2 = isDark ? "#8B949E" : "#6B7280";
+  const cardBg   = isDark ? "#161B22" : "#ffffff";
+  const cardBdr  = isDark ? "#30363D" : "#E5E7EB";
+  const surfBg   = isDark ? "#21262D" : "#F9FAFB";
+  const surfBdr  = isDark ? "#30363D" : "#F3F4F6";
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 fade-in-up">
 
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-hillingdon-navy mb-6 transition font-medium"
+        className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-teal-600 mb-6 transition font-medium"
       >
         <ArrowLeft size={15} />
         Back to search
       </button>
 
       {/* Main card */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic-md">
+      <div className="rounded-2xl overflow-hidden shadow-civic-md" style={{ background: cardBg, border: `1px solid ${cardBdr}` }}>
 
         {/* Success header */}
         <div
@@ -61,8 +68,8 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
           >
             <CheckCircle2 size={36} className="text-white" />
           </div>
-          <h2 className="text-[26px] font-black text-gray-900 mb-1">Booking confirmed</h2>
-          <p className="text-[14px] text-gray-600 mb-4">
+          <h2 className="text-[26px] font-black mb-1" style={{ color: t1 }}>Booking confirmed</h2>
+          <p className="text-[14px] mb-4" style={{ color: t2 }}>
             Your space is reserved and protected.
           </p>
 
@@ -86,36 +93,36 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
         <div className="px-8 py-6 space-y-5">
 
           {/* Venue */}
-          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-            <div className="w-10 h-10 rounded-xl bg-hillingdon-navy-tint flex items-center justify-center flex-shrink-0">
-              <MapPin size={18} className="text-hillingdon-navy" />
+          <div className="flex items-start gap-4 p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDark ? "#0D2D1E" : "#F0FDF4" }}>
+              <MapPin size={18} className="text-teal-600" />
             </div>
             <div>
-              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">Venue</div>
-              <div className="text-[16px] font-bold text-gray-900">{asset.name}</div>
-              <div className="text-[13px] text-gray-500">{asset.ward}, Hillingdon</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-0.5" style={{ color: t2 }}>Venue</div>
+              <div className="text-[16px] font-bold" style={{ color: t1 }}>{asset.name}</div>
+              <div className="text-[13px]" style={{ color: t2 }}>{asset.ward}, Hillingdon</div>
             </div>
           </div>
 
           {/* Time + attendees */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="w-9 h-9 rounded-lg bg-hillingdon-navy-tint flex items-center justify-center flex-shrink-0">
-                <Clock size={16} className="text-hillingdon-navy" />
+            <div className="flex items-start gap-3 p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isDark ? "#0D2D1E" : "#F0FDF4" }}>
+                <Clock size={16} className="text-teal-600" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">When</div>
-                <div className="text-[13px] font-semibold text-gray-900">{dayLabel}</div>
-                <div className="text-[13px] text-gray-500">{timeRange}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wide mb-0.5" style={{ color: t2 }}>When</div>
+                <div className="text-[13px] font-semibold" style={{ color: t1 }}>{dayLabel}</div>
+                <div className="text-[13px]" style={{ color: t2 }}>{timeRange}</div>
               </div>
             </div>
-            <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="w-9 h-9 rounded-lg bg-hillingdon-navy-tint flex items-center justify-center flex-shrink-0">
-                <Users size={16} className="text-hillingdon-navy" />
+            <div className="flex items-start gap-3 p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isDark ? "#0D2D1E" : "#F0FDF4" }}>
+                <Users size={16} className="text-teal-600" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">Attendees</div>
-                <div className="text-[13px] font-semibold text-gray-900">
+                <div className="text-[11px] font-bold uppercase tracking-wide mb-0.5" style={{ color: t2 }}>Attendees</div>
+                <div className="text-[13px] font-semibold" style={{ color: t1 }}>
                   {booking.attendee_count || "Not specified"}
                 </div>
               </div>
@@ -124,9 +131,9 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
 
           {/* Purpose */}
           {booking.purpose && (
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Purpose</div>
-              <div className="text-[13px] text-gray-800">{booking.purpose}</div>
+            <div className="p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: t2 }}>Purpose</div>
+              <div className="text-[13px]" style={{ color: t1 }}>{booking.purpose}</div>
             </div>
           )}
 
@@ -208,19 +215,19 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
       )}
 
       {/* Trust panel */}
-      <div className="mt-5 p-5 bg-white border border-gray-200 rounded-2xl shadow-civic">
+      <div className="mt-5 p-5 rounded-2xl shadow-civic" style={{ background: cardBg, border: `1px solid ${cardBdr}` }}>
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-hillingdon-navy flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}>
             <Lock size={18} className="text-white" />
           </div>
           <div>
-            <div className="font-bold text-[15px] text-gray-900 mb-1.5">Your booking, protected</div>
-            <p className="text-[13px] text-gray-600 leading-relaxed">
+            <div className="font-bold text-[15px] mb-1.5" style={{ color: t1 }}>Your booking, protected</div>
+            <p className="text-[13px] leading-relaxed" style={{ color: t2 }}>
               This booking can only be cancelled by you, or by staff for a documented operational reason.
               If staff need to cancel, you will be notified immediately with the full reason, an equivalent
               alternative venue, and a 20% goodwill credit on your next booking.
             </p>
-            <div className="mt-3 text-[12px] text-gray-400 italic">
+            <div className="mt-3 text-[12px] italic" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>
               Trust is not built by saying never. It is built by saying always with transparency.
             </div>
           </div>

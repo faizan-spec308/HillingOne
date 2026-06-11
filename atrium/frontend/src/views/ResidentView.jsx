@@ -319,6 +319,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
 /* ── DateTime picker ─────────────────────────────────────────────────────── */
 function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack }) {
+  const { isDark } = useTheme();
   const toLocal = (iso) => {
     const d = new Date(iso);
     const pad = (n) => String(n).padStart(2, "0");
@@ -369,14 +370,14 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
         <ArrowLeft size={14} /> Back to results
       </button>
 
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: isDark ? "#161B22" : "#ffffff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
         {/* Asset header */}
-        <div className="p-5 border-b border-gray-100">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+        <div className="p-5" style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
+          <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
             {(asset?.category || "").replace(/_/g, " ")}
           </p>
-          <h2 className="text-[18px] font-black text-gray-900">{asset?.name}</h2>
-          {asset?.ward && <p className="text-[13px] text-gray-400 mt-0.5">{asset.ward}, Hillingdon</p>}
+          <h2 className="text-[18px] font-black" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{asset?.name}</h2>
+          {asset?.ward && <p className="text-[13px] mt-0.5" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>{asset.ward}, Hillingdon</p>}
         </div>
 
         <div className="p-5 space-y-4">
@@ -390,7 +391,8 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
               min={today}
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
+              className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
+              style={{ background: isDark ? "#0E1117" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#111827" }}
             />
           </div>
 
@@ -403,12 +405,14 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
               <div>
                 <p className="text-[11px] text-gray-400 mb-1">From</p>
                 <input type="time" value={start} onChange={(e) => setStart(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition" />
+                  className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
+                  style={{ background: isDark ? "#0E1117" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#111827" }} />
               </div>
               <div>
-                <p className="text-[11px] text-gray-400 mb-1">To</p>
+                <p className="text-[11px] mb-1" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>To</p>
                 <input type="time" value={end} onChange={(e) => setEnd(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition" />
+                  className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
+                  style={{ background: isDark ? "#0E1117" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#111827" }} />
               </div>
             </div>
           </div>
@@ -436,8 +440,8 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
               </button>
             </div>
             {isRecurring && (
-              <div className="mt-3 rounded-xl border border-teal-100 bg-teal-50 p-3">
-                <p className="text-[11px] text-teal-700 font-medium mb-2">
+              <div className="mt-3 rounded-xl p-3" style={{ background: isDark ? "#0D2D1E" : "#F0FDF4", border: `1px solid ${isDark ? "#1A4731" : "#BBF7D0"}` }}>
+                <p className="text-[11px] font-medium mb-2" style={{ color: isDark ? "#4ADE80" : "#0D9488" }}>
                   Repeat every week for:
                 </p>
                 <div className="flex gap-2 flex-wrap">

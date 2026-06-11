@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTheme } from "../context/ThemeContext";
 import {
   Activity, MapPin, AlertTriangle, TrendingUp,
   ShieldCheck, Clock, RefreshCw, Users, Zap, Download,
@@ -481,10 +482,17 @@ function AgentRunsPanel() {
 }
 
 export default function StaffView() {
+  const { isDark } = useTheme();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const card  = isDark ? { background: "#161B22", border: "1px solid #30363D" } : {};
+  const surf  = isDark ? { background: "#0E1117" } : {};
+  const text1 = isDark ? "#E6EDF3" : "#111827";
+  const text2 = isDark ? "#8B949E" : "#6B7280";
+  const divider = isDark ? "#21262D" : "#F3F4F6";
 
   const refresh = async () => {
     try {
@@ -562,8 +570,8 @@ export default function StaffView() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-[22px] font-bold text-gray-900">Staff Portal</h2>
-          <p className="text-[13px] text-gray-500 mt-0.5">
+          <h2 className="text-[22px] font-bold" style={{ color: text1 }}>Staff Portal</h2>
+          <p className="text-[13px] mt-0.5" style={{ color: text2 }}>
             Hillingdon Council — live bookings, assets and utilisation
           </p>
         </div>
@@ -589,7 +597,7 @@ export default function StaffView() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
+      <div className="flex items-center gap-1 mb-6 overflow-x-auto" style={{ borderBottom: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
         {[
           { id: "dashboard",       label: "Dashboard",       icon: <Activity size={14} /> },
           { id: "decision-queue",  label: "Decision Queue",  icon: <ListChecks size={14} />, badge: data?.pending_swap_responses?.length || 0 },
@@ -599,10 +607,11 @@ export default function StaffView() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            style={activeTab !== tab.id ? { color: text2 } : {}}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap ${
               activeTab === tab.id
-                ? "border-teal-600 text-teal-700"
-                : "border-transparent text-gray-500 hover:text-gray-800"
+                ? "border-teal-600 text-teal-600"
+                : "border-transparent hover:text-gray-800"
             }`}
           >
             {tab.icon}
@@ -658,7 +667,7 @@ export default function StaffView() {
       {/* Metrics row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {metrics.map((m) => (
-          <MetricCard key={m.label} {...m} />
+          <MetricCard key={m.label} {...m} isDark={isDark} />
         ))}
       </div>
 
@@ -666,10 +675,10 @@ export default function StaffView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* Asset utilisation table */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-            <MapPin size={16} className="text-hillingdon-navy" />
-            <h3 className="font-bold text-[15px] text-gray-900">Asset utilisation</h3>
+        <div className="lg:col-span-2 rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+          <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
+            <MapPin size={16} className="text-teal-600" />
+            <h3 className="font-bold text-[15px]" style={{ color: text1 }}>Asset utilisation</h3>
             <div className="ml-auto flex items-center gap-3">
               {Object.entries(utilisationStyle).map(([, s]) => (
                 <div key={s.label} className="flex items-center gap-1.5 text-[11px] text-gray-500">
@@ -683,32 +692,32 @@ export default function StaffView() {
           <div className="overflow-x-auto">
             <table className="w-full staff-table">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-5 py-3 text-left">Asset</th>
-                  <th className="px-4 py-3 text-left">Ward</th>
-                  <th className="px-4 py-3 text-right">Capacity</th>
-                  <th className="px-4 py-3 text-right">Bookings</th>
-                  <th className="px-4 py-3 text-right">Utilisation</th>
-                  <th className="px-4 py-3 text-left">Status</th>
+                <tr style={{ borderBottom: `1px solid ${divider}` }}>
+                  <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wide" style={{ color: text2 }}>Asset</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide" style={{ color: text2 }}>Ward</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide" style={{ color: text2 }}>Cap.</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide" style={{ color: text2 }}>Bookings</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide" style={{ color: text2 }}>Utilisation</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide" style={{ color: text2 }}>Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody>
                 {data.asset_utilisation.map((a) => {
                   const s = utilisationStyle[a.colour] || utilisationStyle.green;
                   const pct = a.utilisation_pct;
                   return (
-                    <tr key={a.id} className="transition-colors">
+                    <tr key={a.id} className="transition-colors" style={{ borderBottom: `1px solid ${divider}` }}>
                       <td className="px-5 py-3">
-                        <div className="font-semibold text-[13px] text-gray-900">{a.name}</div>
+                        <div className="font-semibold text-[13px]" style={{ color: text1 }}>{a.name}</div>
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-gray-500">{a.ward}</td>
-                      <td className="px-4 py-3 text-right text-[13px] text-gray-700">
+                      <td className="px-4 py-3 text-[12px]" style={{ color: text2 }}>{a.ward}</td>
+                      <td className="px-4 py-3 text-right text-[13px]" style={{ color: text2 }}>
                         <span className="flex items-center justify-end gap-1">
-                          <Users size={11} className="text-gray-400" />
+                          <Users size={11} />
                           {a.capacity}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-[13px] font-semibold text-gray-800">
+                      <td className="px-4 py-3 text-right text-[13px] font-semibold" style={{ color: text1 }}>
                         {a.weekly_bookings}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -742,10 +751,10 @@ export default function StaffView() {
         <div className="space-y-4">
 
           {/* Live agent feed */}
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-              <Activity size={15} className="text-hillingdon-navy" />
-              <h3 className="font-bold text-[14px] text-gray-900">Live agent feed</h3>
+          <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+            <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
+              <Activity size={15} className="text-teal-600" />
+              <h3 className="font-bold text-[14px]" style={{ color: text1 }}>Live agent feed</h3>
               <div className="ml-auto flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 pulse-subtle" />
                 <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide">Live</span>
@@ -756,25 +765,22 @@ export default function StaffView() {
               {data.agent_feed.length === 0 ? (
                 <div className="p-6 text-center text-[13px] text-gray-400">No recent activity</div>
               ) : (
-                <ul className="divide-y divide-gray-50">
+                <ul>
                   {data.agent_feed.map((entry) => (
-                    <li key={entry.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <li key={entry.id} className="px-4 py-3 transition-colors" style={{ borderBottom: `1px solid ${divider}` }}>
                       <div className="flex items-start justify-between gap-2 mb-0.5">
-                        <span className="text-[12px] font-bold text-gray-800 uppercase tracking-wide">
+                        <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: text1 }}>
                           {entry.action.replace(/_/g, " ")}
                         </span>
-                        <span className="text-[11px] text-gray-400 flex-shrink-0">
-                          {new Date(entry.created_at).toLocaleTimeString("en-GB", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                        <span className="text-[11px] flex-shrink-0" style={{ color: text2 }}>
+                          {new Date(entry.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
                       {entry.reason && (
-                        <p className="text-[12px] text-gray-500">Reason: {entry.reason}</p>
+                        <p className="text-[12px]" style={{ color: text2 }}>Reason: {entry.reason}</p>
                       )}
                       {entry.ai_reasoning && (
-                        <p className="text-[11px] text-gray-400 italic mt-0.5 line-clamp-2">
+                        <p className="text-[11px] italic mt-0.5 line-clamp-2" style={{ color: text2 }}>
                           {entry.ai_reasoning}
                         </p>
                       )}
@@ -787,21 +793,21 @@ export default function StaffView() {
 
           {/* Demand alerts */}
           {data.demand_alerts.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+              <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
                 <AlertTriangle size={15} className="text-amber-500" />
-                <h3 className="font-bold text-[14px] text-gray-900">Unmet demand</h3>
+                <h3 className="font-bold text-[14px]" style={{ color: text1 }}>Unmet demand</h3>
                 <span className="ml-auto text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                   {data.demand_alerts.length} alerts
                 </span>
               </div>
-              <ul className="divide-y divide-gray-50">
+              <ul>
                 {data.demand_alerts.slice(0, 4).map((d, i) => (
-                  <li key={i} className="px-5 py-3">
-                    <p className="text-[12px] font-semibold text-gray-800 italic mb-0.5">
+                  <li key={i} className="px-5 py-3" style={{ borderBottom: `1px solid ${divider}` }}>
+                    <p className="text-[12px] font-semibold italic mb-0.5" style={{ color: text1 }}>
                       "{d.raw_query}"
                     </p>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px]" style={{ color: text2 }}>
                       Only {d.results_count} match{d.results_count !== 1 ? "es" : ""} found
                     </p>
                   </li>
@@ -812,8 +818,8 @@ export default function StaffView() {
 
           {/* Recent agent runs */}
           {data.recent_agent_runs?.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+              <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
                 <Bot size={15} className="text-teal-600" />
                 <h3 className="font-bold text-[14px] text-gray-900">AI Agent</h3>
                 <button
@@ -823,17 +829,17 @@ export default function StaffView() {
                   View all
                 </button>
               </div>
-              <ul className="divide-y divide-gray-50">
+              <ul>
                 {data.recent_agent_runs.slice(0, 3).map(run => {
                   const statusColour = run.status === "resolved" ? "text-emerald-600 bg-emerald-50" :
                                        run.status === "escalated" ? "text-amber-600 bg-amber-50" : "text-red-600 bg-red-50";
                   return (
-                    <li key={run.id} className="px-4 py-3 flex items-center gap-3">
+                    <li key={run.id} className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: `1px solid ${divider}` }}>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 capitalize ${statusColour}`}>
                         {run.status}
                       </span>
-                      <span className="flex-1 text-[12px] text-gray-600 truncate">{run.summary || `Run ${run.id.slice(0,8)}`}</span>
-                      <span className="text-[11px] text-gray-400">{run.iterations} calls</span>
+                      <span className="flex-1 text-[12px] truncate" style={{ color: text2 }}>{run.summary || `Run ${run.id.slice(0,8)}`}</span>
+                      <span className="text-[11px]" style={{ color: text2 }}>{run.iterations} calls</span>
                     </li>
                   );
                 })}
@@ -848,27 +854,31 @@ export default function StaffView() {
   );
 }
 
-function MetricCard({ icon, label, value, accent }) {
+function MetricCard({ icon, label, value, accent, isDark }) {
+  if (accent) {
+    return (
+      <div className="p-5 rounded-2xl shadow-civic" style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}>
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider mb-2 text-white/70">
+          <span className="p-1.5 rounded-lg bg-white/15">{icon}</span>
+          {label}
+        </div>
+        <div className="text-[32px] font-black leading-tight tracking-tight text-white">{value}</div>
+      </div>
+    );
+  }
   return (
     <div
-      className={`p-5 rounded-2xl border transition-all duration-200 shadow-civic ${
-        accent
-          ? "border-hillingdon-navy text-white"
-          : "bg-white border-gray-200"
-      }`}
-      style={accent ? { background: "linear-gradient(135deg, #0F766E, #0D9488)" } : {}}
+      className="p-5 rounded-2xl shadow-civic"
+      style={{
+        background: isDark ? "#161B22" : "#ffffff",
+        border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`,
+      }}
     >
-      <div className={`flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider mb-2 ${
-        accent ? "text-white/70" : "text-gray-400"
-      }`}>
-        <span className={`p-1.5 rounded-lg ${accent ? "bg-white/15" : "bg-hillingdon-navy-tint text-hillingdon-navy"}`}>
-          {icon}
-        </span>
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
+        <span className="p-1.5 rounded-lg" style={{ background: isDark ? "#21262D" : "#F0FDF4", color: "#0D9488" }}>{icon}</span>
         {label}
       </div>
-      <div className={`text-[32px] font-black leading-tight tracking-tight ${accent ? "text-white" : "text-gray-900"}`}>
-        {value}
-      </div>
+      <div className="text-[32px] font-black leading-tight tracking-tight" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{value}</div>
     </div>
   );
 }
