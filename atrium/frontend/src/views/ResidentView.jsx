@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Network, ArrowLeft, Calendar, Clock, PoundSterling } from "lucide-react";
+import { Sparkles, Network, ArrowLeft, Calendar, Clock, PoundSterling, RefreshCw } from "lucide-react";
 import SearchBox from "../components/SearchBox";
 import AssetCard from "../components/AssetCard";
 import AssetCalendar from "../components/AssetCalendar";
@@ -69,7 +69,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
   };
 
   // Step 2: user confirms date/time → create the hold
-  const handleHold = async (startTime, endTime) => {
+  const handleHold = async (startTime, endTime, isRecurring = false, recurrenceWeeks = 4) => {
     setHolding(true);
     try {
       const booking = await api.hold({
@@ -78,6 +78,8 @@ export default function ResidentView({ user, onViewMyBookings }) {
         end_time: endTime,
         purpose: intent?.purpose_summary || "Booking via HillingOne",
         attendee_count: intent?.capacity || null,
+        is_recurring: isRecurring,
+        recurrence_weeks: isRecurring ? recurrenceWeeks : null,
       });
       setHoldBooking(booking);
       setStage("hold");
@@ -330,10 +332,12 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
   const startLocal = toLocal(sw.start);
   const endLocal   = toLocal(sw.end);
 
-  const [date,  setDate]  = useState(startLocal.date);
-  const [start, setStart] = useState(startLocal.time);
-  const [end,   setEnd]   = useState(endLocal.time);
-  const [err,   setErr]   = useState(null);
+  const [date,           setDate]           = useState(startLocal.date);
+  const [start,          setStart]          = useState(startLocal.time);
+  const [end,            setEnd]            = useState(endLocal.time);
+  const [err,            setErr]            = useState(null);
+  const [isRecurring,    setIsRecurring]    = useState(false);
+  const [recurrenceWeeks, setRecurrenceWeeks] = useState(4);
 
   const today = new Date().toISOString().slice(0, 10);
   const rate  = Number(asset?.hourly_rate || 0);
@@ -356,7 +360,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
     if (durationHours > 12)  { setErr("Maximum booking is 12 hours."); return; }
     const startIso = new Date(`${date}T${start}:00`).toISOString();
     const endIso   = new Date(`${date}T${end}:00`).toISOString();
-    onConfirm(startIso, endIso);
+    onConfirm(startIso, endIso, isRecurring, recurrenceWeeks);
   };
 
   return (
@@ -407,6 +411,56 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition" />
               </div>
             </div>
+          </div>
+
+          {/* Recurring booking */}
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 uppercase tracking-wide">
+                <RefreshCw size={12} /> Repeat booking
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsRecurring((v) => !v)}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                  isRecurring ? "bg-teal-500" : "bg-gray-200"
+                }`}
+                role="switch"
+                aria-checked={isRecurring}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                    isRecurring ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+            {isRecurring && (
+              <div className="mt-3 rounded-xl border border-teal-100 bg-teal-50 p-3">
+                <p className="text-[11px] text-teal-700 font-medium mb-2">
+                  Repeat every week for:
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {[2, 4, 6, 8, 12].map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setRecurrenceWeeks(w)}
+                      className={`px-3 py-1.5 rounded-lg text-[12px] font-bold border transition ${
+                        recurrenceWeeks === w
+                          ? "bg-teal-600 border-teal-600 text-white"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-teal-400"
+                      }`}
+                    >
+                      {w} weeks
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-2">
+                  {recurrenceWeeks} bookings will be created at the same time each week.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Price summary */}
