@@ -136,7 +136,7 @@ export default function Header({ userName, role, isStaff }) {
                   boxShadow: isDark ? "0 0 0 1px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)",
                 }}
               >
-                {Object.entries(languages).map(([code, { name, flag }]) => (
+                {Object.entries(languages).map(([code, { name }]) => (
                   <button
                     key={code}
                     onClick={() => { setLang(code); setLangOpen(false); }}
@@ -146,7 +146,6 @@ export default function Header({ userName, role, isStaff }) {
                         : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <span className="text-base">{flag}</span>
                     <span className="flex-1">{name}</span>
                     {lang === code && (
                       <span className="text-teal-500 text-[11px] font-black">✓</span>

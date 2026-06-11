@@ -1,8 +1,8 @@
 export const languages = {
-  en: { name: "English",  flag: "🇬🇧", dir: "ltr" },
-  ur: { name: "اردو",     flag: "🇵🇰", dir: "rtl" },
-  pl: { name: "Polski",   flag: "🇵🇱", dir: "ltr" },
-  ar: { name: "العربية",  flag: "🇸🇦", dir: "rtl" },
+  en: { name: "English",  dir: "ltr" },
+  ur: { name: "اردو",     dir: "rtl" },
+  pl: { name: "Polski",   dir: "ltr" },
+  ar: { name: "العربية",  dir: "rtl" },
 };
 
 export const translations = {
