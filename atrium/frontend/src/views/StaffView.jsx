@@ -4,6 +4,7 @@ import {
   Activity, MapPin, AlertTriangle, TrendingUp,
   ShieldCheck, Clock, RefreshCw, Users, Zap, Download,
   Plus, Edit2, ToggleLeft, ToggleRight, X, CheckCircle2, Building2,
+  Bot, ListChecks, ChevronDown, ChevronUp, Loader2, ArrowLeftRight,
 } from "lucide-react";
 import { api } from "../api/client";
 
@@ -274,6 +275,211 @@ function AssetManagement() {
   );
 }
 
+/* ── Decision Queue ───────────────────────────────────────────────── */
+function DecisionQueue() {
+  const [queue, setQueue]       = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [agentState, setAgentState] = useState({}); // { [bookingId]: { running, result, error } }
+
+  const load = async () => {
+    try {
+      const data = await api.decisionQueue();
+      setQueue(data);
+    } catch (e) {
+      setQueue([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleAccept = async (bookingId) => {
+    try {
+      await api.acceptSwap(bookingId);
+      setQueue(q => q.filter(r => r.booking.id !== bookingId));
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleDecline = async (bookingId) => {
+    try {
+      await api.declineSwap(bookingId);
+      setQueue(q => q.filter(r => r.booking.id !== bookingId));
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleRunAgent = async (row) => {
+    const id = row.booking.id;
+    setAgentState(s => ({ ...s, [id]: { running: true } }));
+    try {
+      const result = await api.triggerAgent({
+        confirmed_booking_id: id,
+        priority_request_summary: `Staff requested conflict resolution for booking ${row.booking.reference}`,
+      });
+      setAgentState(s => ({ ...s, [id]: { running: false, result } }));
+    } catch (e) {
+      setAgentState(s => ({ ...s, [id]: { running: false, error: e.message } }));
+    }
+  };
+
+  if (loading) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-24 rounded-2xl" />)}</div>;
+
+  if (!queue?.length) return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
+      <CheckCircle2 size={32} className="mx-auto mb-3 text-emerald-400" />
+      <p className="text-[15px] font-bold text-gray-700">All clear</p>
+      <p className="text-[13px] text-gray-400 mt-1">No pending swap decisions. The AI is on top of it.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <p className="text-[13px] text-gray-500">{queue.length} pending decision{queue.length !== 1 ? "s" : ""}</p>
+      {queue.map(row => {
+        const b = row.booking;
+        const a = row.asset;
+        const alt = row.alternative;
+        const state = agentState[b.id] || {};
+        return (
+          <div key={b.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[11px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                    Swap pending
+                  </span>
+                  <span className="text-[12px] font-mono text-gray-400">{b.reference}</span>
+                </div>
+                <p className="text-[14px] font-bold text-gray-900">{a?.name || "Unknown asset"}</p>
+                <p className="text-[12px] text-gray-500">{a?.ward} · {b.start_time ? new Date(b.start_time).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" }) : "—"}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => handleAccept(b.id)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold rounded-lg transition"
+                >
+                  Accept swap
+                </button>
+                <button
+                  onClick={() => handleDecline(b.id)}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-bold rounded-lg transition"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => handleRunAgent(row)}
+                  disabled={state.running}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-hillingdon-navy hover:opacity-90 text-white text-[12px] font-bold rounded-lg transition disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}
+                >
+                  {state.running ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
+                  Run AI agent
+                </button>
+              </div>
+            </div>
+
+            {alt && (
+              <div className="px-5 py-3 bg-blue-50 border-b border-blue-100 flex items-center gap-2 text-[12px] text-blue-700">
+                <ArrowLeftRight size={13} className="flex-shrink-0" />
+                Alternative offered: <span className="font-bold">{alt.name}</span> ({alt.ward})
+              </div>
+            )}
+
+            {state.result && (
+              <div className="px-5 py-4 bg-teal-50 border-t border-teal-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bot size={14} className="text-teal-700" />
+                  <span className="text-[12px] font-bold text-teal-700 uppercase tracking-wide">
+                    Agent result — {state.result.final_decision || "done"}
+                  </span>
+                  <span className="text-[11px] text-teal-500">{state.result.iterations_used} tool call{state.result.iterations_used !== 1 ? "s" : ""}</span>
+                </div>
+                <p className="text-[13px] text-teal-800 leading-relaxed">{state.result.goal_summary}</p>
+                {state.result.steps?.filter(s => s.type === "tool_call").length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {state.result.steps.filter(s => s.type === "tool_call").map((step, i) => (
+                      <li key={i} className="text-[11px] text-teal-600 flex items-start gap-1.5">
+                        <span className="text-teal-400 font-mono">{i + 1}.</span>
+                        <span className="font-semibold">{step.tool}</span>
+                        <span className="text-teal-500 truncate">{step.args ? Object.values(step.args).join(", ").slice(0, 60) : ""}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            {state.error && (
+              <div className="px-5 py-3 bg-red-50 border-t border-red-100 text-[13px] text-red-700">{state.error}</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Agent Runs Panel ─────────────────────────────────────────────── */
+function AgentRunsPanel() {
+  const [runs, setRuns]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    api.recentAgentRuns().then(setRuns).catch(() => setRuns([])).finally(() => setLoading(false));
+  }, []);
+
+  const statusStyle = {
+    resolved:  { bg: "bg-emerald-50",  text: "text-emerald-700",  label: "Resolved" },
+    escalated: { bg: "bg-amber-50",    text: "text-amber-700",    label: "Escalated" },
+    failed:    { bg: "bg-red-50",      text: "text-red-700",      label: "Failed" },
+  };
+
+  if (loading) return <div className="space-y-2">{[1,2].map(i => <div key={i} className="skeleton h-12 rounded-xl" />)}</div>;
+  if (!runs?.length) return (
+    <div className="p-6 text-center text-[13px] text-gray-400">No agent runs yet</div>
+  );
+
+  return (
+    <ul className="divide-y divide-gray-50">
+      {runs.map(run => {
+        const s = statusStyle[run.status] || statusStyle.failed;
+        const isOpen = expanded === run.id;
+        return (
+          <li key={run.id}>
+            <button
+              onClick={() => setExpanded(isOpen ? null : run.id)}
+              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition text-left"
+            >
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>
+                {s.label}
+              </span>
+              <span className="flex-1 text-[12px] text-gray-700 truncate">{run.summary || `Run ${run.id.slice(0, 8)}`}</span>
+              <span className="text-[11px] text-gray-400 flex-shrink-0">
+                {new Date(run.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              {isOpen ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />}
+            </button>
+            {isOpen && run.steps?.length > 0 && (
+              <div className="px-4 pb-3 bg-gray-50">
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">{run.iterations} tool call{run.iterations !== 1 ? "s" : ""}</p>
+                <ul className="space-y-1">
+                  {run.steps.filter(s => s.type === "tool_call").map((step, i) => (
+                    <li key={i} className="text-[11px] text-gray-600 flex items-start gap-1.5">
+                      <span className="text-gray-400 font-mono w-4 flex-shrink-0">{i + 1}.</span>
+                      <span className="font-semibold text-teal-700">{step.tool}</span>
+                      <span className="text-gray-500 truncate">{step.args ? Object.values(step.args).slice(0,2).join(", ") : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export default function StaffView() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
@@ -383,15 +589,17 @@ export default function StaffView() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-6 border-b border-gray-200">
+      <div className="flex items-center gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
         {[
-          { id: "dashboard", label: "Dashboard",     icon: <Activity size={14} /> },
-          { id: "assets",    label: "Manage Assets", icon: <Building2 size={14} /> },
+          { id: "dashboard",       label: "Dashboard",       icon: <Activity size={14} /> },
+          { id: "decision-queue",  label: "Decision Queue",  icon: <ListChecks size={14} />, badge: data?.pending_swap_responses?.length || 0 },
+          { id: "agent-runs",      label: "AI Agent Runs",   icon: <Bot size={14} /> },
+          { id: "assets",          label: "Manage Assets",   icon: <Building2 size={14} /> },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap ${
               activeTab === tab.id
                 ? "border-teal-600 text-teal-700"
                 : "border-transparent text-gray-500 hover:text-gray-800"
@@ -399,12 +607,32 @@ export default function StaffView() {
           >
             {tab.icon}
             {tab.label}
+            {tab.badge > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white">
+                {tab.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Manage Assets tab */}
       {activeTab === "assets" && <AssetManagement />}
+
+      {/* Decision Queue tab */}
+      {activeTab === "decision-queue" && <DecisionQueue />}
+
+      {/* Agent Runs tab */}
+      {activeTab === "agent-runs" && (
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <Bot size={15} className="text-teal-600" />
+            <h3 className="font-bold text-[15px] text-gray-900">Recent AI Agent Runs</h3>
+            <span className="ml-auto text-[11px] text-gray-400">Conflict Resolution Agent · Gemini 2.5 Flash</span>
+          </div>
+          <AgentRunsPanel />
+        </div>
+      )}
 
       {/* Dashboard tab content below — hidden when on assets tab */}
       {activeTab === "dashboard" && (<>
@@ -578,6 +806,37 @@ export default function StaffView() {
                     </p>
                   </li>
                 ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recent agent runs */}
+          {data.recent_agent_runs?.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                <Bot size={15} className="text-teal-600" />
+                <h3 className="font-bold text-[14px] text-gray-900">AI Agent</h3>
+                <button
+                  onClick={() => setActiveTab("agent-runs")}
+                  className="ml-auto text-[11px] text-teal-600 hover:underline font-medium"
+                >
+                  View all
+                </button>
+              </div>
+              <ul className="divide-y divide-gray-50">
+                {data.recent_agent_runs.slice(0, 3).map(run => {
+                  const statusColour = run.status === "resolved" ? "text-emerald-600 bg-emerald-50" :
+                                       run.status === "escalated" ? "text-amber-600 bg-amber-50" : "text-red-600 bg-red-50";
+                  return (
+                    <li key={run.id} className="px-4 py-3 flex items-center gap-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 capitalize ${statusColour}`}>
+                        {run.status}
+                      </span>
+                      <span className="flex-1 text-[12px] text-gray-600 truncate">{run.summary || `Run ${run.id.slice(0,8)}`}</span>
+                      <span className="text-[11px] text-gray-400">{run.iterations} calls</span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

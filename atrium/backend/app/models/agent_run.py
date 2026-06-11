@@ -19,11 +19,23 @@ class AgentRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     def to_dict(self) -> dict:
+        outcome = (self.final_outcome or "").lower()
+        if "resolv" in outcome or "success" in outcome:
+            status = "resolved"
+        elif "escalat" in outcome:
+            status = "escalated"
+        else:
+            status = "failed"
+
+        steps = self.steps or []
         return {
             "id": str(self.id),
             "agent_name": self.agent_name,
             "goal": self.goal,
-            "steps": self.steps,
+            "summary": self.final_outcome or self.goal[:120] if self.goal else "",
+            "status": status,
+            "iterations": len(steps),
+            "steps": steps,
             "final_outcome": self.final_outcome,
             "related_booking_id": str(self.related_booking_id) if self.related_booking_id else None,
             "created_at": self.created_at.isoformat(),
