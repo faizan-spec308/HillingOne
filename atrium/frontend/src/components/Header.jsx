@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe, Settings, X, Clock } from "lucide-react";
+import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe, Settings, X, Clock, Home } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -91,14 +91,14 @@ export default function Header({ userName, role, isStaff }) {
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </div>
-          <div className="text-left">
+          <div className="hidden sm:block text-left">
             <div className="text-[10px] font-semibold text-gray-400 leading-none tracking-widest uppercase">Hillingdon Council</div>
             <div className="text-[16px] font-display font-bold text-gray-900 leading-tight">HillingOne</div>
           </div>
         </button>
 
-        {/* Nav tabs */}
-        <nav className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
+        {/* Nav tabs — hidden on mobile */}
+        <nav className="hidden sm:flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
           {tabs.map(({ path, label, icon }) => (
             <button
               key={path}
@@ -272,6 +272,22 @@ export default function Header({ userName, role, isStaff }) {
                   <p className="text-[13px] font-bold text-gray-900">{userName}</p>
                   <p className="text-[11px] text-gray-400 capitalize">{role}</p>
                 </div>
+                <button
+                  onClick={() => { setDropdownOpen(false); navigate("/"); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left sm:hidden"
+                >
+                  <Home size={14} className="text-gray-400" />
+                  {t("nav_resident")}
+                </button>
+                {isStaff && (
+                  <button
+                    onClick={() => { setDropdownOpen(false); navigate("/staff"); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left sm:hidden"
+                  >
+                    <Shield size={14} className="text-gray-400" />
+                    {t("nav_staff")}
+                  </button>
+                )}
                 <button
                   onClick={() => { setDropdownOpen(false); navigate("/bookings"); }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left"
