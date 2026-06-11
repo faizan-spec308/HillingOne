@@ -146,7 +146,7 @@ function PasswordSection({ showToast }) {
 
 /* ── Appearance section ────────────────────────────────────────── */
 function AppearanceSection() {
-  const { theme, toggle } = useTheme();
+  const { theme, toggle, isDark } = useTheme();
 
   const modes = [
     { id: "light", label: "Light", icon: Sun,  desc: "Always light" },
