@@ -581,7 +581,7 @@ export default function StaffView() {
       <div className="max-w-[1400px] mx-auto px-6 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton h-28 rounded-2xl" />
+            <div key={i} className="skeleton h-20 rounded-2xl" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -935,28 +935,28 @@ export default function StaffView() {
 function MetricCard({ icon, label, value, accent, isDark }) {
   if (accent) {
     return (
-      <div className="p-5 rounded-2xl shadow-civic" style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}>
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider mb-2 text-white/70">
-          <span className="p-1.5 rounded-lg bg-white/15">{icon}</span>
+      <div className="px-4 py-3.5 rounded-2xl shadow-civic" style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}>
+        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-white/70">
+          <span className="p-1 rounded-md bg-white/15">{icon}</span>
           {label}
         </div>
-        <div className="text-[32px] font-black leading-tight tracking-tight text-white">{value}</div>
+        <div className="text-[22px] font-black leading-tight tracking-tight text-white">{value}</div>
       </div>
     );
   }
   return (
     <div
-      className="p-5 rounded-2xl shadow-civic"
+      className="px-4 py-3.5 rounded-2xl shadow-civic"
       style={{
         background: isDark ? "#161B22" : "#ffffff",
         border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`,
       }}
     >
-      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
-        <span className="p-1.5 rounded-lg" style={{ background: isDark ? "#21262D" : "#F0FDF4", color: "#0D9488" }}>{icon}</span>
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
+        <span className="p-1 rounded-md" style={{ background: isDark ? "#21262D" : "#F0FDF4", color: "#0D9488" }}>{icon}</span>
         {label}
       </div>
-      <div className="text-[32px] font-black leading-tight tracking-tight" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{value}</div>
+      <div className="text-[22px] font-black leading-tight tracking-tight" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{value}</div>
     </div>
   );
 }
