@@ -6,13 +6,9 @@ import {
   RefreshCw, Edit2, AlertTriangle, Users, ChevronRight,
   TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { api } from "../api/client";
-
-const stripePromise = loadStripe(
-  "pk_test_51Tdu5YQwQUDdwUxjCQ5M2ucTRi7kp9yaCkfmUvkR9rwJNKbcpOEBhZVEYD5lcOcw7Gllzgj4ky0pPS1UKsHZjAPt00KXyYf3YG"
-);
+import { stripePromise, IS_STRIPE_TEST_MODE } from "../lib/stripe";
 
 /* ─── helpers ──────────────────────────────────────────────────────── */
 const fmtDate  = (iso) => new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -45,7 +41,11 @@ function Toast({ toast, onClose }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[14px] font-bold text-gray-900 mb-0.5">
-            {isError ? "Something went wrong" : toast.type === "cancel" ? "Booking cancelled" : "Booking rescheduled"}
+            {isError ? "Something went wrong"
+              : toast.type === "cancel" ? "Booking cancelled"
+              : toast.type === "swap_accept" ? "Swap accepted"
+              : toast.type === "swap_decline" ? "Booking kept"
+              : "Booking rescheduled"}
           </p>
           <p className="text-[13px] text-gray-600 leading-relaxed">
             {isError && toast.data.message}
@@ -56,6 +56,8 @@ function Toast({ toast, onClose }) {
             )}
             {toast.type === "reschedule" && `Rescheduled to ${fmtShort(toast.data.start_time)}, ${fmtTime(toast.data.start_time)} – ${fmtTime(toast.data.end_time)}`}
             {toast.type === "reschedule_refund" && `Rescheduled. A refund of ${toast.data.refund_amount} will appear within 5–10 business days.`}
+            {toast.type === "swap_accept" && `Your booking has moved to ${toast.data.name || "the alternative venue"}. Same date and time.`}
+            {toast.type === "swap_decline" && "Your original booking stays confirmed. Staff have been notified."}
           </p>
         </div>
         <button onClick={onClose} className="text-gray-300 hover:text-gray-500 flex-shrink-0 mt-0.5">
@@ -72,14 +74,21 @@ function Modal({ onClose, children }) {
   const { isDark } = useTheme();
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
 
   return createPortal(
     <div
       className="fixed inset-0 z-[9998] flex items-center justify-center p-5"
       style={{ backdropFilter: "blur(4px)", background: "rgba(15,23,42,0.5)", animation: "fadeIn 0.15s ease" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      role="dialog"
+      aria-modal="true"
     >
       <div
         className="rounded-3xl shadow-2xl w-full max-w-sm overflow-y-auto"
@@ -171,7 +180,9 @@ function RescheduleCheckout({ clientSecret, amountDisplay, onPaid, onBack }) {
           {busy ? <><RefreshCw size={13} className="animate-spin" /> Processing…</> : <>Pay {amountDisplay}</>}
         </button>
       </div>
-      <p className="text-[11px] text-center text-gray-400">Test card: 4242 4242 4242 4242 · any future date · any CVC</p>
+      {IS_STRIPE_TEST_MODE && (
+        <p className="text-[11px] text-center text-gray-400">Test card: 4242 4242 4242 4242 · any future date · any CVC</p>
+      )}
     </form>
   );
 }
@@ -353,9 +364,10 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
 }
 
 /* ─── Booking card ─────────────────────────────────────────────────── */
-function BookingCard({ booking, onCancel, onReschedule }) {
+function BookingCard({ booking, onCancel, onReschedule, onAcceptSwap, onDeclineSwap, swapBusy }) {
   const { isDark } = useTheme();
   const isPast = ["cancelled", "completed"].includes(booking.state);
+  const isSwapPending = booking.state === "swap_pending";
   const st = STATUS[booking.state] || STATUS.completed;
   const duration = Math.round((new Date(booking.end_time) - new Date(booking.start_time)) / 36e5 * 10) / 10;
 
@@ -402,12 +414,52 @@ function BookingCard({ booking, onCancel, onReschedule }) {
           ))}
         </div>
 
+        {/* Swap proposal — the resident decides, right here */}
+        {isSwapPending && (
+          <div className="rounded-xl px-4 py-3.5 mb-4 bg-blue-50 border border-blue-200">
+            <div className="flex items-start gap-2.5 mb-3">
+              <RefreshCw size={15} className="text-blue-700 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[13px] font-bold text-blue-700 mb-0.5">The council has proposed a venue swap</p>
+                <p className="text-[12px] text-blue-700 leading-relaxed">
+                  {booking.swap_message || "Your slot is needed for an operational reason."}
+                  {booking.alternative && (
+                    <> Alternative offered: <strong>{booking.alternative.name}</strong>
+                    {booking.alternative.ward ? ` (${booking.alternative.ward})` : ""}, same date and time.</>
+                  )}
+                  {booking.goodwill_credit_applied > 0 && (
+                    <> You'll receive a {booking.goodwill_credit_applied}% goodwill credit if you accept.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={onAcceptSwap}
+                disabled={swapBusy || !booking.alternative_offered_id}
+                className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[12px] font-bold rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                {swapBusy ? <RefreshCw size={12} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                Accept swap
+              </button>
+              <button
+                onClick={onDeclineSwap}
+                disabled={swapBusy}
+                className="flex-1 px-3 py-2 text-[12px] font-bold rounded-xl transition border"
+                style={{ background: isDark ? "#21262D" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#374151" }}
+              >
+                Keep my booking
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="flex items-center justify-between pt-2" style={{ borderTop: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
           <span className="text-[11px] font-mono" style={{ color: isDark ? "#484F58" : "#D1D5DB" }}>{booking.reference}</span>
           {!isPast && (
             <div className="flex items-center gap-1">
-              {onReschedule && (
+              {onReschedule && !isSwapPending && (
                 <button onClick={onReschedule}
                   className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-teal-600 hover:bg-teal-50/10 px-3 py-1.5 rounded-xl transition">
                   <Edit2 size={12} /> Edit time
@@ -440,6 +492,7 @@ export default function MyBookings({ user, onBack }) {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [reschedTarget, setReschedTarget] = useState(null);
   const [cancelling, setCancelling]     = useState(false);
+  const [swapBusyId, setSwapBusyId]     = useState(null);
   const [filter, setFilter]             = useState("all");
 
   const t1   = isDark ? "#E6EDF3" : "#111827";
@@ -494,6 +547,37 @@ export default function MyBookings({ user, onBack }) {
     setUpcoming((prev) => prev.map((b) => b.id === updated.id ? { ...b, ...updated } : b));
     showToast(updated.refunded ? "reschedule_refund" : "reschedule", updated);
     setReschedTarget(null);
+  };
+
+  const handleAcceptSwap = async (booking) => {
+    setSwapBusyId(booking.id);
+    try {
+      const res = await api.acceptSwap(booking.id);
+      const moved = { ...res.new_booking, asset: booking.alternative || booking.asset };
+      setUpcoming((prev) =>
+        [...prev.filter((b) => b.id !== booking.id), moved]
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+      );
+      setPast((prev) => [{ ...booking, state: "cancelled" }, ...prev]);
+      showToast("swap_accept", { name: moved.asset?.name });
+    } catch (ex) {
+      showToast("error", { message: ex.message });
+    } finally {
+      setSwapBusyId(null);
+    }
+  };
+
+  const handleDeclineSwap = async (booking) => {
+    setSwapBusyId(booking.id);
+    try {
+      await api.declineSwap(booking.id);
+      setUpcoming((prev) => prev.map((b) => b.id === booking.id ? { ...b, state: "confirmed", alternative: null, swap_message: null } : b));
+      showToast("swap_decline", {});
+    } catch (ex) {
+      showToast("error", { message: ex.message });
+    } finally {
+      setSwapBusyId(null);
+    }
   };
 
   return (
@@ -647,6 +731,9 @@ export default function MyBookings({ user, onBack }) {
                   booking={b}
                   onCancel={() => setCancelTarget(b)}
                   onReschedule={() => setReschedTarget(b)}
+                  onAcceptSwap={() => handleAcceptSwap(b)}
+                  onDeclineSwap={() => handleDeclineSwap(b)}
+                  swapBusy={swapBusyId === b.id}
                 />
               ))}
             </div>

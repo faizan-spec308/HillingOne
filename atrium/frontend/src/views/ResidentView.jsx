@@ -91,15 +91,25 @@ export default function ResidentView({ user, onViewMyBookings }) {
   };
 
   const handleProceedToPayment = async () => {
+    setError(null);
     try {
       const res = await api.createPaymentIntent(holdBooking.id);
+      if (res.free) {
+        // Free venue — nothing to pay, confirm straight away
+        await handleConfirm();
+        return;
+      }
       setClientSecret(res.client_secret);
       setPaymentAmount(res.amount_display);
       setStage("payment");
     } catch (err) {
-      // If Stripe isn't configured, skip payment and confirm directly
-      setError(null);
-      await handleConfirm();
+      if (err.status === 503) {
+        // Stripe isn't configured on this server — confirm without payment
+        await handleConfirm();
+        return;
+      }
+      // Real failure: keep the user on the hold screen and tell them why
+      setError(err.message);
     }
   };
 
@@ -273,6 +283,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
       <HoldScreen
         booking={holdBooking}
         asset={holdAsset}
+        error={error}
         onConfirm={handleProceedToPayment}
         onCancel={reset}
       />
@@ -345,9 +356,24 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
   const [err,            setErr]            = useState(null);
   const [isRecurring,    setIsRecurring]    = useState(false);
   const [recurrenceWeeks, setRecurrenceWeeks] = useState(4);
+  const [dayBookings,    setDayBookings]    = useState([]);
 
   const today = new Date().toISOString().slice(0, 10);
   const rate  = Number(asset?.hourly_rate || 0);
+
+  // Live availability for the chosen day, so conflicts surface before submitting
+  useEffect(() => {
+    if (!date || !asset?.id) return;
+    let stale = false;
+    const next = new Date(`${date}T00:00:00`);
+    next.setDate(next.getDate() + 1);
+    const pad = (n) => String(n).padStart(2, "0");
+    const nextStr = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+    api.getAssetAvailability(asset.id, date, nextStr)
+      .then((b) => { if (!stale) setDayBookings(b || []); })
+      .catch(() => { if (!stale) setDayBookings([]); });
+    return () => { stale = true; };
+  }, [date, asset?.id]);
 
   const durationHours = (() => {
     const s = new Date(`${date}T${start}`);
@@ -356,8 +382,18 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
     return diff > 0 ? diff : 0;
   })();
 
-  const totalCost = (rate * durationHours).toFixed(2);
+  const chosenStart = durationHours > 0 ? new Date(`${date}T${start}:00`) : null;
+  const chosenEnd   = durationHours > 0 ? new Date(`${date}T${end}:00`)   : null;
+  const hasConflict = chosenStart && dayBookings.some((b) => {
+    const bs = new Date(b.start_time);
+    const be = new Date(b.end_time);
+    return bs < chosenEnd && be > chosenStart;
+  });
+
+  const sessions  = isRecurring ? recurrenceWeeks : 1;
+  const totalCost = (rate * durationHours * sessions).toFixed(2);
   const isFree    = rate === 0;
+  const fmtT = (iso) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
   const handleConfirm = () => {
     setErr(null);
@@ -423,6 +459,30 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
             </div>
           </div>
 
+          {/* Already-booked times for the chosen day */}
+          {dayBookings.length > 0 && (
+            <div className="rounded-xl px-3.5 py-3" style={{ background: isDark ? "#1C2128" : "#F9FAFB", border: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}` }}>
+              <p className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
+                Already booked on this day
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {dayBookings.map((b, i) => (
+                  <span key={i} className="px-2 py-1 rounded-md text-[11px] font-semibold"
+                    style={{ background: isDark ? "rgba(239,68,68,0.12)" : "#FEF2F2", color: isDark ? "#FCA5A5" : "#B91C1C" }}>
+                    {fmtT(b.start_time)} – {fmtT(b.end_time)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Conflict warning */}
+          {hasConflict && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[13px] text-amber-800" role="alert">
+              Your chosen time overlaps an existing booking. Adjust the times above to a free window.
+            </div>
+          )}
+
           {/* Recurring booking */}
           <div>
             <div className="flex items-center justify-between">
@@ -466,7 +526,8 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
                   ))}
                 </div>
                 <p className="text-[11px] mt-2" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
-                  {recurrenceWeeks} bookings will be created at the same time each week.
+                  Up to {recurrenceWeeks} weekly bookings at the same time. Weeks already booked are skipped
+                  and you only pay for the sessions you get.
                 </p>
               </div>
             )}
@@ -483,7 +544,9 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
               <div className="flex items-center gap-1.5">
                 <PoundSterling size={18} className="text-teal-500" />
                 <div className="text-right">
-                  <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#4ADE80" : "#6B7280" }}>Total</p>
+                  <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#4ADE80" : "#6B7280" }}>
+                    {sessions > 1 ? `Total · ${sessions} sessions` : "Total"}
+                  </p>
                   <p className="text-[20px] font-black" style={{ color: isDark ? "#2DD4BF" : "#0F766E" }}>{isFree ? "Free" : `£${totalCost}`}</p>
                 </div>
               </div>
@@ -497,7 +560,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 
           <button
             onClick={handleConfirm}
-            disabled={loading || durationHours <= 0}
+            disabled={loading || durationHours <= 0 || hasConflict}
             className="btn-primary w-full justify-center"
           >
             {loading ? "Reserving…" : "Hold this space"}
@@ -512,9 +575,10 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 }
 
 /* ── Hold screen ──────────────────────────────────────────────────────────── */
-function HoldScreen({ booking, asset, onConfirm, onCancel }) {
+function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
   const { t } = useLanguage();
   const { isDark } = useTheme();
+  const [proceeding, setProceeding] = useState(false);
   const heldUntil = new Date(booking.held_until).getTime();
   const totalSeconds = Math.max(60, Math.round((heldUntil - Date.now()) / 1000 + 0));
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
@@ -532,10 +596,50 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
 
   const progress = Math.min(100, (secondsLeft / durationRef) * 100);
   const isUrgent = secondsLeft <= 30;
+  const expired  = secondsLeft <= 0;
 
   const t1 = isDark ? "#E6EDF3" : "#111827";
   const t2 = isDark ? "#8B949E" : "#6B7280";
   const detailBg = isDark ? "#21262D" : "#F9FAFB";
+
+  // Price summary — covers every secured weekly occurrence
+  const occurrences = booking.recurrence_pattern?.occurrences?.length || 1;
+  const skipped     = booking.recurrence_pattern?.skipped?.length || 0;
+  const hours       = (new Date(booking.end_time) - new Date(booking.start_time)) / 36e5;
+  const rate        = Number(asset?.hourly_rate || 0);
+  const total       = rate * hours * occurrences;
+
+  const handleProceed = async () => {
+    setProceeding(true);
+    try { await onConfirm(); } finally { setProceeding(false); }
+  };
+
+  if (expired) {
+    return (
+      <div className="max-w-md mx-auto px-6 py-14 fade-in-up">
+        <div
+          className="rounded-2xl p-8 text-center"
+          style={{ background: isDark ? "#161B22" : "#ffffff", border: `2px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}
+          role="alert"
+        >
+          <div
+            className="w-20 h-20 rounded-full border-4 flex items-center justify-center mx-auto mb-5"
+            style={{ borderColor: "#EF4444", background: isDark ? "#2D0A0A" : "#FEF2F2" }}
+          >
+            <Clock size={30} style={{ color: "#EF4444" }} />
+          </div>
+          <h2 className="text-[20px] font-bold mb-2" style={{ color: t1 }}>Your hold has expired</h2>
+          <p className="text-[14px] mb-7 leading-relaxed" style={{ color: t2 }}>
+            The slot at <strong style={{ color: t1 }}>{asset.name}</strong> has been released so others can book it.
+            Don't worry — if it's still free, you can hold it again in seconds.
+          </p>
+          <button onClick={onCancel} className="btn-primary w-full justify-center">
+            Search again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto px-6 py-14 fade-in-up">
@@ -553,6 +657,9 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
             borderColor: isUrgent ? "#EF4444" : "#F59E0B",
             background: isUrgent ? (isDark ? "#2D0A0A" : "#FEF2F2") : (isDark ? "#1C1200" : "#FFFBEB"),
           }}
+          role="timer"
+          aria-live="polite"
+          aria-label={`${secondsLeft} seconds remaining to complete your booking`}
         >
           <span className="text-2xl font-black" style={{ color: isUrgent ? "#EF4444" : "#D97706" }}>
             {secondsLeft}
@@ -576,12 +683,23 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
               {" – "}
               {new Date(booking.end_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
             </p>
-            {booking.total_amount_pence > 0 && (
+            {occurrences > 1 && (
               <p className="text-[12px]" style={{ color: t2 }}>
-                <span className="font-semibold" style={{ color: t1 }}>Total: </span>
-                £{(booking.total_amount_pence / 100).toFixed(2)}
+                <span className="font-semibold" style={{ color: t1 }}>Repeats: </span>
+                weekly · {occurrences} sessions secured
               </p>
             )}
+            <p className="text-[12px]" style={{ color: t2 }}>
+              <span className="font-semibold" style={{ color: t1 }}>Total: </span>
+              {total > 0 ? `£${total.toFixed(2)}${occurrences > 1 ? ` (${occurrences} sessions)` : ""}` : "Free"}
+            </p>
+          </div>
+        )}
+
+        {skipped > 0 && (
+          <div className="text-left rounded-xl px-4 py-3 mb-4 text-[12px] bg-amber-50 border border-amber-200 text-amber-800">
+            {skipped} of your weekly dates {skipped === 1 ? "is" : "are"} already booked and will be skipped.
+            You'll only be charged for the {occurrences} secured session{occurrences !== 1 ? "s" : ""}.
           </div>
         )}
 
@@ -591,19 +709,25 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
         </p>
 
         {/* Progress bar */}
-        <div className="h-2 rounded-full overflow-hidden mb-7" style={{ background: isDark ? "#21262D" : "#F3F4F6" }}>
+        <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: isDark ? "#21262D" : "#F3F4F6" }}>
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{ width: `${progress}%`, background: isUrgent ? "#EF4444" : "#F59E0B" }}
           />
         </div>
 
+        {error && (
+          <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-[13px] text-red-700 text-left" role="alert">
+            {error}
+          </div>
+        )}
+
         <div className="flex gap-3 justify-center">
-          <button onClick={onCancel} className="btn-secondary">
+          <button onClick={onCancel} disabled={proceeding} className="btn-secondary">
             {t("hold_release")}
           </button>
-          <button onClick={onConfirm} className="btn-primary">
-            {t("hold_proceed")}
+          <button onClick={handleProceed} disabled={proceeding} className="btn-primary">
+            {proceeding ? "One moment…" : t("hold_proceed")}
           </button>
         </div>
       </div>

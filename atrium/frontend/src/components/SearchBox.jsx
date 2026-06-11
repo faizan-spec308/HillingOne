@@ -115,9 +115,13 @@ export default function SearchBox({ onSearch, loading }) {
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
-                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+                }}
                 placeholder={t("search_ph")}
                 rows={3}
+                autoFocus
+                aria-label={t("search_ph")}
                 className="w-full text-[15px] resize-none focus:outline-none leading-relaxed font-normal"
                 style={{
                   background: "transparent",

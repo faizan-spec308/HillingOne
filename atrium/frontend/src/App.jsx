@@ -32,6 +32,7 @@ function AppShell() {
           <Route path="/"         element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
           <Route path="/search"   element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
           <Route path="/results"  element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
+          <Route path="/book"     element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
           <Route path="/hold"     element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
           <Route path="/pay"      element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />
           <Route path="/confirmed"element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />

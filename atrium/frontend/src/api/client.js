@@ -16,6 +16,14 @@ const ERROR_MESSAGES = {
   cannot_reschedule:           "This booking cannot be rescheduled in its current state.",
   reschedule_too_late:         "Bookings cannot be changed within 24 hours of the start time.",
   reset_token_invalid:         "This reset link is invalid or has expired. Please request a new one.",
+  payment_required:            "This booking needs to be paid for before it can be confirmed.",
+  cannot_cancel_state:         "This booking has already been cancelled or completed.",
+  cannot_cancel_past:          "This booking has already taken place and can no longer be cancelled.",
+  cannot_reschedule_to_past:   "You cannot move a booking into the past.",
+  invalid_duration:            "Bookings must be between 30 minutes and 12 hours.",
+  no_alternative_proposed:     "No alternative venue was proposed for this booking.",
+  slot_unavailable_payment_refunded:
+    "That time was just taken by someone else. Your payment has been refunded automatically.",
 };
 
 function getToken() {
@@ -24,25 +32,41 @@ function getToken() {
 
 async function request(path, options = {}) {
   const token = getToken();
-  const res = await fetch(`${BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+  } catch {
+    const error = new Error("We can't reach the server right now. Check your connection and try again.");
+    error.status = 0;
+    throw error;
+  }
   if (!res.ok) {
-    if (res.status === 429) throw new Error("429: Too many attempts. Please wait a moment and try again.");
     let detail = "";
-    try {
-      const b = await res.json();
-      const raw = b.detail || JSON.stringify(b);
-      detail = ERROR_MESSAGES[raw] || raw;
-    } catch {
-      detail = res.statusText;
+    if (res.status === 429) {
+      detail = "Too many attempts. Please wait a moment and try again.";
+    } else {
+      try {
+        const b = await res.json();
+        const raw = b.detail || JSON.stringify(b);
+        if (typeof raw === "string" && raw.startsWith("exceeds_capacity_")) {
+          detail = `This venue holds a maximum of ${raw.replace("exceeds_capacity_", "")} people.`;
+        } else {
+          detail = ERROR_MESSAGES[raw] || raw;
+        }
+      } catch {
+        detail = res.statusText || "Something went wrong. Please try again.";
+      }
     }
-    throw new Error(`${res.status}: ${detail}`);
+    const error = new Error(detail);
+    error.status = res.status;
+    throw error;
   }
   if (res.headers.get("content-type")?.includes("application/json")) return res.json();
   return res;

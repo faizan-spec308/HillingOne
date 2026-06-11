@@ -6,13 +6,14 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.schemas.search import HoldRequest, ConfirmRequest, SwapResponseRequest, RescheduleRequest
 from app.services.booking_service import BookingService, _now
+from app.services.pricing import booking_total_pence, occurrence_amount_pence
 from app.services.reminder_service import ReminderService, generate_ics
 from app.services.email_service import (
     send_email,
@@ -40,6 +41,19 @@ async def list_user_bookings(
     page_size = min(page_size, 50)
     offset = (page - 1) * page_size
 
+    # Lazily sweep finished bookings into "completed" so they never linger
+    # in the Upcoming list (the background loop also does this periodically).
+    await db.execute(
+        update(Booking)
+        .where(
+            Booking.user_id == current_user.id,
+            Booking.state == "confirmed",
+            Booking.end_time < _now(),
+        )
+        .values(state="completed")
+    )
+    await db.commit()
+
     # Always return all upcoming bookings regardless of pagination
     upcoming_result = await db.execute(
         select(Booking, Asset)
@@ -54,6 +68,16 @@ async def list_user_bookings(
         {**b.to_dict(), "asset": a.to_dict() if a else None}
         for b, a in upcoming_result.all()
     ]
+
+    # Attach the proposed alternative venue to swap_pending bookings so the
+    # resident can make an informed accept/decline decision.
+    alt_ids = {b["alternative_offered_id"] for b in upcoming if b["state"] == "swap_pending" and b["alternative_offered_id"]}
+    if alt_ids:
+        alt_result = await db.execute(select(Asset).where(Asset.id.in_(alt_ids)))
+        alt_map = {str(a.id): a.to_dict() for a in alt_result.scalars().all()}
+        for b in upcoming:
+            if b["state"] == "swap_pending" and b["alternative_offered_id"]:
+                b["alternative"] = alt_map.get(b["alternative_offered_id"])
 
     # Paginate past bookings
     past_result = await db.execute(
@@ -108,6 +132,51 @@ async def confirm(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    booking_pre = await db.get(Booking, booking_id)
+    if not booking_pre:
+        raise HTTPException(status_code=404, detail="booking_not_found")
+    if str(booking_pre.user_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="not_booking_owner")
+
+    # Paid bookings must have a succeeded payment before they can be confirmed —
+    # the client cannot skip the payment step by calling this endpoint directly.
+    # If the webhook hasn't landed yet, verify the intent with Stripe directly.
+    if booking_pre.state == "held" and settings.stripe_secret_key:
+        pre_asset = await db.get(Asset, booking_pre.asset_id)
+        if booking_total_pence(pre_asset, booking_pre) > 0:
+            pay_result = await db.execute(
+                select(Payment).where(
+                    Payment.booking_id == uuid.UUID(booking_id),
+                    Payment.status == "succeeded",
+                )
+            )
+            paid = pay_result.scalar_one_or_none() is not None
+            if not paid:
+                import stripe as _stripe
+                _stripe.api_key = settings.stripe_secret_key
+                pending_result = await db.execute(
+                    select(Payment).where(
+                        Payment.booking_id == uuid.UUID(booking_id),
+                        Payment.status == "pending",
+                    )
+                )
+                for pending in pending_result.scalars().all():
+                    try:
+                        intent = await asyncio.to_thread(
+                            _stripe.PaymentIntent.retrieve, pending.stripe_payment_intent_id
+                        )
+                    except Exception as exc:
+                        logger.error("intent_verify_failed booking_id=%s err=%s", booking_id, str(exc))
+                        continue
+                    if intent.status == "succeeded":
+                        pending.status = "succeeded"
+                        pending.stripe_charge_id = intent.get("latest_charge") or ""
+                        await db.commit()
+                        paid = True
+                        break
+            if not paid:
+                raise HTTPException(status_code=402, detail="payment_required")
+
     svc = BookingService(db)
     try:
         booking = await svc.confirm_booking(booking_id, str(current_user.id))
@@ -115,6 +184,8 @@ async def confirm(
         raise HTTPException(status_code=409, detail=str(e))
 
     response = booking.to_dict()
+    if booking.is_recurring and booking.recurrence_pattern:
+        response["recurring_confirmed"] = len(booking.recurrence_pattern.get("occurrences", []))
     if req.enable_reminders:
         rsvc = ReminderService(db)
         reminders = await rsvc.schedule_for_booking(booking)
@@ -157,31 +228,46 @@ async def cancel_user(
     if settings.stripe_secret_key:
         try:
             import stripe as _stripe
-            from sqlalchemy import select as _select
 
             _stripe.api_key = settings.stripe_secret_key
+            # Recurring occurrences share one payment held against the parent
+            # booking — refund this occurrence's share, not the whole payment.
+            payment_booking_id = uuid.UUID(
+                str(booking_pre.parent_booking_id) if booking_pre.parent_booking_id else booking_id
+            )
             result = await db.execute(
-                _select(Payment).where(
-                    Payment.booking_id == uuid.UUID(booking_id),
+                select(Payment).where(
+                    Payment.booking_id == payment_booking_id,
                     Payment.status == "succeeded",
                 )
             )
             payment = result.scalar_one_or_none()
             if payment:
-                refund_pence = payment.amount_pence // 2 if late_cancel else payment.amount_pence
-                refund = await asyncio.to_thread(
-                    _stripe.Refund.create,
-                    payment_intent=payment.stripe_payment_intent_id,
-                    amount=refund_pence,
+                is_recurring_share = bool(booking_pre.parent_booking_id) or (
+                    booking_pre.is_recurring and booking_pre.recurrence_pattern
                 )
-                payment.status = "refunded"
-                payment.refund_id = refund.id
-                await db.commit()
-                refund_info = {
-                    "refunded": True,
-                    "amount": f"£{refund_pence / 100:.2f}",
-                    "partial": late_cancel,
-                }
+                if is_recurring_share:
+                    cancel_asset_pre = await db.get(Asset, booking.asset_id)
+                    base = occurrence_amount_pence(cancel_asset_pre, booking.start_time, booking.end_time)
+                else:
+                    base = payment.amount_pence
+                refund_pence = min(base // 2 if late_cancel else base, payment.amount_pence)
+                if refund_pence > 0:
+                    refund = await asyncio.to_thread(
+                        _stripe.Refund.create,
+                        payment_intent=payment.stripe_payment_intent_id,
+                        amount=refund_pence,
+                    )
+                    payment.amount_pence -= refund_pence
+                    payment.refund_id = refund.id
+                    if payment.amount_pence <= 0 or not is_recurring_share:
+                        payment.status = "refunded"
+                    await db.commit()
+                    refund_info = {
+                        "refunded": True,
+                        "amount": f"£{refund_pence / 100:.2f}",
+                        "partial": late_cancel,
+                    }
         except Exception as exc:
             logger.error("refund_error booking_id=%s err=%s", booking_id, str(exc))
             refund_info = {"refunded": False, "message": "Cancellation processed; refund requires manual review."}
@@ -202,14 +288,6 @@ async def cancel_user(
     ))
 
     return result
-
-
-def _pence(asset: Asset | None, start: datetime, end: datetime) -> int:
-    """Calculate booking cost in pence for a given asset and time range."""
-    if asset and asset.hourly_rate and float(asset.hourly_rate) > 0:
-        hours = (end - start).total_seconds() / 3600
-        return max(100, int(float(asset.hourly_rate) * hours * 100))
-    return 0  # free asset
 
 
 @router.patch("/{booking_id}/reschedule")
@@ -236,8 +314,8 @@ async def reschedule_booking(
     new_end   = req.end_time.replace(tzinfo=None)   if req.end_time.tzinfo   else req.end_time
 
     asset      = await db.get(Asset, booking.asset_id)
-    orig_pence = _pence(asset, booking.start_time, booking.end_time)
-    new_pence  = _pence(asset, new_start, new_end)
+    orig_pence = occurrence_amount_pence(asset, booking.start_time, booking.end_time)
+    new_pence  = occurrence_amount_pence(asset, new_start, new_end)
     diff_pence = new_pence - orig_pence
 
     # ── Upcharge: need to collect more money before rescheduling ────────────
@@ -347,8 +425,17 @@ async def reschedule_confirm(
     try:
         booking = await svc.reschedule(booking_id, str(current_user.id), new_start, new_end)
     except ValueError as e:
+        # The user has already paid the upcharge — refund it automatically
+        # rather than keeping money for a reschedule that didn't happen.
+        try:
+            await asyncio.to_thread(_stripe.Refund.create, payment_intent=req.payment_intent_id)
+            logger.info("reschedule_failed_auto_refund booking_id=%s pi=%s", booking_id, req.payment_intent_id)
+            detail = "slot_unavailable_payment_refunded" if str(e) == "slot_unavailable" else str(e)
+        except Exception as refund_exc:
+            logger.error("reschedule_refund_failed booking_id=%s err=%s", booking_id, str(refund_exc))
+            detail = str(e)
         code = 409 if str(e) == "slot_unavailable" else 400
-        raise HTTPException(status_code=code, detail=str(e))
+        raise HTTPException(status_code=code, detail=detail)
 
     # Record the additional payment
     asset = await db.get(Asset, booking.asset_id)

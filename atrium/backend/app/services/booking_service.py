@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, update
 
 
 def _now() -> datetime:
@@ -122,6 +122,28 @@ class BookingService:
             if conflicts:
                 raise ValueError("slot_unavailable")
 
+        # For recurring bookings, check every weekly occurrence up front so the
+        # user knows exactly which dates they are getting before they pay.
+        held_until = _now() + timedelta(seconds=settings.hold_duration_seconds)
+        recurrence_pattern = None
+        sibling_windows: list[tuple[datetime, datetime]] = []
+        if is_recurring and recurrence_weeks and recurrence_weeks > 1:
+            available, skipped = [start.isoformat()], []
+            for week in range(1, recurrence_weeks):
+                occ_start = start + timedelta(weeks=week)
+                occ_end = end + timedelta(weeks=week)
+                occ_conflicts = await self.find_conflicts(asset_id, occ_start, occ_end)
+                if occ_conflicts:
+                    skipped.append(occ_start.isoformat())
+                else:
+                    available.append(occ_start.isoformat())
+                    sibling_windows.append((occ_start, occ_end))
+            recurrence_pattern = {
+                "weeks": recurrence_weeks,
+                "occurrences": available,
+                "skipped": skipped,
+            }
+
         booking = Booking(
             id=uuid.uuid4(),
             asset_id=asset_id,
@@ -132,19 +154,40 @@ class BookingService:
             purpose=purpose,
             attendee_count=attendee_count,
             is_recurring=is_recurring,
-            recurrence_pattern={"weeks": recurrence_weeks} if recurrence_weeks else None,
-            held_until=_now() + timedelta(seconds=settings.hold_duration_seconds),
+            recurrence_pattern=recurrence_pattern,
+            held_until=held_until,
             reference=_generate_reference(),
         )
         self.db.add(booking)
         await self.db.flush()
+
+        # Hold the sibling occurrences too so nobody can take them while the
+        # user completes payment. They confirm/expire together with the parent.
+        for occ_start, occ_end in sibling_windows:
+            self.db.add(Booking(
+                id=uuid.uuid4(),
+                asset_id=asset_id,
+                user_id=user_id,
+                state="held",
+                start_time=occ_start,
+                end_time=occ_end,
+                purpose=purpose,
+                attendee_count=attendee_count,
+                is_recurring=True,
+                parent_booking_id=booking.id,
+                held_until=held_until,
+                reference=_generate_reference(),
+            ))
 
         log = AuditLog(
             id=uuid.uuid4(),
             booking_id=booking.id,
             user_id=user_id,
             action="booking_held",
-            details={"reference": booking.reference},
+            details={
+                "reference": booking.reference,
+                "recurring_occurrences": len(sibling_windows) + 1 if sibling_windows else None,
+            },
         )
         self.db.add(log)
         await self.db.commit()
@@ -155,18 +198,24 @@ class BookingService:
         booking = await self.db.get(Booking, booking_id)
         if not booking:
             raise ValueError("booking_not_found")
-        if booking.state != "held":
-            raise ValueError(f"cannot_confirm_state_{booking.state}")
         if str(booking.user_id) != str(user_id):
             raise ValueError("not_booking_owner")
+        # Idempotent: if the Stripe webhook already confirmed this booking,
+        # the client's follow-up confirm call should succeed, not 409.
+        if booking.state == "confirmed":
+            return booking
+        if booking.state != "held":
+            raise ValueError(f"cannot_confirm_state_{booking.state}")
         if booking.held_until and booking.held_until < _now():
             booking.state = "cancelled"
             booking.cancellation_reason = CancellationReason.HOLD_EXPIRED.value
             booking.cancelled_at = _now()
+            await self.confirm_sibling_holds(booking, cancel=True)
             await self.db.commit()
             raise ValueError("hold_expired")
         booking.state = "confirmed"
         booking.confirmed_at = _now()
+        await self.confirm_sibling_holds(booking)
 
         log = AuditLog(
             id=uuid.uuid4(),
@@ -179,13 +228,36 @@ class BookingService:
         await self.db.refresh(booking)
         return booking
 
+    async def confirm_sibling_holds(self, booking: Booking, cancel: bool = False) -> int:
+        """Confirm (or release) the held weekly occurrences tied to a parent booking."""
+        result = await self.db.execute(
+            select(Booking).where(
+                Booking.parent_booking_id == booking.id,
+                Booking.state == "held",
+            )
+        )
+        siblings = list(result.scalars().all())
+        for sib in siblings:
+            if cancel:
+                sib.state = "cancelled"
+                sib.cancellation_reason = CancellationReason.HOLD_EXPIRED.value
+                sib.cancelled_at = _now()
+            else:
+                sib.state = "confirmed"
+                sib.confirmed_at = _now()
+        return len(siblings)
+
     async def user_cancel(self, booking_id: str, user_id: str) -> Booking:
-        """Tier 1: user cancels own booking. Always allowed."""
+        """Tier 1: user cancels own upcoming booking. Always allowed."""
         booking = await self.db.get(Booking, booking_id)
         if not booking:
             raise ValueError("booking_not_found")
         if str(booking.user_id) != str(user_id):
             raise ValueError("not_booking_owner")
+        if booking.state in ("cancelled", "completed"):
+            raise ValueError("cannot_cancel_state")
+        if booking.end_time < _now():
+            raise ValueError("cannot_cancel_past")
         booking.state = "cancelled"
         booking.cancelled_at = _now()
         booking.cancelled_by = user_id
@@ -403,3 +475,14 @@ class BookingService:
             b.cancelled_at = _now()
         await self.db.commit()
         return len(expired)
+
+    async def complete_past_bookings(self) -> int:
+        """Background task: move finished confirmed bookings to completed,
+        so they leave the user's Upcoming list and stop blocking nothing."""
+        result = await self.db.execute(
+            update(Booking)
+            .where(Booking.state == "confirmed", Booking.end_time < _now())
+            .values(state="completed")
+        )
+        await self.db.commit()
+        return result.rowcount or 0

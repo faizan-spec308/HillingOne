@@ -1,4 +1,5 @@
 """HillingOne FastAPI application entry point."""
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -18,6 +19,26 @@ logging.basicConfig(
 logger = logging.getLogger("hillingone")
 
 
+async def _booking_maintenance_loop() -> None:
+    """Expire stale holds and complete finished bookings every minute."""
+    from app.database import AsyncSessionLocal
+    from app.services.booking_service import BookingService
+
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                svc = BookingService(db)
+                expired = await svc.expire_holds()
+                completed = await svc.complete_past_bookings()
+                if expired or completed:
+                    logger.info("maintenance holds_expired=%d bookings_completed=%d", expired, completed)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("booking_maintenance_failed")
+        await asyncio.sleep(60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.jwt_secret == "atrium-dev-secret-change-in-production":
@@ -26,8 +47,10 @@ async def lifespan(app: FastAPI):
     from sqlalchemy import text
     async with engine.begin() as conn:
         await conn.execute(text("SELECT 1"))
+    maintenance_task = asyncio.create_task(_booking_maintenance_loop())
     logger.info("startup_ok environment=%s", settings.environment)
     yield
+    maintenance_task.cancel()
 
 
 _docs_url = None if settings.environment == "production" else "/docs"

@@ -53,6 +53,7 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
   const [weekStart, setWeekStart]   = useState(() => getMondayOf(new Date()));
   const [bookings, setBookings]     = useState([]);
   const [loading, setLoading]       = useState(true);
+  const [loadError, setLoadError]   = useState(false);
   const [selected, setSelected]     = useState(null); // { date, hour }
 
   const t1  = isDark ? "#E6EDF3" : "#111827";
@@ -65,16 +66,23 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     setLoading(true);
+    setLoadError(false);
     setSelected(null);
     const from = isoDate(weekStart);
     const to   = isoDate(addDays(weekStart, 7));
     api.getAssetAvailability(asset.id, from, to)
       .then(setBookings)
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, [asset.id, weekStart]);
 
@@ -108,6 +116,9 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ backdropFilter: "blur(4px)", background: "rgba(15,23,42,0.55)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Availability calendar for ${asset.name}`}
     >
       <div className="rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
         style={{ background: card, border: `1px solid ${bdr}` }}>
@@ -124,6 +135,7 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
             <button
               onClick={() => setWeekStart(w => addDays(w, -7))}
               disabled={!canGoPrev}
+              aria-label="Previous week"
               className="p-1.5 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
               style={{ color: t2 }}
             >
@@ -134,6 +146,7 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
             </span>
             <button
               onClick={() => setWeekStart(w => addDays(w, 7))}
+              aria-label="Next week"
               className="p-1.5 rounded-lg transition"
               style={{ color: t2 }}
             >
@@ -141,7 +154,7 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
             </button>
           </div>
 
-          <button onClick={onClose} className="p-1.5 rounded-lg transition" style={{ color: t2 }}>
+          <button onClick={onClose} aria-label="Close calendar" className="p-1.5 rounded-lg transition" style={{ color: t2 }}>
             <X size={16} />
           </button>
         </div>
@@ -150,6 +163,11 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
         <div className="flex-1 overflow-auto">
           {loading ? (
             <div className="flex items-center justify-center h-64 text-[13px]" style={{ color: t2 }}>Loading availability…</div>
+          ) : loadError ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-3">
+              <p className="text-[13px]" style={{ color: t2 }}>Couldn't load availability. Please try again.</p>
+              <button onClick={() => setWeekStart(w => new Date(w))} className="btn-secondary text-[13px]">Retry</button>
+            </div>
           ) : (
             <table className="w-full border-collapse text-[12px]">
               <thead className="sticky top-0 z-10" style={{ background: card, borderBottom: `1px solid ${bdrLight}` }}>
@@ -185,26 +203,35 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
                       const sel    = selected?.date === isoDate(d) && selected?.hour === hour;
                       const free   = !isPast && !booked;
 
-                      let slotStyle = {};
-                      let slotClass = "h-8 rounded-md transition-all duration-100 flex items-center justify-center text-[10px] font-semibold";
+                      let slotStyle = { border: "none", padding: 0 };
+                      let slotClass = "w-full h-8 rounded-md transition-all duration-100 flex items-center justify-center text-[10px] font-semibold";
                       if (isPast) {
-                        slotStyle = { background: past, cursor: "default" };
+                        slotStyle = { ...slotStyle, background: past, cursor: "default" };
                       } else if (booked) {
-                        slotStyle = { background: isDark ? "rgba(13,148,136,0.08)" : "#F0FDFA", border: `1px solid ${isDark ? "#0F766E40" : "#99F6E4"}`, cursor: "not-allowed" };
+                        slotStyle = { ...slotStyle, background: isDark ? "rgba(13,148,136,0.08)" : "#F0FDFA", border: `1px solid ${isDark ? "#0F766E40" : "#99F6E4"}`, cursor: "not-allowed" };
                       } else if (sel) {
-                        slotStyle = { background: "#0D9488", cursor: "pointer" };
+                        slotStyle = { ...slotStyle, background: "#0D9488", cursor: "pointer" };
                         slotClass += " text-white shadow-sm";
                       } else {
-                        slotStyle = { cursor: "pointer" };
+                        slotStyle = { ...slotStyle, background: "transparent", cursor: "pointer" };
                         slotClass += " hover:bg-emerald-50 hover:border hover:border-emerald-200";
                       }
 
+                      const slotLabel = `${fmtDay(d)} ${fmtDate(d)}, ${fmtHour(hour)} – ${fmtHour(hour + 1)}`;
                       return (
                         <td key={di} className="px-0.5 py-0.5">
-                          <div onClick={() => free && handleSlotClick(d, hour)} className={slotClass} style={slotStyle}>
+                          <button
+                            type="button"
+                            onClick={() => free && handleSlotClick(d, hour)}
+                            disabled={!free}
+                            aria-label={free ? `Select free slot ${slotLabel}` : `${slotLabel} unavailable`}
+                            aria-pressed={sel || undefined}
+                            className={slotClass}
+                            style={slotStyle}
+                          >
                             {booked && <span style={{ color: isDark ? "#2DD4BF" : "#5EEAD4" }}>·</span>}
                             {sel    && <CalendarCheck size={12} />}
-                          </div>
+                          </button>
                         </td>
                       );
                     })}

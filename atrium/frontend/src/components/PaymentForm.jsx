@@ -1,13 +1,8 @@
 import { useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Lock, CreditCard, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
-
-// Publishable key is intentionally public — safe to embed in frontend code
-const stripePromise = loadStripe(
-  "pk_test_51Tdu5YQwQUDdwUxjCQ5M2ucTRi7kp9yaCkfmUvkR9rwJNKbcpOEBhZVEYD5lcOcw7Gllzgj4ky0pPS1UKsHZjAPt00KXyYf3YG"
-);
+import { stripePromise, IS_STRIPE_TEST_MODE } from "../lib/stripe";
 
 function CheckoutForm({ amountDisplay, onSuccess, onBack, isDark }) {
   const stripe = useStripe();
@@ -135,14 +130,16 @@ export default function PaymentForm({ clientSecret, amountDisplay, onSuccess, on
           />
         </Elements>
 
-        {/* Test mode helper */}
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-xl">
-          <p className="text-[12px] text-amber-800 font-semibold mb-1">Test mode — use these details:</p>
-          <p className="text-[12px] text-amber-700 font-mono">
-            Card: <strong>4242 4242 4242 4242</strong><br />
-            Expiry: any future date &nbsp;·&nbsp; CVC: any 3 digits
-          </p>
-        </div>
+        {/* Test mode helper — hidden automatically with a live key */}
+        {IS_STRIPE_TEST_MODE && (
+          <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+            <p className="text-[12px] text-amber-800 font-semibold mb-1">Test mode — use these details:</p>
+            <p className="text-[12px] text-amber-700 font-mono">
+              Card: <strong>4242 4242 4242 4242</strong><br />
+              Expiry: any future date &nbsp;·&nbsp; CVC: any 3 digits
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

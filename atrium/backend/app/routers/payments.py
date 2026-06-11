@@ -16,6 +16,7 @@ from app.models.payment import Payment
 from app.models.booking import Booking
 from app.models.asset import Asset
 from app.models.user import User
+from app.services.pricing import booking_total_pence
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 logger = logging.getLogger("hillingone.payments")
@@ -28,23 +29,17 @@ def _get_stripe():
     return stripe
 
 
-def _calculate_amount_pence(asset: Asset, start_time: datetime, end_time: datetime) -> int:
-    """Return amount in pence. Uses hourly_rate if set, otherwise £10 demo fee."""
-    if asset and asset.hourly_rate and float(asset.hourly_rate) > 0:
-        duration_hours = (end_time - start_time).total_seconds() / 3600
-        return max(100, int(float(asset.hourly_rate) * duration_hours * 100))
-    return 1000  # £10.00 demo booking fee
-
-
 @router.post("/create-intent")
 async def create_payment_intent(
     booking_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a Stripe PaymentIntent for a held booking owned by the authenticated user."""
-    s = _get_stripe()
+    """Create a Stripe PaymentIntent for a held booking owned by the authenticated user.
 
+    Free venues never reach Stripe — the response tells the client to confirm directly.
+    Recurring bookings are charged for every secured occurrence up front.
+    """
     booking = await db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found.")
@@ -54,8 +49,11 @@ async def create_payment_intent(
         raise HTTPException(status_code=409, detail="Only held bookings can be paid for.")
 
     asset = await db.get(Asset, booking.asset_id)
-    amount = _calculate_amount_pence(asset, booking.start_time, booking.end_time)
+    amount = booking_total_pence(asset, booking)
+    if amount == 0:
+        return {"free": True, "amount_pence": 0, "amount_display": "Free"}
 
+    s = _get_stripe()
     intent = await asyncio.to_thread(
         s.PaymentIntent.create,
         amount=amount,
@@ -129,6 +127,16 @@ async def _on_payment_succeeded(intent: dict, db: AsyncSession, s) -> None:
     if booking and booking.state == "held":
         booking.state = "confirmed"
         booking.confirmed_at = datetime.utcnow()
+        # Confirm held weekly occurrences tied to this booking as well
+        siblings = await db.execute(
+            select(Booking).where(
+                Booking.parent_booking_id == booking.id,
+                Booking.state == "held",
+            )
+        )
+        for sib in siblings.scalars().all():
+            sib.state = "confirmed"
+            sib.confirmed_at = datetime.utcnow()
         logger.info("payment_succeeded_confirmed booking_id=%s", str(booking.id))
     elif booking and booking.state != "held":
         # Hold expired before payment completed — refund immediately

@@ -37,8 +37,13 @@ function AssetModal({ asset, onClose, onSaved }) {
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setAmenity = (k, v) => setForm(f => ({ ...f, amenities: { ...f.amenities, [k]: v } }));
@@ -65,7 +70,8 @@ function AssetModal({ asset, onClose, onSaved }) {
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ backdropFilter:"blur(4px)", background:"rgba(15,23,42,0.5)" }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      role="dialog" aria-modal="true" aria-label={asset ? "Edit asset" : "Add new asset"}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-[18px] font-black text-gray-900">{asset ? "Edit asset" : "Add new asset"}</h2>
@@ -295,20 +301,6 @@ function DecisionQueue() {
 
   useEffect(() => { load(); }, []);
 
-  const handleAccept = async (bookingId) => {
-    try {
-      await api.acceptSwap(bookingId);
-      setQueue(q => q.filter(r => r.booking.id !== bookingId));
-    } catch (e) { alert(e.message); }
-  };
-
-  const handleDecline = async (bookingId) => {
-    try {
-      await api.declineSwap(bookingId);
-      setQueue(q => q.filter(r => r.booking.id !== bookingId));
-    } catch (e) { alert(e.message); }
-  };
-
   const handleRunAgent = async (row) => {
     const id = row.booking.id;
     setAgentState(s => ({ ...s, [id]: { running: true } }));
@@ -355,18 +347,12 @@ function DecisionQueue() {
                 <p className="text-[12px] text-gray-500">{a?.ward} · {b.start_time ? new Date(b.start_time).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" }) : "—"}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => handleAccept(b.id)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold rounded-lg transition"
-                >
-                  Accept swap
-                </button>
-                <button
-                  onClick={() => handleDecline(b.id)}
-                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-bold rounded-lg transition"
-                >
-                  Decline
-                </button>
+                {/* The swap decision belongs to the resident — staff can only
+                    monitor it or ask the AI agent to find a better outcome. */}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-[12px] font-bold rounded-lg">
+                  <Clock size={12} />
+                  Awaiting resident decision
+                </span>
                 <button
                   onClick={() => handleRunAgent(row)}
                   disabled={state.running}
@@ -580,8 +566,14 @@ export default function StaffView() {
 
   useEffect(() => {
     refresh();
-    const interval = setInterval(refresh, 8000);
-    return () => clearInterval(interval);
+    // Poll only while the tab is visible — refresh immediately on return
+    const interval = setInterval(() => { if (!document.hidden) refresh(); }, 15000);
+    const onVisible = () => { if (!document.hidden) refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   if (loading || !data) {

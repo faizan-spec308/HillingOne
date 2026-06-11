@@ -129,6 +129,24 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
             </div>
           </div>
 
+          {/* Recurring summary */}
+          {booking.is_recurring && booking.recurrence_pattern?.occurrences?.length > 1 && (
+            <div className="p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: t2 }}>
+                Weekly booking · {booking.recurrence_pattern.occurrences.length} sessions confirmed
+              </div>
+              <div className="text-[13px] leading-relaxed" style={{ color: t1 }}>
+                Same time every week
+                {booking.recurrence_pattern.skipped?.length > 0 && (
+                  <span style={{ color: t2 }}>
+                    {" "}· {booking.recurrence_pattern.skipped.length} unavailable {booking.recurrence_pattern.skipped.length === 1 ? "week was" : "weeks were"} skipped
+                  </span>
+                )}
+                . Each session appears separately in My Bookings and can be cancelled individually.
+              </div>
+            </div>
+          )}
+
           {/* Purpose */}
           {booking.purpose && (
             <div className="p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
