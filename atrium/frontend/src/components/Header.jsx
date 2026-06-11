@@ -92,13 +92,13 @@ export default function Header({ userName, role, isStaff }) {
             </svg>
           </div>
           <div className="text-left">
-            <div className="hidden sm:block text-[10px] font-semibold text-gray-400 leading-none tracking-widest uppercase">Hillingdon Council</div>
-            <div className="text-[16px] font-display font-bold text-gray-900 leading-tight">HillingOne</div>
+            <div className="hidden sm:block text-[10px] font-semibold leading-none tracking-widest uppercase" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>Hillingdon Council</div>
+            <div className="text-[16px] font-display font-bold leading-tight" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>HillingOne</div>
           </div>
         </button>
 
         {/* Nav tabs — hidden on mobile */}
-        <nav className="hidden sm:flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
+        <nav className="hidden sm:flex items-center rounded-xl p-1 gap-0.5" style={{ background: isDark ? "#21262D" : "#F3F4F6" }}>
           {tabs.map(({ path, label, icon }) => (
             <button
               key={path}
@@ -119,7 +119,8 @@ export default function Header({ userName, role, isStaff }) {
             <button
               onClick={() => setLangOpen((v) => !v)}
               title="Change language"
-              className="flex items-center gap-1.5 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition"
+              className="flex items-center gap-1.5 p-2 rounded-xl transition"
+              style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}
             >
               <Globe size={18} />
               <span className="text-[11px] font-bold uppercase hidden sm:block tracking-wide">
@@ -140,15 +141,15 @@ export default function Header({ userName, role, isStaff }) {
                   <button
                     key={code}
                     onClick={() => { setLang(code); setLangOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-[13px] transition text-left ${
-                      lang === code
-                        ? "bg-teal-50 text-teal-700 font-semibold"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] transition text-left"
+                    style={lang === code
+                      ? { background: isDark ? "rgba(13,148,136,0.12)" : "#F0FDFA", color: "#0D9488", fontWeight: 600 }
+                      : { color: isDark ? "#8B949E" : "#374151" }
+                    }
                   >
                     <span className="flex-1">{name}</span>
                     {lang === code && (
-                      <span className="text-teal-500 text-[11px] font-black">✓</span>
+                      <span className="text-[11px] font-black" style={{ color: "#0D9488" }}>✓</span>
                     )}
                   </button>
                 ))}
@@ -161,7 +162,8 @@ export default function Header({ userName, role, isStaff }) {
             <button
               aria-label="Notifications"
               onClick={() => setBellOpen((v) => !v)}
-              className="relative p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition"
+              className="relative p-2 rounded-xl transition"
+              style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}
             >
               <Bell size={18} />
               {reminders.length > 0 && (
@@ -181,20 +183,20 @@ export default function Header({ userName, role, isStaff }) {
                 }}
               >
                 <div className="px-4 py-3" style={{ borderBottom: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}` }}>
-                  <p className="text-[13px] font-bold text-gray-900">Notifications</p>
+                  <p className="text-[13px] font-bold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>Notifications</p>
                 </div>
 
                 {reminders.length === 0 ? (
                   <div className="px-4 py-8 text-center">
-                    <Bell size={24} className="mx-auto mb-2 text-gray-300" />
-                    <p className="text-[13px] text-gray-400">No new notifications</p>
+                    <Bell size={24} className="mx-auto mb-2" style={{ color: isDark ? "#30363D" : "#D1D5DB" }} />
+                    <p className="text-[13px]" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>No new notifications</p>
                   </div>
                 ) : (
                   <div className="max-h-80 overflow-y-auto">
                     {reminders.map((r) => (
                       <div
                         key={r.id}
-                        className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition"
+                        className="px-4 py-3 flex items-start gap-3 transition"
                         style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F9FAFB"}` }}
                       >
                         <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -202,14 +204,15 @@ export default function Header({ userName, role, isStaff }) {
                           <Clock size={13} className="text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] text-gray-700 leading-relaxed">{r.message}</p>
+                          <p className="text-[12px] leading-relaxed" style={{ color: isDark ? "#C9D1D9" : "#374151" }}>{r.message}</p>
                           {r.encouragement && (
-                            <p className="text-[11px] text-gray-400 mt-1 italic leading-relaxed">{r.encouragement}</p>
+                            <p className="text-[11px] mt-1 italic leading-relaxed" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{r.encouragement}</p>
                           )}
                         </div>
                         <button
                           onClick={() => dismissReminder(r.id)}
-                          className="text-gray-300 hover:text-gray-500 flex-shrink-0 mt-0.5"
+                          className="flex-shrink-0 mt-0.5"
+                          style={{ color: isDark ? "#484F58" : "#D1D5DB" }}
                           aria-label="Dismiss"
                         >
                           <X size={14} />
@@ -237,7 +240,8 @@ export default function Header({ userName, role, isStaff }) {
           <div className="relative" ref={dropRef}>
             <button
               onClick={() => setDropdownOpen((v) => !v)}
-              className="flex items-center gap-2.5 pl-3 border-l border-gray-200 ml-1 hover:bg-gray-50 rounded-xl pr-2 py-1.5 transition"
+              className="flex items-center gap-2.5 pl-3 ml-1 rounded-xl pr-2 py-1.5 transition"
+              style={{ borderLeft: `1px solid ${isDark ? "#21262D" : "#E5E7EB"}` }}
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0"
@@ -250,12 +254,13 @@ export default function Header({ userName, role, isStaff }) {
                 {initials}
               </div>
               <div className="hidden sm:block leading-tight text-left">
-                <div className="text-[13px] font-semibold text-gray-900">{userName}</div>
-                <div className="text-[11px] text-gray-400 capitalize">{role}</div>
+                <div className="text-[13px] font-semibold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{userName}</div>
+                <div className="text-[11px] capitalize" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{role}</div>
               </div>
               <ChevronDown
                 size={13}
-                className={`text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+                className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+                style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}
               />
             </button>
 
@@ -268,44 +273,30 @@ export default function Header({ userName, role, isStaff }) {
                   boxShadow: isDark ? "0 0 0 1px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)",
                 }}
               >
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-[13px] font-bold text-gray-900">{userName}</p>
-                  <p className="text-[11px] text-gray-400 capitalize">{role}</p>
+                <div className="px-4 py-3" style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
+                  <p className="text-[13px] font-bold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{userName}</p>
+                  <p className="text-[11px] capitalize" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{role}</p>
                 </div>
-                <button
-                  onClick={() => { setDropdownOpen(false); navigate("/"); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left sm:hidden"
-                >
-                  <Home size={14} className="text-gray-400" />
-                  {t("nav_resident")}
-                </button>
-                {isStaff && (
+                {[
+                  { label: t("nav_resident"), icon: Home,    path: "/",         mobileOnly: true },
+                  { label: t("nav_staff"),    icon: Shield,  path: "/staff",    mobileOnly: true, staffOnly: true },
+                  { label: t("nav_my_bookings"), icon: BookOpen, path: "/bookings" },
+                  { label: "Settings",        icon: Settings, path: "/settings" },
+                ].filter(item => (!item.staffOnly || isStaff)).map(({ label, icon: Icon, path, mobileOnly }) => (
                   <button
-                    onClick={() => { setDropdownOpen(false); navigate("/staff"); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left sm:hidden"
+                    key={path}
+                    onClick={() => { setDropdownOpen(false); navigate(path); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-[13px] transition text-left${mobileOnly ? " sm:hidden" : ""}`}
+                    style={{ color: isDark ? "#C9D1D9" : "#374151" }}
                   >
-                    <Shield size={14} className="text-gray-400" />
-                    {t("nav_staff")}
+                    <Icon size={14} style={{ color: isDark ? "#8B949E" : "#9CA3AF" }} />
+                    {label}
                   </button>
-                )}
-                <button
-                  onClick={() => { setDropdownOpen(false); navigate("/bookings"); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left"
-                >
-                  <BookOpen size={14} className="text-gray-400" />
-                  {t("nav_my_bookings")}
-                </button>
-                <button
-                  onClick={() => { setDropdownOpen(false); navigate("/settings"); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-gray-700 hover:bg-gray-50 transition text-left"
-                >
-                  <Settings size={14} className="text-gray-400" />
-                  Settings
-                </button>
-                <div className="border-t border-gray-100" />
+                ))}
+                <div style={{ borderTop: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }} />
                 <button
                   onClick={() => { setDropdownOpen(false); logout(); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-red-500 hover:bg-red-50 transition text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-red-500 hover:bg-red-50/10 transition text-left"
                 >
                   <LogOut size={14} />
                   {t("nav_sign_out")}

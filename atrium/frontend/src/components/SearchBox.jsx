@@ -55,8 +55,8 @@ export default function SearchBox({ onSearch, loading }) {
     <div>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <div
-        className="relative overflow-hidden border-b border-gray-100"
-        style={{ background: isDark
+        className="relative overflow-hidden"
+        style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}`, background: isDark
           ? "linear-gradient(180deg, #0A0F16 0%, #0E1117 100%)"
           : "linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)" }}
       >
@@ -78,14 +78,14 @@ export default function SearchBox({ onSearch, loading }) {
 
           {/* Heading */}
           <div className="text-center mb-10">
-            <h1 className="font-display text-[44px] md:text-[56px] font-black text-gray-900 leading-[1.05] tracking-tight mb-5">
+            <h1 className="font-display text-[44px] md:text-[56px] font-black leading-[1.05] tracking-tight mb-5" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>
               {t("search_heading")}
               <br />
               <span style={{ color: "#0D9488" }}>
                 {t("search_heading_accent")}
               </span>
             </h1>
-            <p className="text-gray-500 text-[17px] max-w-xl mx-auto leading-relaxed">
+            <p className="text-[17px] max-w-xl mx-auto leading-relaxed" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
               {t("search_sub")}
             </p>
           </div>
@@ -118,22 +118,30 @@ export default function SearchBox({ onSearch, loading }) {
                 onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(); }}
                 placeholder={t("search_ph")}
                 rows={3}
-                className="w-full text-[15px] text-gray-900 placeholder:text-gray-400 resize-none focus:outline-none leading-relaxed font-normal"
+                className="w-full text-[15px] resize-none focus:outline-none leading-relaxed font-normal"
+                style={{
+                  background: "transparent",
+                  color: isDark ? "#E6EDF3" : "#111827",
+                  caretColor: "#0D9488",
+                }}
               />
             </div>
 
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/60 gap-3">
+            <div
+              className="flex items-center justify-between px-4 py-3 gap-3"
+              style={{ borderTop: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}`, background: isDark ? "rgba(255,255,255,0.02)" : "rgba(249,250,251,0.6)" }}
+            >
               <div className="flex items-center gap-2">
 
                 {/* Voice */}
                 <button
                   onClick={startVoice}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-all ${
-                    listening
-                      ? "bg-red-50 border-red-200 text-red-600 pulse-subtle"
-                      : "bg-white border-gray-200 text-gray-600 hover:border-hillingdon-navy hover:text-hillingdon-navy hover:bg-hillingdon-navy-tint"
-                  }`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-all"
+                  style={listening
+                    ? { background: "#FEF2F2", borderColor: "#FECACA", color: "#DC2626" }
+                    : { background: isDark ? "#21262D" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#8B949E" : "#4B5563" }
+                  }
                 >
                   <Mic size={13} />
                   {listening ? t("search_listening") : t("search_voice")}
@@ -165,7 +173,7 @@ export default function SearchBox({ onSearch, loading }) {
 
           {/* Example queries */}
           <div className="flex flex-wrap gap-2 justify-center mt-5">
-            <span className="text-[12px] text-gray-400 font-medium self-center mr-1">{t("search_try")}</span>
+            <span className="text-[12px] font-medium self-center mr-1" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>{t("search_try")}</span>
             {EXAMPLES.map((q) => (
               <button
                 key={q}
@@ -185,13 +193,13 @@ export default function SearchBox({ onSearch, loading }) {
       </div>
 
       {/* ── Stats strip ──────────────────────────────────────────────────── */}
-      <div className="border-b border-gray-100" style={{ background: isDark ? "#161B22" : "#ffffff" }}>
+      <div style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}`, background: isDark ? "#161B22" : "#ffffff" }}>
         <div className="max-w-3xl mx-auto px-6 py-4">
-          <div className="grid grid-cols-4 divide-x divide-gray-100">
+          <div className="grid grid-cols-4" style={{ borderLeft: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
             {STATS.map(({ icon: Icon, value, labelKey }) => (
-              <div key={labelKey} className="text-center px-4">
-                <div className="text-[19px] font-display font-black text-hillingdon-navy leading-tight">{value}</div>
-                <div className="text-[11px] text-gray-400 font-medium mt-0.5">{t(labelKey)}</div>
+              <div key={labelKey} className="text-center px-4" style={{ borderRight: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
+                <div className="text-[19px] font-display font-black leading-tight" style={{ color: isDark ? "#2DD4BF" : "#0D9488" }}>{value}</div>
+                <div className="text-[11px] font-medium mt-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{t(labelKey)}</div>
               </div>
             ))}
           </div>

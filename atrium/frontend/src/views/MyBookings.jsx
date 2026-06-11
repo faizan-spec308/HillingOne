@@ -532,6 +532,44 @@ export default function MyBookings({ user, onBack }) {
           </p>
         </div>
 
+        {/* Stats strip */}
+        {!loading && (upcoming.length + past.length) > 0 && (() => {
+          const all = [...upcoming, ...past];
+          const confirmed = all.filter(b => b.state !== "cancelled");
+          const totalHours = confirmed.reduce((sum, b) => {
+            const h = (new Date(b.end_time) - new Date(b.start_time)) / 3600000;
+            return sum + (h > 0 ? h : 0);
+          }, 0);
+          const carbonKg = Math.round(confirmed.length * 2.4);
+          const totalSpend = confirmed.reduce((sum, b) => sum + (b.total_amount_pence || 0), 0) / 100;
+
+          const stats = [
+            { label: "Total bookings", value: confirmed.length, unit: "" },
+            { label: "Hours booked",   value: Math.round(totalHours * 10) / 10, unit: "h" },
+            { label: "CO₂ saved",      value: carbonKg, unit: "kg" },
+            ...(totalSpend > 0 ? [{ label: "Total spent", value: `£${totalSpend.toFixed(2)}`, unit: "" }] : []),
+          ];
+
+          return (
+            <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: surf, border: `1px solid ${bdr}` }}>
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}>
+                {stats.map(({ label, value, unit }, i) => (
+                  <div
+                    key={label}
+                    className="px-4 py-4 text-center"
+                    style={{ borderRight: i < stats.length - 1 ? `1px solid ${bdr}` : "none" }}
+                  >
+                    <div className="text-[20px] font-black leading-tight" style={{ color: "#0D9488" }}>
+                      {value}{unit}
+                    </div>
+                    <div className="text-[11px] font-medium mt-0.5" style={{ color: t2 }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Filter tabs */}
         {!loading && (
           <div className="flex items-center gap-1 mb-6" style={{ borderBottom: `1px solid ${bdr}` }}>

@@ -481,6 +481,78 @@ function AgentRunsPanel() {
   );
 }
 
+/* ── Booking trend bar chart ──────────────────────────────────────── */
+function BookingTrendChart({ assets, isDark }) {
+  if (!assets || assets.length === 0) return null;
+
+  const top = [...assets].sort((a, b) => b.weekly_bookings - a.weekly_bookings).slice(0, 6);
+  const maxVal = Math.max(...top.map(a => a.weekly_bookings), 1);
+
+  const BAR_H = 140;
+  const BAR_W = 36;
+  const GAP   = 14;
+  const LEFT  = 28;
+  const svgW  = LEFT + top.length * (BAR_W + GAP);
+  const svgH  = BAR_H + 36;
+
+  const gridLines = [0, 0.25, 0.5, 0.75, 1];
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${svgW} ${svgH}`} style={{ overflow: "visible" }}>
+      {/* Grid lines */}
+      {gridLines.map((f) => {
+        const y = Math.round(BAR_H * (1 - f));
+        return (
+          <g key={f}>
+            <line x1={LEFT} y1={y} x2={svgW} y2={y}
+              stroke={isDark ? "#21262D" : "#F3F4F6"} strokeWidth="1" />
+            <text x={LEFT - 4} y={y + 4} textAnchor="end"
+              fontSize="9" fill={isDark ? "#484F58" : "#9CA3AF"}>
+              {Math.round(f * maxVal)}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Bars */}
+      {top.map((asset, i) => {
+        const x = LEFT + i * (BAR_W + GAP);
+        const barH = Math.max(4, Math.round((asset.weekly_bookings / maxVal) * BAR_H));
+        const y = BAR_H - barH;
+        const isTop = i === 0;
+
+        return (
+          <g key={asset.id}>
+            <rect
+              x={x} y={y} width={BAR_W} height={barH}
+              rx="5" ry="5"
+              fill={isTop
+                ? "url(#topGrad)"
+                : (isDark ? "#21262D" : "#F3F4F6")}
+            />
+            <text x={x + BAR_W / 2} y={y - 5} textAnchor="middle"
+              fontSize="10" fontWeight="700"
+              fill={isTop ? "#0D9488" : (isDark ? "#8B949E" : "#6B7280")}>
+              {asset.weekly_bookings}
+            </text>
+            <text x={x + BAR_W / 2} y={BAR_H + 14} textAnchor="middle"
+              fontSize="9" fill={isDark ? "#8B949E" : "#6B7280"}>
+              {asset.name.length > 8 ? asset.name.slice(0, 8) + "…" : asset.name}
+            </text>
+          </g>
+        );
+      })}
+
+      <defs>
+        <linearGradient id="topGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0D9488" />
+          <stop offset="100%" stopColor="#14B8A6" stopOpacity="0.7" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
 export default function StaffView() {
   const { isDark } = useTheme();
   const [data, setData]       = useState(null);
@@ -670,6 +742,20 @@ export default function StaffView() {
           <MetricCard key={m.label} {...m} isDark={isDark} />
         ))}
       </div>
+
+      {/* Bookings by venue chart */}
+      {data.asset_utilisation.some(a => a.weekly_bookings > 0) && (
+        <div className="rounded-2xl overflow-hidden shadow-civic mb-6" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+          <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
+            <TrendingUp size={15} className="text-teal-600" />
+            <h3 className="font-bold text-[14px]" style={{ color: text1 }}>Weekly bookings by venue</h3>
+            <span className="ml-auto text-[11px]" style={{ color: text2 }}>This week</span>
+          </div>
+          <div className="px-5 py-5">
+            <BookingTrendChart assets={data.asset_utilisation} isDark={isDark} />
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
