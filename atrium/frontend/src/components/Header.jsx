@@ -91,8 +91,8 @@ export default function Header({ userName, role, isStaff }) {
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </div>
-          <div className="hidden sm:block text-left">
-            <div className="text-[10px] font-semibold text-gray-400 leading-none tracking-widest uppercase">Hillingdon Council</div>
+          <div className="text-left">
+            <div className="hidden sm:block text-[10px] font-semibold text-gray-400 leading-none tracking-widest uppercase">Hillingdon Council</div>
             <div className="text-[16px] font-display font-bold text-gray-900 leading-tight">HillingOne</div>
           </div>
         </button>
