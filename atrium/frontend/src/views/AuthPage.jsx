@@ -91,18 +91,18 @@ export default function AuthPage({ initialMode = "login" }) {
 
           {/* Language pills */}
           <div className="flex items-center gap-1.5">
-            {Object.entries(languages).map(([code, { flag }]) => (
+            {Object.entries(languages).map(([code, { name }]) => (
               <button
                 key={code}
                 onClick={() => setLang(code)}
-                className={`text-[14px] px-2 py-1 rounded-lg transition ${
+                className={`text-[12px] font-bold px-2.5 py-1 rounded-lg transition ${
                   lang === code
-                    ? "bg-white/20 ring-1 ring-white/40"
-                    : "opacity-50 hover:opacity-80"
+                    ? "bg-white/20 text-white ring-1 ring-white/40"
+                    : "text-white/50 hover:text-white/80"
                 }`}
-                title={languages[code].name}
+                title={name}
               >
-                {flag}
+                {code.toUpperCase()}
               </button>
             ))}
           </div>
@@ -158,15 +158,16 @@ export default function AuthPage({ initialMode = "login" }) {
               <span className="text-[18px] font-black text-gray-900">HillingOne</span>
             </div>
             <div className="flex items-center gap-1">
-              {Object.entries(languages).map(([code, { flag }]) => (
+              {Object.entries(languages).map(([code, { name }]) => (
                 <button
                   key={code}
                   onClick={() => setLang(code)}
-                  className={`text-[14px] px-1.5 py-0.5 rounded transition ${
-                    lang === code ? "bg-teal-100 ring-1 ring-teal-400" : "opacity-40 hover:opacity-70"
+                  title={name}
+                  className={`text-[11px] font-bold px-2 py-1 rounded-lg transition ${
+                    lang === code ? "bg-teal-100 text-teal-700 ring-1 ring-teal-400" : "text-gray-400 hover:text-gray-600"
                   }`}
                 >
-                  {flag}
+                  {code.toUpperCase()}
                 </button>
               ))}
             </div>
