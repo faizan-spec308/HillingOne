@@ -72,34 +72,34 @@ export default function AssetCard({ match, onBook, onViewCalendar, searchWindow 
             {/* Header row */}
             <div className="flex items-start justify-between gap-3 mb-2">
               <div className="min-w-0">
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+                <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
                   {(asset.category || "").replace(/_/g, " ")}
                 </p>
-                <h3 className="font-display text-[17px] font-bold text-gray-900 leading-tight truncate">
+                <h3 className="font-display text-[17px] font-bold leading-tight truncate" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>
                   {asset.name}
                 </h3>
               </div>
 
               {/* Price badge */}
               <div className="flex-shrink-0 text-right">
-                <div className="text-[18px] font-display font-black text-hillingdon-navy leading-none">
+                <div className="text-[18px] font-display font-black leading-none" style={{ color: isDark ? "#2DD4BF" : "#0D9488" }}>
                   {price}
                 </div>
-                <div className="text-[10px] text-gray-400 font-medium mt-0.5">{t("card_per_hour")}</div>
+                <div className="text-[10px] font-medium mt-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{t("card_per_hour")}</div>
               </div>
             </div>
 
             {/* Meta */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
               {asset.ward && (
-                <span className="flex items-center gap-1 text-[13px] text-gray-500">
-                  <MapPin size={11} className="text-gray-400" />
+                <span className="flex items-center gap-1 text-[13px]" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
+                  <MapPin size={11} style={{ color: isDark ? "#484F58" : "#9CA3AF" }} />
                   {asset.ward}
                 </span>
               )}
               {asset.capacity && (
-                <span className="flex items-center gap-1 text-[13px] text-gray-500">
-                  <Users size={11} className="text-gray-400" />
+                <span className="flex items-center gap-1 text-[13px]" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
+                  <Users size={11} style={{ color: isDark ? "#484F58" : "#9CA3AF" }} />
                   Up to {asset.capacity}
                 </span>
               )}
@@ -130,8 +130,8 @@ export default function AssetCard({ match, onBook, onViewCalendar, searchWindow 
             {/* AI reasoning */}
             {match.reasoning && (
               <p
-                className="text-[13px] text-gray-500 leading-relaxed mb-3 italic pl-3"
-                style={{ borderLeft: `2px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}
+                className="text-[13px] leading-relaxed mb-3 italic pl-3"
+                style={{ color: isDark ? "#8B949E" : "#6B7280", borderLeft: `2px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}
               >
                 {match.reasoning}
               </p>

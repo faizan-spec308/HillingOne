@@ -129,6 +129,9 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
   /* ── Loading state ─────────────────────────────────────────────────────── */
   if (stage === "loading") {
+    const skBg  = isDark ? "#161B22" : "#ffffff";
+    const skBdr = isDark ? "#30363D" : "#E5E7EB";
+    const skEl  = isDark ? "#21262D" : "#F3F4F6";
     return (
       <div className="max-w-2xl mx-auto px-6 py-20">
         <div className="text-center mb-10">
@@ -136,7 +139,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
             <Network size={15} />
             {t("results_loading_label")}
           </div>
-          <p className="text-[15px] text-gray-500">
+          <p className="text-[15px]" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
             {t("results_loading_sub")}
           </p>
         </div>
@@ -144,16 +147,16 @@ export default function ResidentView({ user, onViewMyBookings }) {
         {/* Skeleton cards */}
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5 flex gap-4">
-              <div className="skeleton w-[72px] h-[72px] rounded-xl flex-shrink-0" />
+            <div key={i} className="rounded-2xl p-5 flex gap-4" style={{ background: skBg, border: `1px solid ${skBdr}` }}>
+              <div className="w-[72px] h-[72px] rounded-xl flex-shrink-0 animate-pulse" style={{ background: skEl }} />
               <div className="flex-1 space-y-3 py-1">
-                <div className="skeleton h-3 w-24 rounded" />
-                <div className="skeleton h-5 w-48 rounded" />
-                <div className="skeleton h-2 w-full rounded" />
-                <div className="skeleton h-2 w-3/4 rounded" />
+                <div className="h-3 w-24 rounded animate-pulse" style={{ background: skEl }} />
+                <div className="h-5 w-48 rounded animate-pulse" style={{ background: skEl }} />
+                <div className="h-2 w-full rounded animate-pulse" style={{ background: skEl }} />
+                <div className="h-2 w-3/4 rounded animate-pulse" style={{ background: skEl }} />
                 <div className="flex gap-2 pt-1">
-                  <div className="skeleton h-6 w-20 rounded-full" />
-                  <div className="skeleton h-6 w-16 rounded-full" />
+                  <div className="h-6 w-20 rounded-full animate-pulse" style={{ background: skEl }} />
+                  <div className="h-6 w-16 rounded-full animate-pulse" style={{ background: skEl }} />
                 </div>
               </div>
             </div>
@@ -165,11 +168,14 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
   /* ── Results state ─────────────────────────────────────────────────────── */
   if (stage === "results") {
+    const t1 = isDark ? "#E6EDF3" : "#111827";
+    const t2 = isDark ? "#8B949E" : "#6B7280";
     return (
       <div className="max-w-3xl mx-auto px-6 py-8 fade-in-up">
         <button
           onClick={reset}
-          className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-hillingdon-navy mb-6 transition font-medium"
+          className="inline-flex items-center gap-1.5 text-[13px] hover:text-teal-600 mb-6 transition font-medium"
+          style={{ color: t2 }}
         >
           <ArrowLeft size={15} />
           {t("results_new_search")}
@@ -188,12 +194,12 @@ export default function ResidentView({ user, onViewMyBookings }) {
                 <Sparkles size={15} className="text-white" />
               </div>
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-widest text-hillingdon-navy mb-1">
+                <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: isDark ? "#60A5FA" : "#1D4ED8" }}>
                   {t("results_understood")}
                 </div>
-                <p className="text-[14px] text-gray-800 leading-relaxed">{intent.extracted_summary}</p>
+                <p className="text-[14px] leading-relaxed" style={{ color: t1 }}>{intent.extracted_summary}</p>
                 {intent.follow_up_question && (
-                  <p className="mt-2 text-[14px] font-semibold text-gray-900">
+                  <p className="mt-2 text-[14px] font-semibold" style={{ color: t1 }}>
                     ✦ {intent.follow_up_question}
                   </p>
                 )}
@@ -204,16 +210,16 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
         {/* Count */}
         <div className="flex items-center justify-between mb-4">
-          <p className="text-[13px] text-gray-500 font-medium">
+          <p className="text-[13px] font-medium" style={{ color: t2 }}>
             {matches.length} {matches.length === 1 ? t("results_match") : t("results_matches")}
           </p>
         </div>
 
         {matches.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
+          <div className="rounded-2xl p-12 text-center" style={{ background: isDark ? "#161B22" : "#ffffff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
             <div className="text-5xl mb-4">🔍</div>
-            <h3 className="text-[16px] font-bold text-gray-900 mb-2">{t("results_none")}</h3>
-            <p className="text-[14px] text-gray-500 mb-6">
+            <h3 className="text-[16px] font-bold mb-2" style={{ color: t1 }}>{t("results_none")}</h3>
+            <p className="text-[14px] mb-6" style={{ color: t2 }}>
               {t("results_none_sub")}
             </p>
             <button onClick={reset} className="btn-primary">
@@ -366,7 +372,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 
   return (
     <div className="max-w-md mx-auto px-6 py-10 fade-in-up">
-      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-hillingdon-navy mb-6 transition font-medium">
+      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[13px] hover:text-teal-600 mb-6 transition font-medium" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
         <ArrowLeft size={14} /> Back to results
       </button>
 
@@ -383,7 +389,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
         <div className="p-5 space-y-4">
           {/* Date */}
           <div>
-            <label className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">
+            <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
               <Calendar size={12} /> Date
             </label>
             <input
@@ -398,12 +404,12 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 
           {/* Time range */}
           <div>
-            <label className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">
+            <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
               <Clock size={12} /> Time
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[11px] text-gray-400 mb-1">From</p>
+                <p className="text-[11px] mb-1" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>From</p>
                 <input type="time" value={start} onChange={(e) => setStart(e.target.value)}
                   className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
                   style={{ background: isDark ? "#0E1117" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#111827" }} />
@@ -420,15 +426,14 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
           {/* Recurring booking */}
           <div>
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 uppercase tracking-wide">
+              <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
                 <RefreshCw size={12} /> Repeat booking
               </label>
               <button
                 type="button"
                 onClick={() => setIsRecurring((v) => !v)}
-                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
-                  isRecurring ? "bg-teal-500" : "bg-gray-200"
-                }`}
+                className="relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none"
+                style={{ background: isRecurring ? "#0D9488" : (isDark ? "#30363D" : "#D1D5DB") }}
                 role="switch"
                 aria-checked={isRecurring}
               >
@@ -450,17 +455,17 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
                       key={w}
                       type="button"
                       onClick={() => setRecurrenceWeeks(w)}
-                      className={`px-3 py-1.5 rounded-lg text-[12px] font-bold border transition ${
-                        recurrenceWeeks === w
-                          ? "bg-teal-600 border-teal-600 text-white"
-                          : "bg-white border-gray-200 text-gray-600 hover:border-teal-400"
-                      }`}
+                      className="px-3 py-1.5 rounded-lg text-[12px] font-bold border transition"
+                      style={recurrenceWeeks === w
+                        ? { background: "#0D9488", borderColor: "#0D9488", color: "#fff" }
+                        : { background: isDark ? "#21262D" : "#fff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#8B949E" : "#4B5563" }
+                      }
                     >
                       {w} weeks
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-gray-400 mt-2">
+                <p className="text-[11px] mt-2" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
                   {recurrenceWeeks} bookings will be created at the same time each week.
                 </p>
               </div>
@@ -469,16 +474,17 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 
           {/* Price summary */}
           {durationHours > 0 && (
-            <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+            <div className="rounded-xl p-4 flex items-center justify-between"
+              style={{ background: isDark ? "#0D2D1E" : "#F0FDF4", border: `1px solid ${isDark ? "#1A4731" : "#BBF7D0"}` }}>
               <div>
-                <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Duration</p>
-                <p className="text-[15px] font-bold text-gray-900">{durationHours % 1 === 0 ? durationHours : durationHours.toFixed(1)} hrs</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#4ADE80" : "#6B7280" }}>Duration</p>
+                <p className="text-[15px] font-bold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{durationHours % 1 === 0 ? durationHours : durationHours.toFixed(1)} hrs</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <PoundSterling size={18} className="text-teal-600" />
+                <PoundSterling size={18} className="text-teal-500" />
                 <div className="text-right">
-                  <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Total</p>
-                  <p className="text-[20px] font-black text-teal-700">{isFree ? "Free" : `£${totalCost}`}</p>
+                  <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#4ADE80" : "#6B7280" }}>Total</p>
+                  <p className="text-[20px] font-black" style={{ color: isDark ? "#2DD4BF" : "#0F766E" }}>{isFree ? "Free" : `£${totalCost}`}</p>
                 </div>
               </div>
             </div>
@@ -496,7 +502,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
           >
             {loading ? "Reserving…" : "Hold this space"}
           </button>
-          <p className="text-[11px] text-gray-400 text-center">
+          <p className="text-[11px] text-center" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>
             You'll have 5 minutes to complete your booking after holding.
           </p>
         </div>
@@ -508,6 +514,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 /* ── Hold screen ──────────────────────────────────────────────────────────── */
 function HoldScreen({ booking, asset, onConfirm, onCancel }) {
   const { t } = useLanguage();
+  const { isDark } = useTheme();
   const heldUntil = new Date(booking.held_until).getTime();
   const totalSeconds = Math.max(60, Math.round((heldUntil - Date.now()) / 1000 + 0));
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
@@ -526,59 +533,68 @@ function HoldScreen({ booking, asset, onConfirm, onCancel }) {
   const progress = Math.min(100, (secondsLeft / durationRef) * 100);
   const isUrgent = secondsLeft <= 30;
 
+  const t1 = isDark ? "#E6EDF3" : "#111827";
+  const t2 = isDark ? "#8B949E" : "#6B7280";
+  const detailBg = isDark ? "#21262D" : "#F9FAFB";
+
   return (
     <div className="max-w-md mx-auto px-6 py-14 fade-in-up">
       <div
-        className="bg-white border-2 rounded-2xl p-8 text-center"
-        style={{ borderColor: isUrgent ? "#EF4444" : "#F59E0B" }}
+        className="rounded-2xl p-8 text-center"
+        style={{
+          background: isDark ? "#161B22" : "#ffffff",
+          border: `2px solid ${isUrgent ? "#EF4444" : (isDark ? "#78350F" : "#F59E0B")}`,
+        }}
       >
         {/* Countdown ring */}
         <div
-          className={`w-20 h-20 rounded-full border-4 flex items-center justify-center mx-auto mb-5 transition-colors ${
-            isUrgent ? "border-red-400 bg-red-50" : "border-amber-400 bg-amber-50"
-          }`}
+          className="w-20 h-20 rounded-full border-4 flex items-center justify-center mx-auto mb-5 transition-colors"
+          style={{
+            borderColor: isUrgent ? "#EF4444" : "#F59E0B",
+            background: isUrgent ? (isDark ? "#2D0A0A" : "#FEF2F2") : (isDark ? "#1C1200" : "#FFFBEB"),
+          }}
         >
-          <span className={`text-2xl font-black ${isUrgent ? "text-red-600" : "text-amber-700"}`}>
+          <span className="text-2xl font-black" style={{ color: isUrgent ? "#EF4444" : "#D97706" }}>
             {secondsLeft}
           </span>
         </div>
 
-        <h2 className="text-[20px] font-bold text-gray-900 mb-1">
+        <h2 className="text-[20px] font-bold mb-1" style={{ color: t1 }}>
           {t("hold_title")} {asset.name}
         </h2>
 
         {/* Booking details */}
         {booking.start_time && (
-          <div className="text-left bg-gray-50 rounded-xl px-4 py-3 mb-4 space-y-1">
-            <p className="text-[12px] text-gray-500">
-              <span className="font-semibold text-gray-700">Date: </span>
+          <div className="text-left rounded-xl px-4 py-3 mb-4 space-y-1" style={{ background: detailBg }}>
+            <p className="text-[12px]" style={{ color: t2 }}>
+              <span className="font-semibold" style={{ color: t1 }}>Date: </span>
               {new Date(booking.start_time).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <p className="text-[12px] text-gray-500">
-              <span className="font-semibold text-gray-700">Time: </span>
+            <p className="text-[12px]" style={{ color: t2 }}>
+              <span className="font-semibold" style={{ color: t1 }}>Time: </span>
               {new Date(booking.start_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
               {" – "}
               {new Date(booking.end_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
             </p>
             {booking.total_amount_pence > 0 && (
-              <p className="text-[12px] text-gray-500">
-                <span className="font-semibold text-gray-700">Total: </span>
+              <p className="text-[12px]" style={{ color: t2 }}>
+                <span className="font-semibold" style={{ color: t1 }}>Total: </span>
                 £{(booking.total_amount_pence / 100).toFixed(2)}
               </p>
             )}
           </div>
         )}
 
-        <p className="text-[14px] text-gray-500 mb-6 leading-relaxed">
+        <p className="text-[14px] mb-6 leading-relaxed" style={{ color: t2 }}>
           {t("hold_sub")}{" "}
-          <strong>{secondsLeft} {t("hold_sub2")}</strong>
+          <strong style={{ color: t1 }}>{secondsLeft} {t("hold_sub2")}</strong>
         </p>
 
         {/* Progress bar */}
-        <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-7">
+        <div className="h-2 rounded-full overflow-hidden mb-7" style={{ background: isDark ? "#21262D" : "#F3F4F6" }}>
           <div
-            className={`h-full rounded-full transition-all duration-500 ${isUrgent ? "bg-red-500" : "bg-amber-400"}`}
-            style={{ width: `${progress}%` }}
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${progress}%`, background: isUrgent ? "#EF4444" : "#F59E0B" }}
           />
         </div>
 
