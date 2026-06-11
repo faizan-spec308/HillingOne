@@ -12,13 +12,16 @@ const WARDS = [
 ];
 
 function SectionCard({ title, icon: Icon, children }) {
+  const { isDark } = useTheme();
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-civic mb-5">
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2.5">
+    <div className="rounded-2xl overflow-hidden shadow-civic mb-5"
+      style={{ background: isDark ? "#161B22" : "#ffffff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
+      <div className="px-6 py-4 flex items-center gap-2.5"
+        style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
         <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#0F766E,#0D9488)" }}>
           <Icon size={14} className="text-white" />
         </div>
-        <h2 className="text-[15px] font-bold text-gray-900">{title}</h2>
+        <h2 className="text-[15px] font-bold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{title}</h2>
       </div>
       <div className="px-6 py-5">{children}</div>
     </div>
@@ -39,18 +42,20 @@ function Toast({ toast }) {
 }
 
 function Field({ label, children }) {
+  const { isDark } = useTheme();
   return (
     <div className="mb-4">
-      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
+      <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>{label}</label>
       {children}
     </div>
   );
 }
 
-const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[14px] text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition dark:bg-[#1C2128] dark:border-[#30363D] dark:text-[#E6EDF3]";
+const inputCls = "w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition";
 
 /* ── Profile section ───────────────────────────────────────────── */
 function ProfileSection({ user, onSaved, showToast }) {
+  const { isDark } = useTheme();
   const [name, setName]     = useState(user.name || "");
   const [email, setEmail]   = useState(user.email || "");
   const [ward, setWard]     = useState(user.ward || "");
@@ -68,17 +73,18 @@ function ProfileSection({ user, onSaved, showToast }) {
   };
 
   const dirty = name !== user.name || email !== user.email || (ward || "") !== (user.ward || "");
+  const inp = { background: isDark ? "#0E1117" : "#fff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`, color: isDark ? "#E6EDF3" : "#111827" };
 
   return (
     <SectionCard title="Profile" icon={User}>
       <Field label="Full name">
-        <input value={name} onChange={e => setName(e.target.value)} className={inputCls} />
+        <input value={name} onChange={e => setName(e.target.value)} className={inputCls} style={inp} />
       </Field>
       <Field label="Email address">
-        <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} style={inp} />
       </Field>
       <Field label="Ward (optional)">
-        <select value={ward} onChange={e => setWard(e.target.value)} className={inputCls}>
+        <select value={ward} onChange={e => setWard(e.target.value)} className={inputCls} style={inp}>
           <option value="">No preference</option>
           {WARDS.map(w => <option key={w} value={w}>{w}</option>)}
         </select>
@@ -97,6 +103,7 @@ function ProfileSection({ user, onSaved, showToast }) {
 
 /* ── Password section ──────────────────────────────────────────── */
 function PasswordSection({ showToast }) {
+  const { isDark } = useTheme();
   const [current, setCurrent] = useState("");
   const [next, setNext]       = useState("");
   const [confirm, setConfirm] = useState("");
@@ -115,17 +122,19 @@ function PasswordSection({ showToast }) {
     } finally { setSaving(false); }
   };
 
+  const inp = { background: isDark ? "#0E1117" : "#fff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`, color: isDark ? "#E6EDF3" : "#111827" };
+
   return (
     <SectionCard title="Security" icon={Lock}>
       <Field label="Current password">
-        <input type="password" value={current} onChange={e => setCurrent(e.target.value)} className={inputCls} autoComplete="current-password" />
+        <input type="password" value={current} onChange={e => setCurrent(e.target.value)} className={inputCls} style={inp} autoComplete="current-password" />
       </Field>
       <Field label="New password">
-        <input type="password" value={next} onChange={e => setNext(e.target.value)} className={inputCls} autoComplete="new-password" />
-        <p className="text-[11px] text-gray-400 mt-1.5">Min. 8 characters, one uppercase, one number.</p>
+        <input type="password" value={next} onChange={e => setNext(e.target.value)} className={inputCls} style={inp} autoComplete="new-password" />
+        <p className="text-[11px] mt-1.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>Min. 8 characters, one uppercase, one number.</p>
       </Field>
       <Field label="Confirm new password">
-        <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} className={inputCls} autoComplete="new-password" />
+        <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} className={inputCls} style={inp} autoComplete="new-password" />
       </Field>
       <button onClick={save} disabled={saving || !current || !next || !confirm} className="btn-primary text-[13px]">
         <Lock size={13} />
@@ -151,7 +160,7 @@ function AppearanceSection() {
 
   return (
     <SectionCard title="Appearance" icon={Moon}>
-      <p className="text-[13px] text-gray-500 mb-4">Choose how HillingOne looks to you.</p>
+      <p className="text-[13px] mb-4" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>Choose how HillingOne looks to you.</p>
       <div className="grid grid-cols-2 gap-3">
         {modes.map(({ id, label, icon: Icon, desc }) => {
           const isActive = theme === id;
@@ -185,6 +194,7 @@ function AppearanceSection() {
 
 /* ── Notifications section ─────────────────────────────────────── */
 function NotificationsSection() {
+  const { isDark } = useTheme();
   const load = (k, d) => {
     try { return JSON.parse(localStorage.getItem(`hillingone_notif_${k}`) ?? String(d)); } catch { return d; }
   };
@@ -199,20 +209,21 @@ function NotificationsSection() {
   };
 
   const Toggle = ({ value, onChange, label, description }) => (
-    <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+    <div className="flex items-center justify-between py-3 last:border-0"
+      style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
       <div>
-        <p className="text-[13px] font-semibold text-gray-800">{label}</p>
-        {description && <p className="text-[11px] text-gray-400 mt-0.5">{description}</p>}
+        <p className="text-[13px] font-semibold" style={{ color: isDark ? "#E6EDF3" : "#1F2937" }}>{label}</p>
+        {description && <p className="text-[11px] mt-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{description}</p>}
       </div>
       <button
         onClick={() => onChange(!value)}
-        className={`relative w-10 h-5.5 rounded-full transition-colors flex-shrink-0 ${value ? "bg-teal-500" : "bg-gray-200"}`}
-        style={{ width: 40, height: 22 }}
+        className={`relative rounded-full transition-colors flex-shrink-0 ${value ? "bg-teal-500" : ""}`}
+        style={{ width: 40, height: 22, background: value ? "#0D9488" : (isDark ? "#30363D" : "#D1D5DB") }}
         role="switch"
         aria-checked={value}
       >
         <span
-          className="absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform"
+          className="absolute top-0.5 left-0.5 bg-white rounded-full shadow transition-transform"
           style={{ width: 18, height: 18, transform: value ? "translateX(18px)" : "translateX(0)" }}
         />
       </button>
@@ -246,6 +257,7 @@ function NotificationsSection() {
 /* ── Main view ─────────────────────────────────────────────────── */
 export default function SettingsView() {
   const { user, login }  = useAuth();
+  const { isDark }       = useTheme();
   const navigate         = useNavigate();
   const [toast, setToast] = useState(null);
 
@@ -263,13 +275,13 @@ export default function SettingsView() {
     <div className="max-w-2xl mx-auto px-5 py-8 fade-in-up">
       <Toast toast={toast} />
 
-      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-teal-600 mb-7 transition font-medium">
+      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] hover:text-teal-600 mb-7 transition font-medium" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
         <ArrowLeft size={14} /> Back
       </button>
 
       <div className="mb-8">
-        <h1 className="text-[28px] font-black text-gray-900 tracking-tight">Settings</h1>
-        <p className="text-[14px] text-gray-400 mt-1">Manage your account, appearance and preferences.</p>
+        <h1 className="text-[28px] font-black tracking-tight" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>Settings</h1>
+        <p className="text-[14px] mt-1" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>Manage your account, appearance and preferences.</p>
       </div>
 
       <ProfileSection user={user} onSaved={handleSaved} showToast={showToast} />

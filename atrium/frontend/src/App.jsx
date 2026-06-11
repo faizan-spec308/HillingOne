@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ThemeProvider } from "./context/ThemeContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import AuthPage from "./views/AuthPage";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -13,6 +13,7 @@ import SettingsView from "./views/SettingsView";
 
 function AppShell() {
   const { user, isStaff } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [cookieModal, setCookieModal] = useState(false);
@@ -23,7 +24,7 @@ function AppShell() {
   if (!user) return <AuthPage />;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: isDark ? "#0E1117" : "#F9FAFB" }}>
       <Header userName={user.name} role={user.role} isStaff={isStaff} />
       <main className="pb-20">
         <Routes>
