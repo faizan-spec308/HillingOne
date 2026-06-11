@@ -1,29 +1,46 @@
 import { useState } from "react";
-import { Eye, EyeOff, ArrowRight, ShieldCheck, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, ShieldCheck, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { api } from "../api/client";
 
-export default function AuthPage() {
+export default function AuthPage({ initialMode = "login" }) {
   const { login } = useAuth();
   const { t, lang, setLang, languages } = useLanguage();
-  const [mode, setMode]       = useState("login");
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
-  const [showPw, setShowPw]   = useState(false);
-  const [form, setForm]       = useState({ name: "", email: "", password: "", ward: "" });
+
+  // Read reset token from URL if present
+  const urlToken = new URLSearchParams(window.location.search).get("token");
+  const startMode = urlToken ? "reset" : initialMode;
+
+  const [mode, setMode]         = useState(startMode);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+  const [success, setSuccess]   = useState(null);
+  const [showPw, setShowPw]     = useState(false);
+  const [form, setForm]         = useState({ name: "", email: "", password: "", ward: "", newPassword: "" });
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const submit = async (e) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setLoading(true);
     try {
-      const res = mode === "login"
-        ? await api.login(form.email, form.password)
-        : await api.register(form.name, form.email, form.password, form.ward);
-      login(res.token, res.user);
+      if (mode === "login") {
+        const res = await api.login(form.email, form.password);
+        login(res.token, res.user);
+      } else if (mode === "register") {
+        const res = await api.register(form.name, form.email, form.password, form.ward);
+        login(res.token, res.user);
+      } else if (mode === "forgot") {
+        await api.forgotPassword(form.email);
+        setSuccess("If that email is registered, a reset link has been sent. Check your inbox.");
+      } else if (mode === "reset") {
+        await api.resetPassword(urlToken, form.newPassword);
+        setSuccess("Password updated. You can now sign in.");
+        setMode("login");
+      }
     } catch (err) {
       setError(err.message.replace(/^\d+: /, ""));
     } finally {
@@ -158,12 +175,69 @@ export default function AuthPage() {
           {/* Card */}
           <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
 
+            {/* Forgot password screen */}
+            {mode === "forgot" && (
+              <>
+                <button onClick={() => { setMode("login"); setError(null); setSuccess(null); }} className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-600 mb-6 transition">
+                  <ArrowLeft size={14} /> Back to sign in
+                </button>
+                <h2 className="text-[22px] font-black text-gray-900 mb-1">Forgot password?</h2>
+                <p className="text-[14px] text-gray-500 mb-7">Enter your email and we'll send you a reset link valid for 30 minutes.</p>
+                {success ? (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
+                    <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-[13px] text-emerald-800">{success}</p>
+                  </div>
+                ) : (
+                  <form onSubmit={submit} className="space-y-4">
+                    <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="your@email.com" required />
+                    {error && <div className="p-3.5 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700 font-medium">{error}</div>}
+                    <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-3.5 text-white text-[15px] font-bold rounded-2xl transition-all btn-primary">
+                      {loading ? <><Loader2 size={18} className="animate-spin" /> Sending…</> : <>Send reset link <ArrowRight size={18} /></>}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+
+            {/* Reset password screen */}
+            {mode === "reset" && (
+              <>
+                <h2 className="text-[22px] font-black text-gray-900 mb-1">Set new password</h2>
+                <p className="text-[14px] text-gray-500 mb-7">Choose a strong password with at least 8 characters, one uppercase letter, and one number.</p>
+                {success ? (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
+                    <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-[13px] text-emerald-800">{success}</p>
+                  </div>
+                ) : (
+                  <form onSubmit={submit} className="space-y-4">
+                    <div>
+                      <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">New password</label>
+                      <div className="relative">
+                        <input type={showPw ? "text" : "password"} value={form.newPassword} onChange={set("newPassword")} placeholder="Min. 8 chars, 1 uppercase, 1 number" required minLength={8} className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-[14px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-hillingdon-navy/20 focus:border-hillingdon-navy transition" />
+                        <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    {error && <div className="p-3.5 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700 font-medium">{error}</div>}
+                    <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-3.5 text-white text-[15px] font-bold rounded-2xl transition-all btn-primary">
+                      {loading ? <><Loader2 size={18} className="animate-spin" /> Updating…</> : <>Update password <ArrowRight size={18} /></>}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+
+            {/* Login / Register screens */}
+            {(mode === "login" || mode === "register") && (<>
             {/* Mode toggle */}
             <div className="flex bg-gray-100 rounded-2xl p-1 mb-8">
               {["login", "register"].map((m) => (
                 <button
                   key={m}
-                  onClick={() => { setMode(m); setError(null); }}
+                  onClick={() => { setMode(m); setError(null); setSuccess(null); }}
                   className={`flex-1 py-2.5 text-[14px] font-semibold rounded-xl transition-all ${
                     mode === m ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
                   }`}
@@ -188,7 +262,14 @@ export default function AuthPage() {
               <Field label={t("auth_email")} type="email" value={form.email} onChange={set("email")} placeholder={t("auth_email_ph")} required />
 
               <div>
-                <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">{t("auth_password")}</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[13px] font-semibold text-gray-700">{t("auth_password")}</label>
+                  {mode === "login" && (
+                    <button type="button" onClick={() => { setMode("forgot"); setError(null); setSuccess(null); }} className="text-[12px] text-teal-600 hover:underline font-medium">
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     type={showPw ? "text" : "password"}
@@ -241,6 +322,7 @@ export default function AuthPage() {
                 {mode === "login" ? t("auth_create_one") : t("auth_sign_in")}
               </button>
             </p>
+            </>)}
           </div>
 
           <p className="text-center text-[12px] text-gray-400 mt-6">{t("auth_staff_note")}</p>

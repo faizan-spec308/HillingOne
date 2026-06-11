@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe, Settings } from "lucide-react";
+import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe, Settings, X, Clock } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
+import { api } from "../api/client";
 
 export default function Header({ userName, role, isStaff }) {
   const { logout } = useAuth();
@@ -14,8 +15,33 @@ export default function Header({ userName, role, isStaff }) {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [langOpen,     setLangOpen]     = useState(false);
+  const [bellOpen,     setBellOpen]     = useState(false);
+  const [reminders,    setReminders]    = useState([]);
   const dropRef = useRef();
   const langRef = useRef();
+  const bellRef = useRef();
+
+  // Poll for due reminders every 60 seconds
+  useEffect(() => {
+    const fetchReminders = async () => {
+      try {
+        const data = await api.dueReminders();
+        setReminders(data);
+      } catch {
+        // silently ignore — bell is non-critical
+      }
+    };
+    fetchReminders();
+    const interval = setInterval(fetchReminders, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dismissReminder = async (id) => {
+    try {
+      await api.dismissReminder(id);
+      setReminders((prev) => prev.filter((r) => r.id !== id));
+    } catch {}
+  };
 
   const initials = userName
     ? userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
@@ -25,6 +51,7 @@ export default function Header({ userName, role, isStaff }) {
     const handler = (e) => {
       if (dropRef.current && !dropRef.current.contains(e.target)) setDropdownOpen(false);
       if (langRef.current && !langRef.current.contains(e.target)) setLangOpen(false);
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -131,9 +158,81 @@ export default function Header({ userName, role, isStaff }) {
           </div>
 
           {/* Notifications bell */}
-          <button aria-label="Notifications" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition">
-            <Bell size={18} />
-          </button>
+          <div className="relative" ref={bellRef}>
+            <button
+              aria-label="Notifications"
+              onClick={() => setBellOpen((v) => !v)}
+              className="relative p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition"
+            >
+              <Bell size={18} />
+              {reminders.length > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                  {reminders.length > 9 ? "9+" : reminders.length}
+                </span>
+              )}
+            </button>
+
+            {bellOpen && (
+              <div
+                className="absolute right-0 top-full mt-2 w-80 rounded-2xl overflow-hidden z-50"
+                style={{
+                  background: isDark ? "#161B22" : "#ffffff",
+                  border: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}`,
+                  boxShadow: isDark ? "0 0 0 1px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)",
+                }}
+              >
+                <div className="px-4 py-3" style={{ borderBottom: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}` }}>
+                  <p className="text-[13px] font-bold text-gray-900">Notifications</p>
+                </div>
+
+                {reminders.length === 0 ? (
+                  <div className="px-4 py-8 text-center">
+                    <Bell size={24} className="mx-auto mb-2 text-gray-300" />
+                    <p className="text-[13px] text-gray-400">No new notifications</p>
+                  </div>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    {reminders.map((r) => (
+                      <div
+                        key={r.id}
+                        className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition"
+                        style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F9FAFB"}` }}
+                      >
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                          style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}>
+                          <Clock size={13} className="text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] text-gray-700 leading-relaxed">{r.message}</p>
+                          {r.encouragement && (
+                            <p className="text-[11px] text-gray-400 mt-1 italic leading-relaxed">{r.encouragement}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => dismissReminder(r.id)}
+                          className="text-gray-300 hover:text-gray-500 flex-shrink-0 mt-0.5"
+                          aria-label="Dismiss"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {reminders.length > 0 && (
+                  <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}` }}>
+                    <button
+                      onClick={() => { reminders.forEach((r) => dismissReminder(r.id)); }}
+                      className="text-[12px] text-teal-600 hover:underline font-medium"
+                    >
+                      Dismiss all
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* User dropdown */}
           <div className="relative" ref={dropRef}>

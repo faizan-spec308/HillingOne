@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AuthPage from "./views/AuthPage";
@@ -14,7 +14,11 @@ import SettingsView from "./views/SettingsView";
 function AppShell() {
   const { user, isStaff } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [cookieModal, setCookieModal] = useState(false);
+
+  // Allow reset-password page without auth
+  if (location.pathname === "/reset-password") return <AuthPage initialMode="reset" />;
 
   if (!user) return <AuthPage />;
 

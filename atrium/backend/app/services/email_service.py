@@ -201,6 +201,40 @@ def booking_rescheduled_html(user_name: str, booking: object, asset: object,
     return _base("Booking rescheduled — HillingOne", body)
 
 
+def password_reset_html(user_name: str, reset_url: str) -> str:
+    body = f"""
+<h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#111827;">
+  Reset your password
+</h1>
+<p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
+  Hi {user_name}, we received a request to reset your HillingOne password.
+</p>
+
+<div style="text-align:center;margin:32px 0;">
+  <a href="{reset_url}"
+     style="display:inline-block;background:{BRAND_COLOR};color:#ffffff;
+            font-size:15px;font-weight:700;padding:14px 36px;border-radius:14px;
+            text-decoration:none;letter-spacing:-0.1px;">
+    Reset password
+  </a>
+</div>
+
+<p style="font-size:13px;color:#6B7280;line-height:1.6;">
+  This link expires in <strong>30 minutes</strong>. If you did not request a password reset,
+  you can safely ignore this email — your password will not change.
+</p>
+
+<div style="margin-top:24px;padding:16px 20px;background:#F9FAFB;border-radius:10px;
+            border:1px solid #E5E7EB;">
+  <p style="margin:0;font-size:12px;color:#9CA3AF;">
+    If the button above does not work, copy and paste this link into your browser:<br />
+    <span style="color:{BRAND_COLOR};word-break:break-all;">{reset_url}</span>
+  </p>
+</div>
+"""
+    return _base("Reset your password — HillingOne", body)
+
+
 async def send_email(to: str, subject: str, html: str) -> None:
     """Fire-and-forget email send. Logs errors but never raises."""
     from app.config import settings

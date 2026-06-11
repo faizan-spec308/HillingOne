@@ -18,6 +18,8 @@ class User(Base):
     flexibility_credits: Mapped[int] = mapped_column(Integer, default=0)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    reset_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    reset_token_expires: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     def to_dict(self) -> dict:
         return {

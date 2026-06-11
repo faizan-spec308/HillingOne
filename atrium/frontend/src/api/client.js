@@ -15,6 +15,7 @@ const ERROR_MESSAGES = {
   not_swap_pending:            "This booking is no longer awaiting a swap decision.",
   cannot_reschedule:           "This booking cannot be rescheduled in its current state.",
   reschedule_too_late:         "Bookings cannot be changed within 24 hours of the start time.",
+  reset_token_invalid:         "This reset link is invalid or has expired. Please request a new one.",
 };
 
 function getToken() {
@@ -162,7 +163,13 @@ export const api = {
   staffToggleAsset:  (id)         => request(`/api/staff/assets/${id}/toggle`, { method: "PATCH" }),
 
   // Reminders
-  listReminders: () => request("/api/reminders/all"),
+  listReminders: ()             => request("/api/reminders/all"),
+  dueReminders:  ()             => request("/api/reminders/due"),
+  dismissReminder: (id)         => request(`/api/reminders/${id}/dismiss`, { method: "POST" }),
+
+  // Password reset
+  forgotPassword: (email)       => request("/api/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword:  (token, new_password) => request("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ token, new_password }) }),
 
   // Payments
   createPaymentIntent: (bookingId) =>

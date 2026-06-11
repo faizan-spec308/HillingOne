@@ -1,5 +1,6 @@
 """Authentication router — register, login, me."""
 import re
+import secrets
 import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -190,6 +191,69 @@ async def change_password(
     await db.commit()
     logger.info("password_changed user_id=%s", str(current_user.id))
     return {"ok": True}
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_strength(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one number")
+        return v
+
+
+@router.post("/forgot-password")
+@limiter.limit("5/minute")
+async def forgot_password(request: Request, req: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    import asyncio
+    from app.services.email_service import send_email, password_reset_html
+    from app.config import settings as _settings
+
+    email = str(req.email).lower()
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    # Always return 200 — never reveal whether an email exists
+    if user:
+        token = secrets.token_urlsafe(32)
+        user.reset_token = token
+        user.reset_token_expires = datetime.utcnow() + timedelta(minutes=30)
+        await db.commit()
+
+        reset_url = f"https://hilling-one.vercel.app/reset-password?token={token}"
+        asyncio.create_task(send_email(
+            to=email,
+            subject="Reset your HillingOne password",
+            html=password_reset_html(user.name, reset_url),
+        ))
+        logger.info("password_reset_requested user_id=%s", str(user.id))
+
+    return {"detail": "If that email is registered, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.reset_token == req.token))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.reset_token_expires or user.reset_token_expires < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="reset_token_invalid")
+
+    user.password_hash = _hash(req.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    await db.commit()
+    logger.info("password_reset_success user_id=%s", str(user.id))
+    return {"detail": "Password updated. You can now sign in."}
 
 
 class CreateStaffRequest(BaseModel):
