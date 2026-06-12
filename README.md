@@ -288,6 +288,8 @@ uvicorn main:app --port 8001 --reload
 | [http://localhost:5173](http://localhost:5173) | React frontend |
 | [http://localhost:8000/docs](http://localhost:8000/docs) | Atrium API — Swagger UI |
 | [http://localhost:8001/docs](http://localhost:8001/docs) | Main booking API — Swagger UI (optional) |
+| [(https://hilling-one.vercel.app/)]((https://hilling-one.vercel.app/)) | Deployed Vercel Version |
+
 
 ### 6 — Conversational demo (optional)
 
