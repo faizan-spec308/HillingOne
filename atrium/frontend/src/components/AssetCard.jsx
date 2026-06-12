@@ -103,26 +103,36 @@ export default function AssetCard({ match, onBook, onViewCalendar, searchWindow 
             )}
           </div>
 
-          {/* Match score — single, clear representation */}
-          <div className="mt-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className={`badge badge-${sc.key}`}>{sc.label}</span>
-              <span className="t-caption t-num" style={{ color: `var(--${sc.key})`, fontWeight: 700 }}>{score}%</span>
+          {/* Match score — single, clear representation. Only shown for AI
+              search results; manual browse passes no score. */}
+          {match.match_score != null && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`badge badge-${sc.key}`}>{sc.label}</span>
+                <span className="t-caption t-num" style={{ color: `var(--${sc.key})`, fontWeight: 700 }}>{score}%</span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${score}%`, background: `var(--${sc.key})`, transition: "width 0.7s var(--ease)" }}
+                />
+              </div>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${score}%`, background: `var(--${sc.key})`, transition: "width 0.7s var(--ease)" }}
-              />
-            </div>
-          </div>
+          )}
 
-          {/* AI reasoning */}
-          {match.reasoning && (
-            <p className="t-body-sm mt-3 pl-3" style={{ borderLeft: "2px solid var(--border)" }}>
+          {/* AI reasoning (search) — or the venue description (browse) */}
+          {match.reasoning ? (
+            <p className="t-body-sm mt-3 pl-3 italic" style={{ borderLeft: "2px solid var(--border)" }}>
               {match.reasoning}
             </p>
-          )}
+          ) : asset.description ? (
+            <p
+              className="t-body-sm mt-3"
+              style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+            >
+              {asset.description}
+            </p>
+          ) : null}
 
           {/* Amenities — colour-coded by type */}
           <div className="flex flex-wrap gap-1.5 mt-3">
