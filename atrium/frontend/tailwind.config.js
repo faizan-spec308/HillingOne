@@ -19,12 +19,13 @@ export default {
         display: ['"Plus Jakarta Sans"', "Inter", "sans-serif"],
       },
       boxShadow: {
-        "civic":      "0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
-        "civic-md":   "0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)",
-        "civic-lg":   "0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.05)",
-        "civic-hover":"0 8px 32px rgba(13,148,136,0.18), 0 3px 10px rgba(0,0,0,0.06)",
-        "card":       "0 2px 8px rgba(13,148,136,0.10), 0 1px 3px rgba(0,0,0,0.04)",
-        "glow":       "0 0 0 3px rgba(13,148,136,0.18)",
+        // Neutral elevation — refined-premium (depth from value, not colour).
+        "civic":      "0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04)",
+        "civic-md":   "0 4px 12px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04)",
+        "civic-lg":   "0 12px 32px rgba(15,23,42,0.10), 0 4px 8px rgba(15,23,42,0.04)",
+        "civic-hover":"0 12px 32px rgba(15,23,42,0.12), 0 4px 8px rgba(15,23,42,0.05)",
+        "card":       "0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04)",
+        "glow":       "0 0 0 3px rgba(13,148,136,0.16)",
       },
       borderRadius: {
         "2xl": "16px",
