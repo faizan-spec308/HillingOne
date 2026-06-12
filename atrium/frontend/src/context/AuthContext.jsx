@@ -7,6 +7,10 @@ const TOKEN_KEY = "hillingone_token";
 const USER_KEY  = "hillingone_user";
 
 export function AuthProvider({ children }) {
+  // Remove stale keys from the previous "atrium" build
+  localStorage.removeItem("atrium_token");
+  localStorage.removeItem("atrium_user");
+
   const [token, setToken]   = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser]     = useState(() => {
     try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; }

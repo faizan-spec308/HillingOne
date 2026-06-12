@@ -624,13 +624,11 @@ export default function MyBookings({ user, onBack }) {
             const h = (new Date(b.end_time) - new Date(b.start_time)) / 3600000;
             return sum + (h > 0 ? h : 0);
           }, 0);
-          const carbonKg = Math.round(confirmed.length * 2.4);
           const totalSpend = confirmed.reduce((sum, b) => sum + (b.total_amount_pence || 0), 0) / 100;
 
           const stats = [
             { label: "Total bookings", value: confirmed.length, unit: "" },
             { label: "Hours booked",   value: Math.round(totalHours * 10) / 10, unit: "h" },
-            { label: "CO₂ saved",      value: carbonKg, unit: "kg" },
             ...(totalSpend > 0 ? [{ label: "Total spent", value: `£${totalSpend.toFixed(2)}`, unit: "" }] : []),
           ];
 
