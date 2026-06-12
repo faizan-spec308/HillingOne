@@ -1,11 +1,9 @@
 import { useState, useRef } from "react";
 import { Search, Mic, Sparkles, ArrowRight, MapPin, Users, Clock } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
-import { useTheme } from "../context/ThemeContext";
 
 export default function SearchBox({ onSearch, loading }) {
   const { t, lang } = useLanguage();
-  const { isDark } = useTheme();
 
   const [query,     setQuery]     = useState("");
   const [listening, setListening] = useState(false);
@@ -56,14 +54,15 @@ export default function SearchBox({ onSearch, loading }) {
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <div
         className="relative overflow-hidden"
-        style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}`, background: isDark
-          ? "linear-gradient(180deg, #0A0F16 0%, #0E1117 100%)"
-          : "linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)" }}
+        style={{
+          borderBottom: "1px solid var(--border)",
+          background: "linear-gradient(180deg, var(--bg) 0%, var(--bg-card) 100%)",
+        }}
       >
         {/* Dot pattern */}
         <div
           className="absolute inset-0 opacity-[0.025]"
-          style={{ backgroundImage: "radial-gradient(#0D9488 1px, transparent 1px)", backgroundSize: "24px 24px" }}
+          style={{ backgroundImage: "radial-gradient(var(--brand) 1px, transparent 1px)", backgroundSize: "24px 24px" }}
         />
 
         <div className="relative max-w-3xl mx-auto px-6 pt-16 pb-12">
@@ -78,14 +77,14 @@ export default function SearchBox({ onSearch, loading }) {
 
           {/* Heading */}
           <div className="text-center mb-10">
-            <h1 className="font-display text-[44px] md:text-[56px] font-black leading-[1.05] tracking-tight mb-5" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>
+            <h1 className="font-display text-[44px] md:text-[56px] font-black leading-[1.05] tracking-tight mb-5" style={{ color: "var(--text-1)" }}>
               {t("search_heading")}
               <br />
-              <span style={{ color: "#0D9488" }}>
+              <span style={{ color: "var(--brand)" }}>
                 {t("search_heading_accent")}
               </span>
             </h1>
-            <p className="text-[17px] max-w-xl mx-auto leading-relaxed" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
+            <p className="text-[17px] max-w-xl mx-auto leading-relaxed" style={{ color: "var(--text-2)" }}>
               {t("search_sub")}
             </p>
           </div>
@@ -94,17 +93,9 @@ export default function SearchBox({ onSearch, loading }) {
           <div
             className="rounded-2xl overflow-hidden transition-all duration-300"
             style={{
-              background: isDark ? "#161B22" : "#ffffff",
-              border: focused
-                ? "1.5px solid #0D9488"
-                : isDark ? "1.5px solid #30363D" : "1.5px solid #e5e7eb",
-              boxShadow: focused
-                ? isDark
-                  ? "0 0 0 4px rgba(13,148,136,0.15), 0 8px 32px rgba(0,0,0,0.4)"
-                  : "0 0 0 4px rgba(13,148,136,0.10), 0 8px 32px rgba(13,148,136,0.14)"
-                : isDark
-                  ? "0 0 0 1px rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)"
-                  : "0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
+              background: "var(--bg-card)",
+              border: `1.5px solid ${focused ? "var(--brand)" : "var(--border)"}`,
+              boxShadow: focused ? "0 0 0 4px var(--brand-ring), var(--shadow-lg)" : "var(--shadow-md)",
             }}
           >
             {/* Textarea */}
@@ -123,18 +114,14 @@ export default function SearchBox({ onSearch, loading }) {
                 autoFocus
                 aria-label={t("search_ph")}
                 className="w-full text-[15px] resize-none focus:outline-none leading-relaxed font-normal"
-                style={{
-                  background: "transparent",
-                  color: isDark ? "#E6EDF3" : "#111827",
-                  caretColor: "#0D9488",
-                }}
+                style={{ background: "transparent", color: "var(--text-1)", caretColor: "var(--brand)" }}
               />
             </div>
 
             {/* Toolbar */}
             <div
               className="flex items-center justify-between px-4 py-3 gap-3"
-              style={{ borderTop: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}`, background: isDark ? "rgba(255,255,255,0.02)" : "rgba(249,250,251,0.6)" }}
+              style={{ borderTop: "1px solid var(--border)", background: "var(--surface-2)" }}
             >
               <div className="flex items-center gap-2">
 
@@ -143,8 +130,8 @@ export default function SearchBox({ onSearch, loading }) {
                   onClick={startVoice}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-all"
                   style={listening
-                    ? { background: "#FEF2F2", borderColor: "#FECACA", color: "#DC2626" }
-                    : { background: isDark ? "#21262D" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#8B949E" : "#4B5563" }
+                    ? { background: "var(--danger-bg)", borderColor: "var(--danger)", color: "var(--danger)" }
+                    : { background: "var(--bg-card)", borderColor: "var(--border)", color: "var(--text-2)" }
                   }
                 >
                   <Mic size={13} />
@@ -177,17 +164,13 @@ export default function SearchBox({ onSearch, loading }) {
 
           {/* Example queries */}
           <div className="flex flex-wrap gap-2 justify-center mt-5">
-            <span className="text-[12px] font-medium self-center mr-1" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>{t("search_try")}</span>
+            <span className="text-[12px] font-medium self-center mr-1" style={{ color: "var(--text-3)" }}>{t("search_try")}</span>
             {EXAMPLES.map((q) => (
               <button
                 key={q}
                 onClick={() => { setQuery(q); submit(q); }}
                 className="px-3.5 py-1.5 text-[12.5px] rounded-full transition shadow-sm font-medium hover:border-hillingdon-navy hover:text-hillingdon-navy"
-                style={{
-                  background: isDark ? "#1C2128" : "#ffffff",
-                  border: `1px solid ${isDark ? "#30363D" : "#e5e7eb"}`,
-                  color: isDark ? "#8B949E" : "#4b5563",
-                }}
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-2)" }}
               >
                 {q}
               </button>
@@ -197,13 +180,13 @@ export default function SearchBox({ onSearch, loading }) {
       </div>
 
       {/* ── Stats strip ──────────────────────────────────────────────────── */}
-      <div style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}`, background: isDark ? "#161B22" : "#ffffff" }}>
+      <div style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-card)" }}>
         <div className="max-w-3xl mx-auto px-6 py-4">
-          <div className="grid grid-cols-4" style={{ borderLeft: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
+          <div className="grid grid-cols-4" style={{ borderLeft: "1px solid var(--border)" }}>
             {STATS.map(({ icon: Icon, value, labelKey }) => (
-              <div key={labelKey} className="text-center px-4" style={{ borderRight: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
-                <div className="text-[19px] font-display font-black leading-tight" style={{ color: isDark ? "#2DD4BF" : "#0D9488" }}>{value}</div>
-                <div className="text-[11px] font-medium mt-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{t(labelKey)}</div>
+              <div key={labelKey} className="text-center px-4" style={{ borderRight: "1px solid var(--border)" }}>
+                <div className="text-[19px] font-display font-black leading-tight" style={{ color: "var(--brand)" }}>{value}</div>
+                <div className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-3)" }}>{t(labelKey)}</div>
               </div>
             ))}
           </div>

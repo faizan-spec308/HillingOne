@@ -493,6 +493,7 @@ h1, h2, h3, h4 {
 .badge-danger  { background: var(--danger-bg);  color: var(--danger-fg); }
 .badge-info    { background: var(--info-bg);    color: var(--info-fg); }
 .badge-brand   { background: var(--brand-tint); color: var(--brand); }
+.badge-neutral { background: var(--surface-2);  color: var(--text-3); }
 
 /* ── Menu / popover ──────────────────────────────────────────── */
 .menu {

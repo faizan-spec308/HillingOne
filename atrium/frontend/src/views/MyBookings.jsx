@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useTheme } from "../context/ThemeContext";
 import {
   Calendar, MapPin, Clock, X, ArrowLeft, CheckCircle2,
   RefreshCw, Edit2, AlertTriangle, Users, ChevronRight,
@@ -16,11 +15,11 @@ const fmtShort = (iso) => new Date(iso).toLocaleDateString("en-GB", { weekday: "
 const fmtTime  = (iso) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 const STATUS = {
-  confirmed:    { label: "Confirmed",    bg: "bg-emerald-500", pill: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
-  held:         { label: "Held",         bg: "bg-amber-400",   pill: "bg-amber-50 text-amber-700 ring-amber-200" },
-  cancelled:    { label: "Cancelled",    bg: "bg-red-400",     pill: "bg-red-50 text-red-600 ring-red-100" },
-  completed:    { label: "Completed",    bg: "bg-gray-300",    pill: "bg-gray-50 text-gray-500 ring-gray-200" },
-  swap_pending: { label: "Pending swap", bg: "bg-blue-400",    pill: "bg-blue-50 text-blue-700 ring-blue-200" },
+  confirmed:    { label: "Confirmed",    dot: "var(--success)", badge: "badge-success" },
+  held:         { label: "Held",         dot: "var(--warning)", badge: "badge-warning" },
+  cancelled:    { label: "Cancelled",    dot: "var(--danger)",  badge: "badge-danger" },
+  completed:    { label: "Completed",    dot: "var(--text-3)",  badge: "badge-neutral" },
+  swap_pending: { label: "Pending swap", dot: "var(--info)",    badge: "badge-info" },
 };
 
 /* ─── Toast — always fixed top via portal ──────────────────────────── */
@@ -71,7 +70,6 @@ function Toast({ toast, onClose }) {
 
 /* ─── Modal shell — portal, always centred, backdrop-blur ──────────── */
 function Modal({ onClose, children }) {
-  const { isDark } = useTheme();
   useEffect(() => {
     document.body.style.overflow = "hidden";
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -84,16 +82,13 @@ function Modal({ onClose, children }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9998] flex items-center justify-center p-5"
-      style={{ backdropFilter: "blur(4px)", background: "rgba(15,23,42,0.5)", animation: "fadeIn 0.15s ease" }}
+      className="modal-overlay"
+      style={{ zIndex: 9998 }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       role="dialog"
       aria-modal="true"
     >
-      <div
-        className="rounded-3xl shadow-2xl w-full max-w-sm overflow-y-auto"
-        style={{ background: isDark ? "#161B22" : "#ffffff", border: isDark ? "1px solid #30363D" : "none", animation: "scaleIn 0.2s ease", maxHeight: "90vh" }}
-      >
+      <div className="modal-panel max-w-sm overflow-y-auto" style={{ maxHeight: "90vh" }}>
         {children}
       </div>
     </div>,
@@ -103,10 +98,9 @@ function Modal({ onClose, children }) {
 
 /* ─── Cancel modal ─────────────────────────────────────────────────── */
 function CancelModal({ booking, onClose, onConfirm, loading }) {
-  const { isDark } = useTheme();
   const lateCancel = new Date(booking.start_time) - Date.now() < 24 * 60 * 60 * 1000;
-  const t1 = isDark ? "#E6EDF3" : "#111827";
-  const t2 = isDark ? "#8B949E" : "#6B7280";
+  const t1 = "var(--text-1)";
+  const t2 = "var(--text-2)";
 
   return (
     <Modal onClose={onClose}>
@@ -138,10 +132,10 @@ function CancelModal({ booking, onClose, onConfirm, loading }) {
         <div className="flex gap-3">
           <button onClick={onClose} disabled={loading}
             className="flex-1 px-4 py-3 text-[14px] font-semibold rounded-2xl transition"
-            style={{ background: isDark ? "#21262D" : "#F3F4F6", color: isDark ? "#8B949E" : "#374151" }}>
+            style={{ background: "var(--surface-2)", color: "var(--text-2)" }}>
             Keep it
           </button>
-          <button onClick={onConfirm} disabled={loading} className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-[14px] font-semibold rounded-2xl transition flex items-center justify-center gap-2">
+          <button onClick={onConfirm} disabled={loading} className="btn-danger flex-1 py-3 rounded-2xl">
             {loading ? <RefreshCw size={15} className="animate-spin" /> : null}
             {loading ? "Cancelling…" : "Yes, cancel"}
           </button>
@@ -189,7 +183,6 @@ function RescheduleCheckout({ clientSecret, amountDisplay, onPaid, onBack }) {
 
 /* ─── Reschedule modal ─────────────────────────────────────────────── */
 function RescheduleModal({ booking, onClose, onSuccess }) {
-  const { isDark } = useTheme();
   const s   = new Date(booking.start_time);
   const e   = new Date(booking.end_time);
   const pad = (d) => d.toISOString().slice(0, 10);
@@ -204,12 +197,12 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
   const today    = new Date().toISOString().slice(0, 10);
   const payRef   = useRef(null);
 
-  const t1 = isDark ? "#E6EDF3" : "#111827";
-  const t2 = isDark ? "#8B949E" : "#6B7280";
+  const t1 = "var(--text-1)";
+  const t2 = "var(--text-2)";
   const inputStyle = {
-    background: isDark ? "#0E1117" : "#ffffff",
-    border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`,
-    color: isDark ? "#E6EDF3" : "#111827",
+    background: "var(--bg)",
+    border: "1px solid var(--border)",
+    color: "var(--text-1)",
   };
 
   useLayoutEffect(() => {
@@ -332,7 +325,7 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
             <div className="flex gap-3">
               <button onClick={onClose} disabled={saving}
                 className="flex-1 px-4 py-3 text-[14px] font-semibold rounded-2xl transition"
-                style={{ background: isDark ? "#21262D" : "#F3F4F6", color: isDark ? "#8B949E" : "#374151" }}>
+                style={{ background: "var(--surface-2)", color: "var(--text-2)" }}>
                 Cancel
               </button>
               <button onClick={submit} disabled={saving} className="btn-primary flex-1 justify-center text-[14px]">
@@ -365,41 +358,31 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
 
 /* ─── Booking card ─────────────────────────────────────────────────── */
 function BookingCard({ booking, onCancel, onReschedule, onAcceptSwap, onDeclineSwap, swapBusy }) {
-  const { isDark } = useTheme();
   const isPast = ["cancelled", "completed"].includes(booking.state);
   const isSwapPending = booking.state === "swap_pending";
   const st = STATUS[booking.state] || STATUS.completed;
   const duration = Math.round((new Date(booking.end_time) - new Date(booking.start_time)) / 36e5 * 10) / 10;
 
-  const cardBg  = isDark ? "#161B22" : "#ffffff";
-  const cardBdr = isPast
-    ? (isDark ? "#21262D" : "#F3F4F6")
-    : (isDark ? "#30363D" : "#E5E7EB");
-  const cellBg  = isDark ? "#21262D" : "#F9FAFB";
-  const t1 = isDark ? "#E6EDF3" : "#111827";
-  const t2 = isDark ? "#8B949E" : "#9CA3AF";
-  const t3 = isDark ? "#8B949E" : "#1F2937";
-
   return (
     <div
       className={`rounded-2xl overflow-hidden transition-all ${isPast ? "opacity-60" : "hover:shadow-lg hover:-translate-y-0.5"}`}
-      style={{ background: cardBg, border: `1px solid ${cardBdr}` }}
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
       {/* Status stripe */}
-      <div className={`h-1.5 ${st.bg}`} />
+      <div className="h-1.5" style={{ background: st.dot }} />
 
       <div className="p-5">
         {/* Header row */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <p className="text-[16px] font-bold leading-tight" style={{ color: t1 }}>{booking.asset?.name || "Unknown venue"}</p>
+            <p className="text-[16px] font-bold leading-tight" style={{ color: "var(--text-1)" }}>{booking.asset?.name || "Unknown venue"}</p>
             {booking.asset?.ward && (
-              <p className="text-[12px] mt-0.5 flex items-center gap-1" style={{ color: t2 }}>
+              <p className="text-[12px] mt-0.5 flex items-center gap-1" style={{ color: "var(--text-3)" }}>
                 <MapPin size={10} /> {booking.asset.ward}, Hillingdon
               </p>
             )}
           </div>
-          <span className={`text-[11px] font-bold px-3 py-1 rounded-full ring-1 flex-shrink-0 ${st.pill}`}>
+          <span className={`badge ${st.badge} flex-shrink-0`}>
             {st.label}
           </span>
         </div>
@@ -407,9 +390,9 @@ function BookingCard({ booking, onCancel, onReschedule, onAcceptSwap, onDeclineS
         {/* Info grid */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           {[["Date", fmtShort(booking.start_time)], ["Time", fmtTime(booking.start_time)], ["Duration", `${duration}h`]].map(([label, val]) => (
-            <div key={label} className="rounded-xl p-3" style={{ background: cellBg }}>
-              <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: t2 }}>{label}</p>
-              <p className="text-[13px] font-semibold" style={{ color: t3 }}>{val}</p>
+            <div key={label} className="rounded-xl p-3" style={{ background: "var(--surface-2)" }}>
+              <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: "var(--text-3)" }}>{label}</p>
+              <p className="text-[13px] font-semibold" style={{ color: "var(--text-1)" }}>{val}</p>
             </div>
           ))}
         </div>
@@ -446,7 +429,7 @@ function BookingCard({ booking, onCancel, onReschedule, onAcceptSwap, onDeclineS
                 onClick={onDeclineSwap}
                 disabled={swapBusy}
                 className="flex-1 px-3 py-2 text-[12px] font-bold rounded-xl transition border"
-                style={{ background: isDark ? "#21262D" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#374151" }}
+                style={{ background: "var(--bg-card)", borderColor: "var(--border)", color: "var(--text-1)" }}
               >
                 Keep my booking
               </button>
@@ -455,8 +438,8 @@ function BookingCard({ booking, onCancel, onReschedule, onAcceptSwap, onDeclineS
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-2" style={{ borderTop: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
-          <span className="text-[11px] font-mono" style={{ color: isDark ? "#484F58" : "#D1D5DB" }}>{booking.reference}</span>
+        <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+          <span className="text-[11px] font-mono" style={{ color: "var(--text-3)" }}>{booking.reference}</span>
           {!isPast && (
             <div className="flex items-center gap-1">
               {onReschedule && !isSwapPending && (
@@ -481,7 +464,6 @@ function BookingCard({ booking, onCancel, onReschedule, onAcceptSwap, onDeclineS
 
 /* ─── Main view ────────────────────────────────────────────────────── */
 export default function MyBookings({ user, onBack }) {
-  const { isDark } = useTheme();
   const [upcoming, setUpcoming]         = useState([]);
   const [past, setPast]                 = useState([]);
   const [hasMore, setHasMore]           = useState(false);
@@ -495,11 +477,11 @@ export default function MyBookings({ user, onBack }) {
   const [swapBusyId, setSwapBusyId]     = useState(null);
   const [filter, setFilter]             = useState("all");
 
-  const t1   = isDark ? "#E6EDF3" : "#111827";
-  const t2   = isDark ? "#8B949E" : "#9CA3AF";
-  const bdr  = isDark ? "#30363D" : "#E5E7EB";
-  const surf = isDark ? "#161B22" : "#ffffff";
-  const skel = isDark ? "#21262D" : "#F3F4F6";
+  const t1   = "var(--text-1)";
+  const t2   = "var(--text-3)";
+  const bdr  = "var(--border)";
+  const surf = "var(--bg-card)";
+  const skel = "var(--surface-2)";
 
   useEffect(() => {
     api.listUserBookings(1).then((res) => {
@@ -641,7 +623,7 @@ export default function MyBookings({ user, onBack }) {
                     className="px-4 py-4 text-center"
                     style={{ borderRight: i < stats.length - 1 ? `1px solid ${bdr}` : "none" }}
                   >
-                    <div className="text-[20px] font-black leading-tight" style={{ color: "#0D9488" }}>
+                    <div className="text-[20px] font-black leading-tight" style={{ color: "var(--brand)" }}>
                       {value}{unit}
                     </div>
                     <div className="text-[11px] font-medium mt-0.5" style={{ color: t2 }}>{label}</div>
@@ -666,8 +648,8 @@ export default function MyBookings({ user, onBack }) {
                 onClick={() => setFilter(tab.id)}
                 className="flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors"
                 style={{
-                  borderBottomColor: filter === tab.id ? "#0D9488" : "transparent",
-                  color: filter === tab.id ? "#0D9488" : t2,
+                  borderBottomColor: filter === tab.id ? "var(--brand)" : "transparent",
+                  color: filter === tab.id ? "var(--brand)" : t2,
                 }}
               >
                 {tab.label}
@@ -675,8 +657,8 @@ export default function MyBookings({ user, onBack }) {
                   <span
                     className="text-[11px] px-1.5 py-0.5 rounded-full font-bold"
                     style={{
-                      background: filter === tab.id ? (isDark ? "rgba(13,148,136,0.15)" : "#CCFBF1") : (isDark ? "#21262D" : "#F3F4F6"),
-                      color: filter === tab.id ? "#0D9488" : t2,
+                      background: filter === tab.id ? "var(--brand-tint)" : "var(--surface-2)",
+                      color: filter === tab.id ? "var(--brand)" : t2,
                     }}
                   >
                     {tab.count}
@@ -707,7 +689,9 @@ export default function MyBookings({ user, onBack }) {
         {/* Empty state */}
         {!loading && upcoming.length === 0 && past.length === 0 && (
           <div className="text-center py-24 rounded-3xl" style={{ background: surf, border: `1px solid ${bdr}` }}>
-            <div className="text-5xl mb-4">📭</div>
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "var(--brand-tint)", color: "var(--brand)" }}>
+              <Calendar size={26} strokeWidth={1.8} />
+            </div>
             <p className="text-[18px] font-bold mb-2" style={{ color: t1 }}>No bookings yet</p>
             <p className="text-[14px] mb-6" style={{ color: t2 }}>Your confirmed reservations will appear here.</p>
             <button onClick={onBack} className="btn-primary">Book a space now</button>
