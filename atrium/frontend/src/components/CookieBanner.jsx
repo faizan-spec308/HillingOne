@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { X, Cookie } from "lucide-react";
-import { useTheme } from "../context/ThemeContext";
 
 const STORAGE_KEY = "hillingone_cookie_notice_dismissed";
 
 export default function CookieBanner({ onOpenPolicy }) {
-  const { isDark } = useTheme();
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(STORAGE_KEY) === "1"
   );
@@ -23,19 +21,17 @@ export default function CookieBanner({ onOpenPolicy }) {
       style={{ pointerEvents: "none" }}
     >
       <div
-        className="max-w-2xl mx-auto rounded-2xl px-5 py-4 flex items-center gap-4 shadow-2xl"
+        className="max-w-2xl mx-auto rounded-2xl px-5 py-4 flex items-center gap-4"
         style={{
-          background: isDark ? "#161B22" : "#ffffff",
-          border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`,
-          boxShadow: isDark
-            ? "0 -4px 32px rgba(0,0,0,0.4)"
-            : "0 -4px 32px rgba(0,0,0,0.1)",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-lg)",
           pointerEvents: "all",
         }}
       >
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}
+          style={{ background: "var(--brand)" }}
         >
           <Cookie size={16} className="text-white" />
         </div>
@@ -54,8 +50,8 @@ export default function CookieBanner({ onOpenPolicy }) {
           onClick={dismiss}
           className="flex-shrink-0 px-4 py-2 rounded-xl text-[13px] font-semibold transition"
           style={{
-            background: isDark ? "#21262D" : "#F3F4F6",
-            color: isDark ? "#E6EDF3" : "#374151",
+            background: "var(--surface-2)",
+            color: "var(--text-1)",
           }}
         >
           Got it

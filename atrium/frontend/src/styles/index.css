@@ -6,7 +6,8 @@
    DESIGN TOKENS — single source of truth.
    Light + dark share the SAME variable names so any component reading
    a token flips automatically. Components should consume these, never
-   hardcode hex. (Migration of inline isDark ternaries is in progress.)
+   hardcode hex. All components now consume these tokens; no component
+   hand-rolls dark mode with inline isDark ternaries anymore.
    ════════════════════════════════════════════════════════════════ */
 :root {
   /* Brand ramp */
@@ -26,6 +27,7 @@
   /* Surfaces & lines (light) */
   --bg:           #F8FAFC;   /* app background */
   --bg-card:      #FFFFFF;   /* raised card */
+  --header-bg:    #FFFFFF;   /* sticky header bar */
   --bg-hover:     #F1F5F9;   /* hover wash */
   --surface:      #F8FAFC;
   --surface-2:    #F1F5F9;
@@ -78,6 +80,7 @@
 
   --bg:           #0E1117;
   --bg-card:      #161B22;
+  --header-bg:    #0E1117;
   --bg-hover:     #1C2128;
   --surface:      #161B22;
   --surface-2:    #21262D;

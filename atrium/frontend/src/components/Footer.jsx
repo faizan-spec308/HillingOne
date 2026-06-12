@@ -1,22 +1,21 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
-import { useTheme } from "../context/ThemeContext";
 
 /* ─── Modal shell ───────────────────────────────────────────────────── */
 function Modal({ title, onClose, children }) {
-  const { isDark } = useTheme();
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-5"
-      style={{ backdropFilter: "blur(4px)", background: "rgba(15,23,42,0.6)" }}
+      style={{ backdropFilter: "blur(4px)", background: "rgba(8,11,17,0.6)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className="w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden"
         style={{
-          background: isDark ? "#161B22" : "#ffffff",
-          boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-xl)",
           maxHeight: "85vh",
           display: "flex",
           flexDirection: "column",
@@ -25,19 +24,19 @@ function Modal({ title, onClose, children }) {
         {/* Header */}
         <div
           className="flex items-center justify-between px-7 py-5 flex-shrink-0"
-          style={{ borderBottom: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}
+          style={{ borderBottom: `1px solid ${"var(--border)"}` }}
         >
-          <h2 className="text-[18px] font-bold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{title}</h2>
+          <h2 className="text-[18px] font-bold" style={{ color: "var(--text-1)" }}>{title}</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center transition"
-            style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}
+            style={{ color: "var(--text-3)" }}
           >
             <X size={18} />
           </button>
         </div>
         {/* Body */}
-        <div className="overflow-y-auto px-7 py-6 flex-1" style={{ color: isDark ? "#C9D1D9" : "#374151" }}>
+        <div className="overflow-y-auto px-7 py-6 flex-1" style={{ color: "var(--text-2)" }}>
           {children}
         </div>
       </div>
@@ -92,29 +91,28 @@ const FAQS = [
 
 function FAQItem({ faq }) {
   const [open, setOpen] = useState(false);
-  const { isDark } = useTheme();
   return (
     <div
       className="rounded-2xl mb-3 overflow-hidden"
-      style={{ border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}
+      style={{ border: "1px solid var(--border)" }}
     >
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-4 text-left transition"
-        style={{ background: open ? (isDark ? "#1C2128" : "#F9FAFB") : "transparent" }}
+        style={{ background: open ? "var(--surface-2)" : "transparent" }}
       >
-        <span className="text-[14px] font-semibold pr-4" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{faq.q}</span>
+        <span className="text-[14px] font-semibold pr-4" style={{ color: "var(--text-1)" }}>{faq.q}</span>
         {open
-          ? <ChevronUp size={16} className="flex-shrink-0" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }} />
-          : <ChevronDown size={16} className="flex-shrink-0" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }} />
+          ? <ChevronUp size={16} className="flex-shrink-0" style={{ color: "var(--text-3)" }} />
+          : <ChevronDown size={16} className="flex-shrink-0" style={{ color: "var(--text-3)" }} />
         }
       </button>
       {open && (
         <div
           className="px-5 pb-4"
-          style={{ borderTop: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}` }}
+          style={{ borderTop: "1px solid var(--border)" }}
         >
-          <p className="text-[13px] leading-relaxed pt-3" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>{faq.a}</p>
+          <p className="text-[13px] leading-relaxed pt-3" style={{ color: "var(--text-2)" }}>{faq.a}</p>
         </div>
       )}
     </div>
@@ -341,7 +339,6 @@ function CookieModal({ onClose }) {
 
 /* ─── Footer ────────────────────────────────────────────────────────── */
 export default function Footer({ cookieModalOpen = false, onCookieModalClose = () => {} }) {
-  const { isDark } = useTheme();
   const [modal, setModal] = useState(null);
 
   // Controlled cookie modal from banner
@@ -351,15 +348,15 @@ export default function Footer({ cookieModalOpen = false, onCookieModalClose = (
   const linkCls = "text-[13px] transition cursor-pointer hover:text-teal-600";
   const headingCls = "text-[11px] font-bold uppercase tracking-widest mb-3";
 
-  const borderColor = isDark ? "#21262D" : "#E5E7EB";
-  const textMuted   = isDark ? "#8B949E" : "#6B7280";
-  const textHeading = isDark ? "#6E7681" : "#9CA3AF";
+  const borderColor = "var(--border)";
+  const textMuted   = "var(--text-2)";
+  const textHeading = "var(--text-3)";
 
   return (
     <>
       <footer
         style={{
-          background: isDark ? "#0E1117" : "#F9FAFB",
+          background: "var(--bg)",
           borderTop: `1px solid ${borderColor}`,
         }}
       >
@@ -369,10 +366,10 @@ export default function Footer({ cookieModalOpen = false, onCookieModalClose = (
             {/* Brand */}
             <div className="lg:col-span-1">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--brand)" }}>
                   <span className="text-white text-[13px] font-black">H</span>
                 </div>
-                <span className="text-[16px] font-black" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>HillingOne</span>
+                <span className="text-[16px] font-black" style={{ color: "var(--text-1)" }}>HillingOne</span>
               </div>
               <p className="text-[13px] leading-relaxed mb-4" style={{ color: textMuted }}>
                 The smart community booking platform for the London Borough of Hillingdon.

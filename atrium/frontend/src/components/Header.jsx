@@ -3,13 +3,11 @@ import { Bell, BookOpen, ChevronDown, LogOut, Shield, Globe, Settings, X, Clock,
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
-import { useTheme } from "../context/ThemeContext";
 import { api } from "../api/client";
 
 export default function Header({ userName, role, isStaff }) {
   const { logout } = useAuth();
   const { lang, setLang, t, languages } = useLanguage();
-  const { isDark } = useTheme();
   const navigate  = useNavigate();
   const location  = useLocation();
 
@@ -70,9 +68,9 @@ export default function Header({ userName, role, isStaff }) {
     <header
       className="sticky top-0 z-30"
       style={{
-        background: isDark ? "#0E1117" : "#ffffff",
-        borderBottom: `1px solid ${isDark ? "#21262D" : "#E2E8F0"}`,
-        boxShadow: isDark ? "none" : "0 1px 3px rgba(0,0,0,0.05)",
+        background: "var(--header-bg)",
+        borderBottom: "1px solid var(--border)",
+        boxShadow: "var(--shadow-xs)",
       }}
     >
       <div className="px-6 py-3 flex items-center justify-between gap-4 w-full">
@@ -84,7 +82,7 @@ export default function Header({ userName, role, isStaff }) {
         >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}
+            style={{ background: "var(--brand)" }}
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -92,13 +90,13 @@ export default function Header({ userName, role, isStaff }) {
             </svg>
           </div>
           <div className="text-left">
-            <div className="hidden sm:block text-[10px] font-semibold leading-none tracking-widest uppercase" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>Hillingdon Council</div>
-            <div className="text-[16px] font-display font-bold leading-tight" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>HillingOne</div>
+            <div className="hidden sm:block text-[10px] font-semibold leading-none tracking-widest uppercase" style={{ color: "var(--text-3)" }}>Hillingdon Council</div>
+            <div className="text-[16px] font-display font-bold leading-tight" style={{ color: "var(--text-1)" }}>HillingOne</div>
           </div>
         </button>
 
         {/* Nav tabs — hidden on mobile */}
-        <nav className="hidden sm:flex items-center rounded-xl p-1 gap-0.5" style={{ background: isDark ? "#21262D" : "#F3F4F6" }}>
+        <nav className="hidden sm:flex items-center rounded-xl p-1 gap-0.5" style={{ background: "var(--surface-2)" }}>
           {tabs.map(({ path, label, icon }) => (
             <button
               key={path}
@@ -120,7 +118,7 @@ export default function Header({ userName, role, isStaff }) {
               onClick={() => setLangOpen((v) => !v)}
               title="Change language"
               className="flex items-center gap-1.5 p-2 rounded-xl transition"
-              style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}
+              style={{ color: "var(--text-3)" }}
             >
               <Globe size={18} />
               <span className="text-[11px] font-bold uppercase hidden sm:block tracking-wide">
@@ -153,7 +151,7 @@ export default function Header({ userName, role, isStaff }) {
               aria-label="Notifications"
               onClick={() => setBellOpen((v) => !v)}
               className="relative p-2 rounded-xl transition"
-              style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}
+              style={{ color: "var(--text-3)" }}
             >
               <Bell size={18} />
               {reminders.length > 0 && (
@@ -225,26 +223,22 @@ export default function Header({ userName, role, isStaff }) {
             <button
               onClick={() => setDropdownOpen((v) => !v)}
               className="flex items-center gap-2.5 pl-3 ml-1 rounded-xl pr-2 py-1.5 transition"
-              style={{ borderLeft: `1px solid ${isDark ? "#21262D" : "#E5E7EB"}` }}
+              style={{ borderLeft: "1px solid var(--border)" }}
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0"
-                style={{
-                  background: isStaff
-                    ? "linear-gradient(135deg, #0F766E, #0D9488)"
-                    : "linear-gradient(135deg, #059669, #10B981)",
-                }}
+                style={{ background: isStaff ? "var(--brand)" : "var(--success)" }}
               >
                 {initials}
               </div>
               <div className="hidden sm:block leading-tight text-left">
-                <div className="text-[13px] font-semibold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{userName}</div>
-                <div className="text-[11px] capitalize" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{role}</div>
+                <div className="text-[13px] font-semibold" style={{ color: "var(--text-1)" }}>{userName}</div>
+                <div className="text-[11px] capitalize" style={{ color: "var(--text-3)" }}>{role}</div>
               </div>
               <ChevronDown
                 size={13}
                 className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
-                style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}
+                style={{ color: "var(--text-3)" }}
               />
             </button>
 
