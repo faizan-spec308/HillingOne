@@ -30,6 +30,27 @@ function scoreConfig(s) {
   return { label: "Possible match", key: "info" };
 }
 
+/* Colour-coded amenity chip — tones map to semantic tokens, so each
+   feature is highlighted with its own colour and still adapts to dark. */
+const CHIP_TONE = {
+  success: { bg: "var(--success-bg)", fg: "var(--success-fg)" },
+  info:    { bg: "var(--info-bg)",    fg: "var(--info-fg)" },
+  warning: { bg: "var(--warning-bg)", fg: "var(--warning-fg)" },
+  brand:   { bg: "var(--brand-tint)", fg: "var(--brand)" },
+};
+function AmenityChip({ icon: Icon, label, tone = "brand" }) {
+  const c = CHIP_TONE[tone] || CHIP_TONE.brand;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full"
+      style={{ background: c.bg, color: c.fg }}
+    >
+      <Icon size={11} />
+      {label}
+    </span>
+  );
+}
+
 export default function AssetCard({ match, onBook, onViewCalendar, searchWindow }) {
   const { t } = useLanguage();
   const asset = match.asset || {};
@@ -43,10 +64,11 @@ export default function AssetCard({ match, onBook, onViewCalendar, searchWindow 
     <div className="civic-card fade-in-up p-5">
       <div className="flex gap-4">
 
-        {/* Category icon — tinted by match quality */}
+        {/* Category icon — brand-tinted (category identity; match quality
+            lives in the badge + bar below, not here) */}
         <div
           className="w-14 h-14 flex-shrink-0 rounded-2xl flex items-center justify-center"
-          style={{ background: `var(--${sc.key}-bg)`, color: `var(--${sc.key})` }}
+          style={{ background: "var(--brand-tint)", color: "var(--brand)" }}
         >
           <Icon size={24} strokeWidth={1.8} />
         </div>
@@ -102,19 +124,19 @@ export default function AssetCard({ match, onBook, onViewCalendar, searchWindow 
             </p>
           )}
 
-          {/* Amenities — uniform, monochrome chips (icons carry the meaning) */}
+          {/* Amenities — colour-coded by type */}
           <div className="flex flex-wrap gap-1.5 mt-3">
             {match.accessibility_match === "full" && (
-              <span className="chip"><Accessibility size={11} />Fully accessible</span>
+              <AmenityChip icon={Accessibility} label="Fully accessible" tone="success" />
             )}
             {match.accessibility_match === "partial" && (
-              <span className="chip"><Accessibility size={11} />Partial access</span>
+              <AmenityChip icon={Accessibility} label="Partial access" tone="warning" />
             )}
-            {amenities.kitchen && <span className="chip"><Utensils size={11} />{t("card_kitchen")}</span>}
-            {amenities.wifi && <span className="chip"><Wifi size={11} />{t("card_wifi")}</span>}
-            {(amenities.parking || asset.parking) && <span className="chip"><Car size={11} />{t("card_parking")}</span>}
+            {amenities.kitchen && <AmenityChip icon={Utensils} label={t("card_kitchen")} tone="warning" />}
+            {amenities.wifi && <AmenityChip icon={Wifi} label={t("card_wifi")} tone="info" />}
+            {(amenities.parking || asset.parking) && <AmenityChip icon={Car} label={t("card_parking")} tone="brand" />}
             {match.carbon_estimate_kg !== undefined && (
-              <span className="chip"><Leaf size={11} />{match.carbon_estimate_kg} kg CO₂</span>
+              <AmenityChip icon={Leaf} label={`${match.carbon_estimate_kg} kg CO₂`} tone="success" />
             )}
           </div>
 
@@ -132,7 +154,14 @@ export default function AssetCard({ match, onBook, onViewCalendar, searchWindow 
                 {" – "}
                 {new Date(searchWindow.end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
               </span>
-              <span className="ml-auto font-semibold" style={{ color: "var(--brand)" }}>Edit time</span>
+              <button
+                type="button"
+                onClick={() => onBook(asset)}
+                className="ml-auto font-semibold hover:underline"
+                style={{ color: "var(--brand)" }}
+              >
+                Edit time
+              </button>
             </div>
           )}
 
