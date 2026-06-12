@@ -166,7 +166,8 @@ async def confirm(
                         Payment.status == "pending",
                     )
                 )
-                for pending in pending_result.scalars().all():
+                all_pending = pending_result.scalars().all()
+                for pending in all_pending:
                     try:
                         intent = await asyncio.to_thread(
                             _stripe.PaymentIntent.retrieve, pending.stripe_payment_intent_id
@@ -174,12 +175,15 @@ async def confirm(
                     except Exception as exc:
                         logger.error("intent_verify_failed booking_id=%s err=%s", booking_id, str(exc))
                         continue
-                    if intent.status == "succeeded":
+                    if intent.status == "succeeded" and not paid:
                         pending.status = "succeeded"
                         pending.stripe_charge_id = intent.get("latest_charge") or ""
-                        await db.commit()
                         paid = True
-                        break
+                    elif not paid:
+                        # Superseded by a later successful payment attempt
+                        pending.status = "cancelled"
+                if paid:
+                    await db.commit()
             if not paid:
                 raise HTTPException(status_code=402, detail="payment_required")
 

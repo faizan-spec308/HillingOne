@@ -129,6 +129,8 @@ class BookingService:
         sibling_windows: list[tuple[datetime, datetime]] = []
         if is_recurring and recurrence_weeks and recurrence_weeks > 1:
             available, skipped = [start.isoformat()], []
+            # Check all occurrences while holding FOR UPDATE locks on conflicting
+            # rows, so a concurrent hold can't slip into a window after we clear it.
             for week in range(1, recurrence_weeks):
                 occ_start = start + timedelta(weeks=week)
                 occ_end = end + timedelta(weeks=week)
@@ -138,6 +140,9 @@ class BookingService:
                 else:
                     available.append(occ_start.isoformat())
                     sibling_windows.append((occ_start, occ_end))
+            # Re-verify the parent slot is still free after sibling checks complete
+            if await self.find_conflicts(asset_id, start, end):
+                raise ValueError("slot_unavailable")
             recurrence_pattern = {
                 "weeks": recurrence_weeks,
                 "occurrences": available,
@@ -258,6 +263,8 @@ class BookingService:
             raise ValueError("cannot_cancel_state")
         if booking.end_time < _now():
             raise ValueError("cannot_cancel_past")
+        if booking.start_time <= _now():
+            raise ValueError("cannot_cancel_in_progress")
         booking.state = "cancelled"
         booking.cancelled_at = _now()
         booking.cancelled_by = user_id

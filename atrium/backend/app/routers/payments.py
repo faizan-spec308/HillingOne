@@ -135,6 +135,9 @@ async def _on_payment_succeeded(intent: dict, db: AsyncSession, s) -> None:
     payment = result.scalar_one_or_none()
     if not payment:
         return
+    if payment.status == "succeeded":
+        # Already processed — Stripe retry, nothing to do
+        return
 
     payment.status = "succeeded"
     payment.stripe_charge_id = intent.get("latest_charge") or ""

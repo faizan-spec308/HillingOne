@@ -395,12 +395,32 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
   const isFree    = rate === 0;
   const fmtT = (iso) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setErr(null);
     if (!date) { setErr("Please select a date."); return; }
     if (start >= end) { setErr("End time must be after start time."); return; }
     if (durationHours < 0.5) { setErr("Minimum booking is 30 minutes."); return; }
     if (durationHours > 12)  { setErr("Maximum booking is 12 hours."); return; }
+
+    // Re-fetch availability right before submitting to catch slots taken since page load
+    try {
+      const next = new Date(`${date}T00:00:00`);
+      next.setDate(next.getDate() + 1);
+      const pad = (n) => String(n).padStart(2, "0");
+      const nextStr = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+      const fresh = await api.getAssetAvailability(asset.id, date, nextStr);
+      const s = new Date(`${date}T${start}:00`);
+      const e = new Date(`${date}T${end}:00`);
+      const conflict = fresh.some((b) => new Date(b.start_time) < e && new Date(b.end_time) > s);
+      if (conflict) {
+        setDayBookings(fresh);
+        setErr("This slot was just taken — please choose another time.");
+        return;
+      }
+    } catch {
+      // If re-fetch fails, let the server be the final arbiter
+    }
+
     const startIso = new Date(`${date}T${start}:00`).toISOString();
     const endIso   = new Date(`${date}T${end}:00`).toISOString();
     onConfirm(startIso, endIso, isRecurring, recurrenceWeeks);
