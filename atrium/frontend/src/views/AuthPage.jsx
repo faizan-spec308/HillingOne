@@ -2,13 +2,11 @@ import { useState } from "react";
 import { Eye, EyeOff, ArrowRight, ShieldCheck, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
-import { useTheme } from "../context/ThemeContext";
 import { api } from "../api/client";
 
 export default function AuthPage({ initialMode = "login" }) {
   const { login } = useAuth();
   const { t, lang, setLang, languages } = useLanguage();
-  const { isDark } = useTheme();
 
   // Read reset token from URL if present
   const urlToken = new URLSearchParams(window.location.search).get("token");
@@ -23,15 +21,14 @@ export default function AuthPage({ initialMode = "login" }) {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const t1  = isDark ? "#E6EDF3" : "#111827";
-  const t2  = isDark ? "#8B949E" : "#6B7280";
-  const t3  = isDark ? "#484F58" : "#9CA3AF";
-  const bdr = isDark ? "#30363D" : "#E5E7EB";
-  const bdrLight = isDark ? "#21262D" : "#F3F4F6";
-  const card = isDark ? "#161B22" : "#ffffff";
+  const t1  = "var(--text-1)";
+  const t2  = "var(--text-2)";
+  const t3  = "var(--text-3)";
+  const bdr = "var(--border)";
+  const card = "var(--bg-card)";
   const inp  = {
-    background: isDark ? "#0E1117" : "#ffffff",
-    border: `1px solid ${isDark ? "#30363D" : "#D1D5DB"}`,
+    background: "var(--bg)",
+    border: "1px solid var(--border)",
     color: t1,
   };
 
@@ -156,7 +153,7 @@ export default function AuthPage({ initialMode = "login" }) {
       </div>
 
       {/* ── Right panel — form ─────────────────────────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center p-8" style={{ background: isDark ? "#0E1117" : "#F9FAFB" }}>
+      <div className="flex-1 flex items-center justify-center p-8" style={{ background: "var(--bg)" }}>
         <div className="w-full max-w-md">
 
           {/* Mobile logo + language */}
@@ -178,7 +175,7 @@ export default function AuthPage({ initialMode = "login" }) {
                   title={name}
                   className="text-[11px] font-bold px-2 py-1 rounded-lg transition"
                   style={lang === code
-                    ? { background: isDark ? "rgba(13,148,136,0.15)" : "#CCFBF1", color: "#0D9488", boxShadow: `0 0 0 1px #0D9488` }
+                    ? { background: "var(--brand-tint)", color: "var(--brand)", boxShadow: "0 0 0 1px var(--brand)" }
                     : { color: t2 }
                   }
                 >
@@ -210,7 +207,7 @@ export default function AuthPage({ initialMode = "login" }) {
                   </div>
                 ) : (
                   <form onSubmit={submit} className="space-y-4">
-                    <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="your@email.com" required isDark={isDark} inp={inp} t1={t1} />
+                    <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="your@email.com" required inp={inp} t1={t1} />
                     {error && <div className="p-3.5 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-700 font-medium">{error}</div>}
                     <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-3.5 text-white text-[15px] font-bold rounded-2xl transition-all btn-primary">
                       {loading ? <><Loader2 size={18} className="animate-spin" /> Sending…</> : <>Send reset link <ArrowRight size={18} /></>}
@@ -233,7 +230,7 @@ export default function AuthPage({ initialMode = "login" }) {
                 ) : (
                   <form onSubmit={submit} className="space-y-4">
                     <div>
-                      <label className="block text-[13px] font-semibold mb-1.5" style={{ color: isDark ? "#C9D1D9" : "#374151" }}>New password</label>
+                      <label className="block text-[13px] font-semibold mb-1.5" style={{ color: "var(--text-2)" }}>New password</label>
                       <div className="relative">
                         <input
                           type={showPw ? "text" : "password"}
@@ -262,14 +259,14 @@ export default function AuthPage({ initialMode = "login" }) {
             {/* Login / Register screens */}
             {(mode === "login" || mode === "register") && (<>
             {/* Mode toggle */}
-            <div className="flex rounded-2xl p-1 mb-8" style={{ background: isDark ? "#21262D" : "#F3F4F6" }}>
+            <div className="flex rounded-2xl p-1 mb-8" style={{ background: "var(--surface-2)" }}>
               {["login", "register"].map((m) => (
                 <button
                   key={m}
                   onClick={() => { setMode(m); setError(null); setSuccess(null); }}
                   className="flex-1 py-2.5 text-[14px] font-semibold rounded-xl transition-all"
                   style={mode === m
-                    ? { background: isDark ? "#161B22" : "#ffffff", color: t1, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }
+                    ? { background: "var(--bg-card)", color: t1, boxShadow: "var(--shadow-xs)" }
                     : { color: t2 }
                   }
                 >
@@ -287,14 +284,14 @@ export default function AuthPage({ initialMode = "login" }) {
 
             <form onSubmit={submit} className="space-y-4">
               {mode === "register" && (
-                <Field label={t("auth_full_name")} type="text" value={form.name} onChange={set("name")} placeholder={t("auth_name_ph")} required isDark={isDark} inp={inp} t1={t1} />
+                <Field label={t("auth_full_name")} type="text" value={form.name} onChange={set("name")} placeholder={t("auth_name_ph")} required inp={inp} t1={t1} />
               )}
 
-              <Field label={t("auth_email")} type="email" value={form.email} onChange={set("email")} placeholder={t("auth_email_ph")} required isDark={isDark} inp={inp} t1={t1} />
+              <Field label={t("auth_email")} type="email" value={form.email} onChange={set("email")} placeholder={t("auth_email_ph")} required inp={inp} t1={t1} />
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[13px] font-semibold" style={{ color: isDark ? "#C9D1D9" : "#374151" }}>{t("auth_password")}</label>
+                  <label className="text-[13px] font-semibold" style={{ color: "var(--text-2)" }}>{t("auth_password")}</label>
                   {mode === "login" && (
                     <button type="button" onClick={() => { setMode("forgot"); setError(null); setSuccess(null); }} className="text-[12px] text-teal-600 hover:underline font-medium">
                       Forgot password?
@@ -324,7 +321,7 @@ export default function AuthPage({ initialMode = "login" }) {
               </div>
 
               {mode === "register" && (
-                <Field label={t("auth_ward")} type="text" value={form.ward} onChange={set("ward")} placeholder={t("auth_ward_ph")} isDark={isDark} inp={inp} t1={t1} />
+                <Field label={t("auth_ward")} type="text" value={form.ward} onChange={set("ward")} placeholder={t("auth_ward_ph")} inp={inp} t1={t1} />
               )}
 
               {error && (
@@ -365,11 +362,10 @@ export default function AuthPage({ initialMode = "login" }) {
   );
 }
 
-function Field({ label, type, value, onChange, placeholder, required, isDark, inp, t1 }) {
-  const labelColor = isDark ? "#C9D1D9" : "#374151";
+function Field({ label, type, value, onChange, placeholder, required, inp, t1 }) {
   return (
     <div>
-      <label className="block text-[13px] font-semibold mb-1.5" style={{ color: labelColor }}>{label}</label>
+      <label className="block text-[13px] font-semibold mb-1.5" style={{ color: "var(--text-2)" }}>{label}</label>
       <input
         type={type}
         value={value}

@@ -12,16 +12,15 @@ const WARDS = [
 ];
 
 function SectionCard({ title, icon: Icon, children }) {
-  const { isDark } = useTheme();
   return (
     <div className="rounded-2xl overflow-hidden shadow-civic mb-5"
-      style={{ background: isDark ? "#161B22" : "#ffffff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
       <div className="px-6 py-4 flex items-center gap-2.5"
-        style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#0F766E,#0D9488)" }}>
+        style={{ borderBottom: "1px solid var(--border)" }}>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--brand)" }}>
           <Icon size={14} className="text-white" />
         </div>
-        <h2 className="text-[15px] font-bold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{title}</h2>
+        <h2 className="text-[15px] font-bold" style={{ color: "var(--text-1)" }}>{title}</h2>
       </div>
       <div className="px-6 py-5">{children}</div>
     </div>
@@ -42,10 +41,9 @@ function Toast({ toast }) {
 }
 
 function Field({ label, children }) {
-  const { isDark } = useTheme();
   return (
     <div className="mb-4">
-      <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>{label}</label>
+      <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: "var(--text-2)" }}>{label}</label>
       {children}
     </div>
   );
@@ -55,7 +53,6 @@ const inputCls = "w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none
 
 /* ── Profile section ───────────────────────────────────────────── */
 function ProfileSection({ user, onSaved, showToast }) {
-  const { isDark } = useTheme();
   const [name, setName]     = useState(user.name || "");
   const [email, setEmail]   = useState(user.email || "");
   const [ward, setWard]     = useState(user.ward || "");
@@ -73,7 +70,7 @@ function ProfileSection({ user, onSaved, showToast }) {
   };
 
   const dirty = name !== user.name || email !== user.email || (ward || "") !== (user.ward || "");
-  const inp = { background: isDark ? "#0E1117" : "#fff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`, color: isDark ? "#E6EDF3" : "#111827" };
+  const inp = { background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-1)" };
 
   return (
     <SectionCard title="Profile" icon={User}>
@@ -103,7 +100,6 @@ function ProfileSection({ user, onSaved, showToast }) {
 
 /* ── Password section ──────────────────────────────────────────── */
 function PasswordSection({ showToast }) {
-  const { isDark } = useTheme();
   const [current, setCurrent] = useState("");
   const [next, setNext]       = useState("");
   const [confirm, setConfirm] = useState("");
@@ -122,7 +118,7 @@ function PasswordSection({ showToast }) {
     } finally { setSaving(false); }
   };
 
-  const inp = { background: isDark ? "#0E1117" : "#fff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`, color: isDark ? "#E6EDF3" : "#111827" };
+  const inp = { background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-1)" };
 
   return (
     <SectionCard title="Security" icon={Lock}>
@@ -131,7 +127,7 @@ function PasswordSection({ showToast }) {
       </Field>
       <Field label="New password">
         <input type="password" value={next} onChange={e => setNext(e.target.value)} className={inputCls} style={inp} autoComplete="new-password" />
-        <p className="text-[11px] mt-1.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>Min. 8 characters, one uppercase, one number.</p>
+        <p className="text-[11px] mt-1.5" style={{ color: "var(--text-3)" }}>Min. 8 characters, one uppercase, one number.</p>
       </Field>
       <Field label="Confirm new password">
         <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} className={inputCls} style={inp} autoComplete="new-password" />
@@ -146,7 +142,7 @@ function PasswordSection({ showToast }) {
 
 /* ── Appearance section ────────────────────────────────────────── */
 function AppearanceSection() {
-  const { theme, toggle, isDark } = useTheme();
+  const { theme, toggle } = useTheme();
 
   const modes = [
     { id: "light", label: "Light", icon: Sun,  desc: "Always light" },
@@ -160,7 +156,7 @@ function AppearanceSection() {
 
   return (
     <SectionCard title="Appearance" icon={Moon}>
-      <p className="text-[13px] mb-4" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>Choose how HillingOne looks to you.</p>
+      <p className="text-[13px] mb-4" style={{ color: "var(--text-2)" }}>Choose how HillingOne looks to you.</p>
       <div className="grid grid-cols-2 gap-3">
         {modes.map(({ id, label, icon: Icon, desc }) => {
           const isActive = theme === id;
@@ -194,7 +190,6 @@ function AppearanceSection() {
 
 /* ── Notifications section ─────────────────────────────────────── */
 function NotificationsSection() {
-  const { isDark } = useTheme();
   const load = (k, d) => {
     try { return JSON.parse(localStorage.getItem(`hillingone_notif_${k}`) ?? String(d)); } catch { return d; }
   };
@@ -210,15 +205,15 @@ function NotificationsSection() {
 
   const Toggle = ({ value, onChange, label, description }) => (
     <div className="flex items-center justify-between py-3 last:border-0"
-      style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
+      style={{ borderBottom: "1px solid var(--border)" }}>
       <div>
-        <p className="text-[13px] font-semibold" style={{ color: isDark ? "#E6EDF3" : "#1F2937" }}>{label}</p>
-        {description && <p className="text-[11px] mt-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{description}</p>}
+        <p className="text-[13px] font-semibold" style={{ color: "var(--text-1)" }}>{label}</p>
+        {description && <p className="text-[11px] mt-0.5" style={{ color: "var(--text-3)" }}>{description}</p>}
       </div>
       <button
         onClick={() => onChange(!value)}
         className={`relative rounded-full transition-colors flex-shrink-0 ${value ? "bg-teal-500" : ""}`}
-        style={{ width: 40, height: 22, background: value ? "#0D9488" : (isDark ? "#30363D" : "#D1D5DB") }}
+        style={{ width: 40, height: 22, background: value ? "var(--brand)" : "var(--border-strong)" }}
         role="switch"
         aria-checked={value}
       >
@@ -257,7 +252,6 @@ function NotificationsSection() {
 /* ── Main view ─────────────────────────────────────────────────── */
 export default function SettingsView() {
   const { user, login }  = useAuth();
-  const { isDark }       = useTheme();
   const navigate         = useNavigate();
   const [toast, setToast] = useState(null);
 
@@ -275,13 +269,13 @@ export default function SettingsView() {
     <div className="max-w-2xl mx-auto px-5 py-8 fade-in-up">
       <Toast toast={toast} />
 
-      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] hover:text-teal-600 mb-7 transition font-medium" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
+      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] hover:text-teal-600 mb-7 transition font-medium" style={{ color: "var(--text-3)" }}>
         <ArrowLeft size={14} /> Back
       </button>
 
       <div className="mb-8">
-        <h1 className="text-[28px] font-black tracking-tight" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>Settings</h1>
-        <p className="text-[14px] mt-1" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>Manage your account, appearance and preferences.</p>
+        <h1 className="text-[28px] font-black tracking-tight" style={{ color: "var(--text-1)" }}>Settings</h1>
+        <p className="text-[14px] mt-1" style={{ color: "var(--text-3)" }}>Manage your account, appearance and preferences.</p>
       </div>
 
       {/* Profile hero card */}
@@ -289,30 +283,26 @@ export default function SettingsView() {
         const initials = user.name
           ? user.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
           : "?";
-        const bdr  = isDark ? "#30363D" : "#E5E7EB";
-        const surf = isDark ? "#161B22" : "#ffffff";
-        const t1   = isDark ? "#E6EDF3" : "#111827";
-        const t2   = isDark ? "#8B949E" : "#6B7280";
+        const t1   = "var(--text-1)";
+        const t2   = "var(--text-2)";
+        const isStaff = user.role === "staff" || user.role === "councillor";
         return (
           <div className="rounded-2xl px-6 py-5 mb-6 flex items-center gap-5"
-            style={{ background: surf, border: `1px solid ${bdr}` }}>
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-[22px] font-black flex-shrink-0"
-              style={{ background: user.role === "staff" || user.role === "councillor"
-                ? "linear-gradient(135deg,#0F766E,#0D9488)"
-                : "linear-gradient(135deg,#059669,#10B981)" }}>
+              style={{ background: isStaff ? "var(--brand)" : "var(--success)" }}>
               {initials}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[18px] font-black truncate" style={{ color: t1 }}>{user.name}</p>
               <p className="text-[13px] truncate" style={{ color: t2 }}>{user.email}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full capitalize"
-                  style={{ background: isDark ? "rgba(13,148,136,0.15)" : "#CCFBF1", color: "#0D9488" }}>
+                <span className="badge badge-brand capitalize">
                   {user.role}
                 </span>
                 {user.ward && (
                   <span className="text-[11px] px-2.5 py-0.5 rounded-full"
-                    style={{ background: isDark ? "#21262D" : "#F3F4F6", color: t2 }}>
+                    style={{ background: "var(--surface-2)", color: t2 }}>
                     {user.ward}
                   </span>
                 )}
