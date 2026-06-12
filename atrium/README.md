@@ -1,185 +1,214 @@
-# Atrium
+# HillingOne
 
-**The intelligent agentic front door for Hillingdon Council's existing booking backend.**
+**The intelligent agentic front door for Hillingdon Council community bookings.**
 
-Built for the Hillingdon × Brunel Hackathon, 29 April 2026.
+Live at [hilling-one.vercel.app](https://hilling-one.vercel.app)
 
 ---
 
-## What this is
+## What it is
 
-A complete, working application:
-- **Backend:** Python FastAPI + PostgreSQL + SQLAlchemy async
-- **Frontend:** React 18 + Vite + Tailwind + Leaflet
+HillingOne replaces the fragmented landscape of Hillingdon Council booking interfaces with a single, production-ready platform. Residents search and book community assets in plain English. Staff manage the full asset lifecycle. An autonomous AI agent resolves booking conflicts without human intervention.
+
+- **Backend:** Python FastAPI + SQLAlchemy 2.0 async + Neon PostgreSQL, deployed on Render (Docker)
+- **Frontend:** React 18 + Vite + Tailwind CSS, deployed on Vercel
 - **AI:** Gemini 2.5 Flash with native function calling (genuine agentic AI)
-- **Deployment:** Docker Compose, one command to run
-
-Until now, residents and staff have had to navigate **17 different fragmented interfaces**
-to find what they need across Hillingdon's bookable assets. Atrium replaces those 17
-frontends with one intelligent layer powered by an autonomous Conflict Resolution Agent.
+- **Payments:** Stripe (PaymentIntent, partial refunds, recurring billing)
 
 ---
 
-## The four-tier cancellation model
+## Features
 
-This is what wins the trust criterion with council judges.
+### Resident
+
+- **Natural language search** — type "room for 20 children Tuesday afternoon Hayes with kitchen" and get ranked, scored results
+- **Live availability calendar** — week view with slot-level availability, keyboard accessible
+- **Hold & confirm flow** — 5-minute hold with countdown timer, Stripe payment on confirm
+- **Recurring bookings** — weekly series with per-occurrence pricing based on live sibling count
+- **My Bookings** — tab-filtered view (upcoming / past / cancelled) with total bookings and hours booked
+- **Reschedule** — move a confirmed booking to a new slot with automatic upcharge/refund via Stripe
+- **Swap responses** — accept or decline staff-proposed slot swaps with credit offers
+- **ICS download** — calendar invite for any confirmed booking
+- **Email notifications** — booking confirmation, cancellation, swap proposal, and password reset
+- **Multi-language** — EN + additional locales via LanguageContext
+- **Dark mode** — full dark theme across all views, toggled from Settings
+
+### Staff
+
+- **Dashboard** — live metrics: total bookings, active assets, pending decisions, today's bookings
+- **Asset utilisation table** — real hours-booked vs available hours (84h/week), colour-coded utilisation bands
+- **Decision queue** — pending swap requests awaiting staff action
+- **Asset management** — create, edit, enable/disable assets with full metadata (capacity, amenities, accessibility, ward, image)
+- **Override flow** — Tier 3 cancellation with mandatory reason, automatic resident notification, and audit log entry
+
+### Agentic AI — Conflict Resolution Agent
+
+When a high-priority booking conflicts with an existing confirmed booking, the agent runs autonomously:
+
+1. `search_inventory` — find candidate alternatives in the same ward
+2. `check_availability` — verify each candidate is free
+3. `score_alternative` — rate match quality (capacity, amenities, location)
+4. `send_swap_request` — propose a polite swap to the resident with a credit offer
+5. `escalate_to_staff` — if no good alternative exists
+6. `log_decision` — write every step to the audit trail
+
+The Agent Reasoning Panel streams each step live. A deterministic fallback runs identical logic if the Gemini API is unavailable.
+
+### Four-tier cancellation model
 
 | Tier | When | What happens |
 |------|------|--------------|
-| 1. User cancellation | Resident cancels their own booking | Always allowed |
-| 2. Agent-mediated swap | Staff/councillor wants a Confirmed slot | Agent ASKS resident with alternative + 20% credit. Resident decides. |
-| 3. Legitimate operational override | Room damage, safety issue, mandatory closure, etc. | Staff CAN cancel, but must give documented reason, alternative offered, credit applied, full audit |
-| 4. Force majeure | Building-wide emergency | System cancels, alternatives proposed, full audit |
+| 1 | Resident cancels their own booking | Always allowed; Stripe refund issued |
+| 2 | Agent-mediated swap | Agent proposes alternative + credit. Resident decides. |
+| 3 | Legitimate operational override | Staff cancels with documented reason; alternative offered; full audit |
+| 4 | Force majeure | System cancels; alternatives proposed; full audit |
 
 **Staff get priority on availability. Residents get priority on certainty.**
-**Trust is not built by saying never. It is built by saying always with transparency.**
 
 ---
 
-## The agentic AI
+## Security
 
-The Conflict Resolution Agent is genuine agentic AI built with Gemini 2.5 Flash function calling.
-It receives a goal, has 6 tools available, and autonomously decides which to call:
-
-1. `search_inventory` — find candidate alternatives
-2. `check_availability` — verify a candidate is free
-3. `score_alternative` — rate how well it matches the original
-4. `send_swap_request` — propose a polite swap with credit
-5. `escalate_to_staff` — when no good alternative exists
-6. `log_decision` — write to audit trail
-
-Each step is captured and shown in the **Agent Reasoning Panel** on the frontend so judges
-can watch the agent think live.
-
-If the Gemini API key is missing or the call fails, a deterministic fallback runs the same
-reasoning steps so the demo never breaks.
+- JWT authentication on every endpoint — `user_id` is always read from the token, never the request body
+- Stripe webhook signature verification — unsigned events are rejected
+- `SELECT FOR UPDATE` row-level locking — prevents double-booking and double-refund race conditions
+- Pydantic v2 validation — UUID types, `EmailStr`, `min_length`/`max_length` on all inputs
+- Security response headers — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS in production
+- Email template XSS prevention — all user-supplied values escaped via `html.escape()`
+- Rate limiting via SlowAPI
+- bcrypt password hashing with strength policy (min 8 chars, uppercase + digit required)
+- Admin secret in `X-Admin-Secret` header (never in request body)
+- `/docs` and `/redoc` disabled in production
 
 ---
 
-## How to run
+## Running locally
 
-### Step 1: Get a Gemini API key (free)
+### Prerequisites
 
-Go to https://aistudio.google.com → Get API key → copy it.
+- Docker & Docker Compose
+- Node.js 18+
+- A Gemini API key (free at [aistudio.google.com](https://aistudio.google.com))
+- A Stripe account (test keys work)
 
-### Step 2: Configure environment
+### Step 1: Configure environment
 
 ```bash
+cd atrium/backend
 cp .env.example .env
-# Edit .env and paste your Gemini key into GEMINI_API_KEY
 ```
 
-### Step 3: Start everything
+Edit `.env`:
+
+```
+DATABASE_URL=postgresql+asyncpg://...   # your Postgres connection string
+JWT_SECRET=<random 32+ char string>
+GEMINI_API_KEY=<your key>
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+ADMIN_SECRET=<secret for creating staff accounts>
+ENVIRONMENT=development
+```
+
+### Step 2: Start the backend
 
 ```bash
 docker compose up
 ```
 
-This will:
-1. Start PostgreSQL
-2. Run database migrations
-3. Seed 25 real Hillingdon assets, 6 users, 60 mock bookings
-4. Start the FastAPI backend on http://localhost:8000
+This starts PostgreSQL, runs all Alembic migrations, seeds 25 real Hillingdon assets and demo users, and starts FastAPI on `http://localhost:8000`.
 
-### Step 4: Start the frontend (in a separate terminal)
+### Step 3: Start the frontend
 
 ```bash
-cd frontend
+cd atrium/frontend
 npm install
 npm run dev
 ```
 
-Frontend runs on http://localhost:5173
-
-### Step 5: Open the app
-
-Visit http://localhost:5173
+Frontend runs on `http://localhost:5173`.
 
 ---
 
-## The demo flow
-
-### Scenario 1: Resident books in plain English
-
-1. Type or speak a request: "I need a room for 20 children every Tuesday afternoon in Hayes, with a kitchen"
-2. Watch "Searching across 17 booking systems..." appear (this is the pitch line)
-3. AI parses intent and shows a structured summary
-4. 4 ranked matches appear with reasoning, carbon estimate, accessibility match
-5. Click "Book this" → 60 second hold timer
-6. Click "Confirm booking" → Confirmed and Protected
-7. Note the trust panel underneath, the calendar invite button, the AI-written encouragement, and reminders scheduled
-
-### Scenario 2: 🤖 The autonomous agent (the moment that wins)
-
-1. Open the Demo Controller (bottom right)
-2. Click "Run AGENT: Councillor swap"
-3. The Agent Reasoning Panel slides in from the right
-4. Watch each step appear live:
-   - Step 1: searching inventory in Hayes Town
-   - Step 2: checking availability of best candidate
-   - Step 3: scoring the alternative
-   - Step 4: sending polite swap request
-   - Step 5: logging decision
-5. Final decision: swap_proposed
-6. The resident can now decline, and the booking will stay
-
-### Scenario 3: Legitimate override
-
-1. Click "Run override: flooded room"
-2. Staff cancels a confirmed booking with reason "room_damage"
-3. Resident automatically notified with full reason + alternative + 20% credit
-4. Audit log entry created
-
----
-
-## API endpoints
+## API reference
 
 ```
-GET  /health                              Health check
-POST /api/search                          Parse intent + rank matches
-POST /api/bookings/hold                   Create 60s held booking
-POST /api/bookings/{id}/confirm           Resident confirms
-DELETE /api/bookings/{id}                 User cancels (Tier 1)
-GET  /api/bookings/{id}/ics               Download calendar invite
-POST /api/agent/conflict-resolution       Trigger autonomous agent
-GET  /api/agent/runs/recent               Recent agent runs
-POST /api/staff/override                  Tier 3 override
-GET  /api/staff/dashboard                 Live agent feed + utilisation
-GET  /api/assets                          List all assets
-GET  /api/reminders/all                   List reminders
-POST /api/demo/scenario/agent-swap-request    Run agent demo
-POST /api/demo/scenario/legitimate-override   Run override demo
-POST /api/demo/reset                      Reset demo state
+GET    /health                                 Health check
+POST   /api/auth/register                      Register resident account
+POST   /api/auth/login                         Login → JWT
+POST   /api/auth/logout                        Invalidate token
+POST   /api/auth/create-staff                  Create staff/councillor (X-Admin-Secret required)
+POST   /api/auth/forgot-password               Send password reset email
+POST   /api/auth/reset-password                Confirm password reset
+
+GET    /api/search                             Natural language search + availability ranking
+
+GET    /api/bookings                           List authenticated user's bookings (paginated)
+POST   /api/bookings/hold                      Create 5-minute held booking
+POST   /api/bookings/{id}/confirm              Confirm and pay
+DELETE /api/bookings/{id}                      Cancel (Stripe refund issued)
+PATCH  /api/bookings/{id}/reschedule           Propose reschedule
+POST   /api/bookings/{id}/reschedule/confirm   Pay upcharge / receive refund
+POST   /api/bookings/{id}/swap-accept          Accept agent-proposed swap
+POST   /api/bookings/{id}/swap-decline         Decline swap (original booking stays)
+GET    /api/bookings/{id}/ics                  Download .ics calendar invite
+GET    /api/bookings/{id}                      Get single booking
+
+POST   /api/payments/create-intent             Create Stripe PaymentIntent
+POST   /api/payments/webhook                   Stripe webhook (signature verified)
+POST   /api/payments/refund/{booking_id}       Staff: issue full refund
+
+POST   /api/agent/conflict-resolution          Trigger Conflict Resolution Agent
+GET    /api/agent/runs/recent                  Recent agent run history
+GET    /api/agent/runs/{run_id}                Single agent run detail
+
+GET    /api/staff/dashboard                    Dashboard metrics + utilisation + decision queue
+POST   /api/staff/override                     Tier 3 override with audit
+
+GET    /api/assets                             List all active assets
+POST   /api/assets                             Create asset (staff only)
+PATCH  /api/assets/{id}                        Update asset (staff only)
+PATCH  /api/assets/{id}/toggle                 Enable/disable asset (staff only)
+GET    /api/assets/{id}/availability           Slot availability for a date range
+
+GET    /api/reminders/all                      List scheduled reminders
 ```
 
-Full API docs at http://localhost:8000/docs
+---
+
+## Project structure
+
+```
+atrium/
+├── backend/
+│   ├── app/
+│   │   ├── agents/          # Conflict Resolution Agent (Gemini function calling)
+│   │   ├── models/          # SQLAlchemy ORM models
+│   │   ├── routers/         # FastAPI route handlers
+│   │   ├── schemas/         # Pydantic request/response schemas
+│   │   ├── services/        # Business logic (booking, email, reminder)
+│   │   ├── config.py        # Pydantic Settings
+│   │   ├── dependencies.py  # get_current_user, require_staff
+│   │   └── main.py          # App entry point, middleware, lifespan
+│   ├── alembic/             # Database migrations (0001 → 0006)
+│   └── Dockerfile
+└── frontend/
+    ├── src/
+    │   ├── api/             # client.js — typed API wrapper
+    │   ├── components/      # AssetCard, AssetCalendar, Header, Footer, SearchBox
+    │   ├── context/         # AuthContext, ThemeContext, LanguageContext
+    │   └── views/           # ResidentView, StaffView, MyBookings, SettingsView, AuthPage
+    └── vite.config.js
+```
 
 ---
 
-## The pitch lines that win
+## Demo accounts
 
-> "Until now, residents and staff have had to navigate seventeen different booking interfaces to find what they need. We replaced those seventeen frontends with one intelligent agentic layer."
+After seeding, the following accounts are available locally:
 
-> "Staff get priority on availability. Residents get priority on certainty."
-
-> "When a high-priority need arises, our agent runs autonomously. It searches the inventory, checks availability, scores alternatives, and crafts a personalised swap message. It calls real tools, observes results, and decides next actions. You can watch it think on screen right now."
-
-> "Trust is not built by saying never. It is built by saying always with transparency."
-
-> "The agent suggests. The human decides."
-
----
-
-## Troubleshooting
-
-**Backend can't connect to Postgres:** wait a few seconds, the healthcheck will resolve. Or run `docker compose down -v && docker compose up`.
-
-**Gemini API errors:** check that GEMINI_API_KEY is set in `.env`. If it isn't, the deterministic fallback will run and the demo still works.
-
-**Frontend can't reach backend:** make sure the backend is on port 8000. Check the `vite.config.js` proxy.
-
-**Map doesn't render:** make sure Leaflet CSS is loaded (it is in `index.html`).
-
----
-
-Built by Team Falcon, Brunel Computer Science. Good luck.
+| Email | Password | Role |
+|-------|----------|------|
+| `resident@hillingdon.gov.uk` | `Password1` | Resident |
+| `staff@hillingdon.gov.uk` | `Password1` | Staff |
+| `councillor@hillingdon.gov.uk` | `Password1` | Councillor |
