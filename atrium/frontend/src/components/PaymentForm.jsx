@@ -4,7 +4,7 @@ import { Lock, CreditCard, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { stripePromise, IS_STRIPE_TEST_MODE } from "../lib/stripe";
 
-function CheckoutForm({ amountDisplay, onSuccess, onBack, isDark }) {
+function CheckoutForm({ amountDisplay, onSuccess, onBack }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -77,7 +77,7 @@ function CheckoutForm({ amountDisplay, onSuccess, onBack, isDark }) {
         </button>
       </div>
 
-      <div className="flex items-center justify-center gap-1.5 text-[12px]" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>
+      <div className="flex items-center justify-center gap-1.5 text-[12px]" style={{ color: "var(--text-3)" }}>
         <Lock size={11} />
         Secured by Stripe · Payments encrypted end-to-end
       </div>
@@ -105,19 +105,19 @@ export default function PaymentForm({ clientSecret, amountDisplay, onSuccess, on
 
   return (
     <div className="max-w-md mx-auto px-6 py-12 fade-in-up">
-      <div className="rounded-2xl p-8 shadow-civic-md" style={{ background: isDark ? "#161B22" : "#ffffff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
+      <div className="rounded-2xl p-8 shadow-civic-md" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
 
         {/* Header */}
         <div className="text-center mb-7">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}
+            style={{ background: "var(--brand)" }}
           >
             <CreditCard size={24} className="text-white" />
           </div>
-          <h2 className="text-[20px] font-bold mb-1" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>Complete payment</h2>
-          <p className="text-[32px] font-black" style={{ color: "#0D9488" }}>{amountDisplay}</p>
-          <p className="text-[13px] mt-1" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>Booking fee · Fully refundable on cancellation</p>
+          <h2 className="text-[20px] font-bold mb-1" style={{ color: "var(--text-1)" }}>Complete payment</h2>
+          <p className="text-[32px] font-black" style={{ color: "var(--brand)" }}>{amountDisplay}</p>
+          <p className="text-[13px] mt-1" style={{ color: "var(--text-2)" }}>Booking fee · Fully refundable on cancellation</p>
         </div>
 
         {/* Stripe Elements form */}
@@ -126,7 +126,6 @@ export default function PaymentForm({ clientSecret, amountDisplay, onSuccess, on
             amountDisplay={amountDisplay}
             onSuccess={onSuccess}
             onBack={onBack}
-            isDark={isDark}
           />
         </Elements>
 

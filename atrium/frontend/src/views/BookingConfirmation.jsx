@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Lock, Calendar, Bell, ArrowLeft, Sparkles, MapPin, Clock, Users, X, RefreshCw, AlertTriangle } from "lucide-react";
 import { api } from "../api/client";
-import { useTheme } from "../context/ThemeContext";
 
 export default function BookingConfirmation({ booking, asset, onBack, encouragement, remindersScheduled, paymentAmount, user, onViewMyBookings }) {
-  const { isDark } = useTheme();
   const [_now, setNow] = useState(Date.now());
   const [cancelling, setCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
@@ -34,12 +32,12 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
   const dayLabel = startTime.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
   const timeRange = `${startTime.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} – ${endTime.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
 
-  const t1 = isDark ? "#E6EDF3" : "#111827";
-  const t2 = isDark ? "#8B949E" : "#6B7280";
-  const cardBg   = isDark ? "#161B22" : "#ffffff";
-  const cardBdr  = isDark ? "#30363D" : "#E5E7EB";
-  const surfBg   = isDark ? "#21262D" : "#F9FAFB";
-  const surfBdr  = isDark ? "#30363D" : "#F3F4F6";
+  const t1 = "var(--text-1)";
+  const t2 = "var(--text-2)";
+  const cardBg   = "var(--bg-card)";
+  const cardBdr  = "var(--border)";
+  const surfBg   = "var(--surface-2)";
+  const surfBdr  = "var(--border)";
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 fade-in-up">
@@ -58,13 +56,11 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
         {/* Success header */}
         <div
           className="px-8 py-10 text-center"
-          style={{ background: isDark
-            ? "linear-gradient(165deg, rgba(6,78,59,0.4) 0%, rgba(6,78,59,0.2) 100%)"
-            : "linear-gradient(165deg, #ECFDF5 0%, #D1FAE5 100%)" }}
+          style={{ background: "var(--success-bg)" }}
         >
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm"
-            style={{ background: "linear-gradient(135deg, #059669, #10B981)" }}
+            style={{ background: "var(--success)" }}
           >
             <CheckCircle2 size={36} className="text-white" />
           </div>
@@ -94,7 +90,7 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
 
           {/* Venue */}
           <div className="flex items-start gap-4 p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDark ? "#0D2D1E" : "#F0FDF4" }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--success-bg)" }}>
               <MapPin size={18} className="text-teal-600" />
             </div>
             <div>
@@ -107,7 +103,7 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
           {/* Time + attendees */}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-start gap-3 p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isDark ? "#0D2D1E" : "#F0FDF4" }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--success-bg)" }}>
                 <Clock size={16} className="text-teal-600" />
               </div>
               <div>
@@ -117,7 +113,7 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
               </div>
             </div>
             <div className="flex items-start gap-3 p-4 rounded-xl" style={{ background: surfBg, border: `1px solid ${surfBdr}` }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isDark ? "#0D2D1E" : "#F0FDF4" }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--success-bg)" }}>
                 <Users size={16} className="text-teal-600" />
               </div>
               <div>
@@ -235,7 +231,7 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
       {/* Trust panel */}
       <div className="mt-5 p-5 rounded-2xl shadow-civic" style={{ background: cardBg, border: `1px solid ${cardBdr}` }}>
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--brand)" }}>
             <Lock size={18} className="text-white" />
           </div>
           <div>
@@ -245,7 +241,7 @@ export default function BookingConfirmation({ booking, asset, onBack, encouragem
               If staff need to cancel, you will be notified immediately with the full reason, an equivalent
               alternative venue, and a 20% goodwill credit on your next booking.
             </p>
-            <div className="mt-3 text-[12px] italic" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>
+            <div className="mt-3 text-[12px] italic" style={{ color: "var(--text-3)" }}>
               Trust is not built by saying never. It is built by saying always with transparency.
             </div>
           </div>
