@@ -6,6 +6,7 @@ import AuthPage from "./views/AuthPage";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import CookieBanner from "./components/CookieBanner";
+import IdleLogout from "./components/IdleLogout";
 import ResidentView from "./views/ResidentView";
 import StaffView from "./views/StaffView";
 import MyBookings from "./views/MyBookings";
@@ -45,6 +46,7 @@ function AppShell() {
       </main>
       <Footer cookieModalOpen={cookieModal} onCookieModalClose={() => setCookieModal(false)} />
       <CookieBanner onOpenPolicy={() => setCookieModal(true)} />
+      <IdleLogout />
     </div>
   );
 }
