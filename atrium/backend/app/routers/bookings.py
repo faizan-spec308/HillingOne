@@ -42,17 +42,23 @@ async def list_user_bookings(
     offset = (page - 1) * page_size
 
     # Lazily sweep finished bookings into "completed" so they never linger
-    # in the Upcoming list (the background loop also does this periodically).
-    await db.execute(
-        update(Booking)
-        .where(
-            Booking.user_id == current_user.id,
-            Booking.state == "confirmed",
-            Booking.end_time < _now(),
+    # in the Upcoming list (background loop also does this periodically).
+    # Decouple commit from the read — a transient DB hiccup here should not
+    # prevent the user from seeing their bookings.
+    try:
+        await db.execute(
+            update(Booking)
+            .where(
+                Booking.user_id == current_user.id,
+                Booking.state == "confirmed",
+                Booking.end_time < _now(),
+            )
+            .values(state="completed")
         )
-        .values(state="completed")
-    )
-    await db.commit()
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        logger.warning("completion_sweep_failed user_id=%s", str(current_user.id))
 
     # Always return all upcoming bookings regardless of pagination
     upcoming_result = await db.execute(
@@ -239,13 +245,13 @@ async def cancel_user(
                 select(Payment).where(
                     Payment.booking_id == payment_booking_id,
                     Payment.status == "succeeded",
-                )
+                ).with_for_update()
             )
             payment = result.scalar_one_or_none()
             if payment:
-                is_recurring_share = bool(booking_pre.parent_booking_id) or (
-                    booking_pre.is_recurring and booking_pre.recurrence_pattern
-                )
+                # Only child occurrences (with a parent) get a per-occurrence refund.
+                # The parent booking holds the full payment; cancelling it refunds all remaining.
+                is_recurring_share = bool(booking_pre.parent_booking_id)
                 if is_recurring_share:
                     cancel_asset_pre = await db.get(Asset, booking.asset_id)
                     base = occurrence_amount_pence(cancel_asset_pre, booking.start_time, booking.end_time)
@@ -417,6 +423,8 @@ async def reschedule_confirm(
         raise HTTPException(status_code=402, detail="Payment has not been completed")
     if intent.metadata.get("booking_id") != booking_id:
         raise HTTPException(status_code=403, detail="Payment intent does not match this booking")
+    if intent.metadata.get("type") != "reschedule_upcharge":
+        raise HTTPException(status_code=403, detail="Payment intent is not a reschedule upcharge")
 
     new_start = req.new_start.replace(tzinfo=None) if req.new_start.tzinfo else req.new_start
     new_end   = req.new_end.replace(tzinfo=None)   if req.new_end.tzinfo   else req.new_end

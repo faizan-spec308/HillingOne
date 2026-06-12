@@ -16,7 +16,8 @@ from app.models.payment import Payment
 from app.models.booking import Booking
 from app.models.asset import Asset
 from app.models.user import User
-from app.services.pricing import booking_total_pence
+from sqlalchemy import func
+from app.services.pricing import booking_total_pence, occurrence_amount_pence
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 logger = logging.getLogger("hillingone.payments")
@@ -49,7 +50,23 @@ async def create_payment_intent(
         raise HTTPException(status_code=409, detail="Only held bookings can be paid for.")
 
     asset = await db.get(Asset, booking.asset_id)
-    amount = booking_total_pence(asset, booking)
+
+    # For recurring bookings, charge only for the occurrences that are actually
+    # still held/confirmed — not the count frozen in recurrence_pattern JSON,
+    # which may be stale if siblings expired before payment was collected.
+    if booking.is_recurring and booking.recurrence_pattern:
+        sibling_count_result = await db.execute(
+            select(func.count()).where(
+                Booking.parent_booking_id == booking.id,
+                Booking.state.in_(["held", "confirmed"]),
+            )
+        )
+        live_siblings = sibling_count_result.scalar() or 0
+        per_occ = occurrence_amount_pence(asset, booking.start_time, booking.end_time)
+        amount = per_occ * (1 + live_siblings)
+    else:
+        amount = booking_total_pence(asset, booking)
+
     if amount == 0:
         return {"free": True, "amount_pence": 0, "amount_display": "Free"}
 

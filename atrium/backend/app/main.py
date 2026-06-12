@@ -51,6 +51,10 @@ async def lifespan(app: FastAPI):
     logger.info("startup_ok environment=%s", settings.environment)
     yield
     maintenance_task.cancel()
+    try:
+        await maintenance_task
+    except asyncio.CancelledError:
+        pass
 
 
 _docs_url = None if settings.environment == "production" else "/docs"

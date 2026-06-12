@@ -103,12 +103,12 @@ export default function ResidentView({ user, onViewMyBookings }) {
       setPaymentAmount(res.amount_display);
       setStage("payment");
     } catch (err) {
-      if (err.status === 503) {
-        // Stripe isn't configured on this server — confirm without payment
+      if (err.status === 503 && err.message?.includes("Stripe not configured")) {
+        // Server explicitly says Stripe is disabled — confirm without payment
         await handleConfirm();
         return;
       }
-      // Real failure: keep the user on the hold screen and tell them why
+      // Real failure (network error, Stripe outage, etc.) — keep user on hold screen
       setError(err.message);
     }
   };
