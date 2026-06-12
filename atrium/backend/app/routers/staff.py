@@ -47,11 +47,11 @@ async def staff_override(
     svc = BookingService(db)
     try:
         result = await svc.staff_override(
-            booking_id=req.booking_id,
+            booking_id=str(req.booking_id),
             staff_user_id=str(current_staff.id),
             reason=req.reason,
             details=req.details,
-            alternative_asset_id=req.alternative_asset_id,
+            alternative_asset_id=str(req.alternative_asset_id) if req.alternative_asset_id else None,
         )
         return result
     except ValueError as e:

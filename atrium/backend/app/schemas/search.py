@@ -1,7 +1,7 @@
 """Search and intent schemas."""
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field
-from typing import Any
 
 
 class SearchRequest(BaseModel):
@@ -45,7 +45,7 @@ class SearchResponse(BaseModel):
 
 
 class HoldRequest(BaseModel):
-    asset_id: str
+    asset_id: UUID
     start_time: datetime
     end_time: datetime
     purpose: str | None = Field(None, max_length=500)
@@ -59,20 +59,20 @@ class ConfirmRequest(BaseModel):
 
 
 class StaffOverrideRequest(BaseModel):
-    booking_id: str
-    reason: str = Field(..., max_length=200)
-    details: str = Field(..., max_length=1000)
-    alternative_asset_id: str | None = None
+    booking_id: UUID
+    reason: str = Field(..., min_length=1, max_length=200)
+    details: str = Field(..., min_length=1, max_length=1000)
+    alternative_asset_id: UUID | None = None
 
 
 class AgentTriggerRequest(BaseModel):
-    confirmed_booking_id: str
-    priority_request_summary: str = Field(..., max_length=500)
-    requesting_user_id: str | None = None
+    confirmed_booking_id: UUID
+    priority_request_summary: str = Field(..., min_length=1, max_length=500)
+    requesting_user_id: UUID | None = None
 
 
 class SwapResponseRequest(BaseModel):
-    booking_id: str
+    booking_id: UUID
     accept: bool
 
 

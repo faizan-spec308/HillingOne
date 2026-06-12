@@ -20,7 +20,7 @@ async def trigger_agent(req: AgentTriggerRequest, db: AsyncSession = Depends(get
     """
     agent = ConflictResolutionAgent(db)
     result = await agent.resolve(
-        confirmed_booking_id=req.confirmed_booking_id,
+        confirmed_booking_id=str(req.confirmed_booking_id),
         priority_request_summary=req.priority_request_summary,
     )
     return result

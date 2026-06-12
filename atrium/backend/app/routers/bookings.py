@@ -3,8 +3,8 @@ import asyncio
 import uuid
 import logging
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
@@ -32,8 +32,8 @@ logger = logging.getLogger("hillingone.bookings")
 
 @router.get("")
 async def list_user_bookings(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -116,7 +116,7 @@ async def hold(
     svc = BookingService(db)
     try:
         booking = await svc.create_held_booking(
-            asset_id=req.asset_id,
+            asset_id=str(req.asset_id),
             user_id=str(current_user.id),
             start=req.start_time,
             end=req.end_time,
@@ -403,7 +403,7 @@ async def reschedule_booking(
 
 
 class RescheduleConfirmRequest(BaseModel):
-    payment_intent_id: str
+    payment_intent_id: str = Field(..., min_length=1, max_length=100)
     new_start: datetime
     new_end: datetime
 

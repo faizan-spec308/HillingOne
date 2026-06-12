@@ -1,9 +1,15 @@
 """Transactional email via Resend."""
 import asyncio
+import html as _html
 import logging
 from datetime import datetime
 
 logger = logging.getLogger("hillingone.email")
+
+
+def _e(v) -> str:
+    """HTML-escape any user-supplied value before embedding in email templates."""
+    return _html.escape(str(v) if v is not None else "")
 
 FROM_ADDRESS = "onboarding@resend.dev"
 BRAND_COLOR  = "#0D9488"
@@ -92,7 +98,7 @@ def booking_confirmed_html(user_name: str, booking: object, asset: object) -> st
   Booking confirmed ✓
 </h1>
 <p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
-  Hi {user_name}, your space is reserved and protected.
+  Hi {_e(user_name)}, your space is reserved and protected.
 </p>
 
 <table width="100%" cellpadding="0" cellspacing="0"
@@ -101,14 +107,14 @@ def booking_confirmed_html(user_name: str, booking: object, asset: object) -> st
     <td style="padding:0 0 16px;">
       <span style="font-size:13px;font-weight:700;color:#374151;">Booking reference</span><br />
       <span style="font-size:22px;font-weight:900;font-family:monospace;color:{BRAND_COLOR};">
-        {booking.reference}
+        {_e(booking.reference)}
       </span>
     </td>
   </tr>
-  {_detail_row("Venue", getattr(asset, "name", "—"))}
+  {_detail_row("Venue", _e(getattr(asset, "name", "—")))}
   {_detail_row("Date", _fmt_dt(start))}
   {_detail_row("Time", f"{_fmt_time(start)} – {_fmt_time(end)}")}
-  {_detail_row("Location", f"{getattr(asset, 'ward', '')}, Hillingdon")}
+  {_detail_row("Location", f"{_e(getattr(asset, 'ward', ''))}, Hillingdon")}
 </table>
 
 <p style="margin:0;font-size:13px;color:#6B7280;line-height:1.6;">
@@ -147,13 +153,13 @@ def booking_cancelled_html(user_name: str, booking: object, asset: object,
   Booking cancelled
 </h1>
 <p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
-  Hi {user_name}, your booking has been cancelled.
+  Hi {_e(user_name)}, your booking has been cancelled.
 </p>
 
 <table width="100%" cellpadding="0" cellspacing="0"
        style="background:#F9FAFB;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
-  {_detail_row("Venue", getattr(asset, "name", "—"))}
-  {_detail_row("Reference", booking.reference)}
+  {_detail_row("Venue", _e(getattr(asset, "name", "—")))}
+  {_detail_row("Reference", _e(booking.reference))}
 </table>
 
 {refund_block}
@@ -185,13 +191,13 @@ def booking_rescheduled_html(user_name: str, booking: object, asset: object,
   Booking rescheduled
 </h1>
 <p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
-  Hi {user_name}, your booking has been moved to a new time.
+  Hi {_e(user_name)}, your booking has been moved to a new time.
 </p>
 
 <table width="100%" cellpadding="0" cellspacing="0"
        style="background:#F9FAFB;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
-  {_detail_row("Venue", getattr(asset, "name", "—"))}
-  {_detail_row("Reference", booking.reference)}
+  {_detail_row("Venue", _e(getattr(asset, "name", "—")))}
+  {_detail_row("Reference", _e(booking.reference))}
   {_detail_row("New date", _fmt_dt(start))}
   {_detail_row("New time", f"{_fmt_time(start)} – {_fmt_time(end)}")}
 </table>
@@ -207,11 +213,11 @@ def password_reset_html(user_name: str, reset_url: str) -> str:
   Reset your password
 </h1>
 <p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
-  Hi {user_name}, we received a request to reset your HillingOne password.
+  Hi {_e(user_name)}, we received a request to reset your HillingOne password.
 </p>
 
 <div style="text-align:center;margin:32px 0;">
-  <a href="{reset_url}"
+  <a href="{_e(reset_url)}"
      style="display:inline-block;background:{BRAND_COLOR};color:#ffffff;
             font-size:15px;font-weight:700;padding:14px 36px;border-radius:14px;
             text-decoration:none;letter-spacing:-0.1px;">
@@ -228,7 +234,7 @@ def password_reset_html(user_name: str, reset_url: str) -> str:
             border:1px solid #E5E7EB;">
   <p style="margin:0;font-size:12px;color:#9CA3AF;">
     If the button above does not work, copy and paste this link into your browser:<br />
-    <span style="color:{BRAND_COLOR};word-break:break-all;">{reset_url}</span>
+    <span style="color:{BRAND_COLOR};word-break:break-all;">{_e(reset_url)}</span>
   </p>
 </div>
 """

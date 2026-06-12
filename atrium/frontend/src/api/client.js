@@ -19,6 +19,7 @@ const ERROR_MESSAGES = {
   payment_required:            "This booking needs to be paid for before it can be confirmed.",
   cannot_cancel_state:         "This booking has already been cancelled or completed.",
   cannot_cancel_past:          "This booking has already taken place and can no longer be cancelled.",
+  cannot_cancel_in_progress:   "This booking is currently in progress and cannot be cancelled.",
   cannot_reschedule_to_past:   "You cannot move a booking into the past.",
   invalid_duration:            "Bookings must be between 30 minutes and 12 hours.",
   no_alternative_proposed:     "No alternative venue was proposed for this booking.",
