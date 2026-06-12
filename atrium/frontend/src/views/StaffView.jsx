@@ -474,12 +474,12 @@ function BookingTrendChart({ assets, isDark }) {
   const top = [...assets].sort((a, b) => b.weekly_bookings - a.weekly_bookings).slice(0, 6);
   const maxVal = Math.max(...top.map(a => a.weekly_bookings), 1);
 
-  const BAR_H = 140;
-  const BAR_W = 36;
-  const GAP   = 14;
-  const LEFT  = 28;
+  const BAR_H = 80;
+  const BAR_W = 28;
+  const GAP   = 12;
+  const LEFT  = 24;
   const svgW  = LEFT + top.length * (BAR_W + GAP);
-  const svgH  = BAR_H + 36;
+  const svgH  = BAR_H + 28;
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
 
@@ -516,14 +516,14 @@ function BookingTrendChart({ assets, isDark }) {
                 ? "url(#topGrad)"
                 : (isDark ? "#21262D" : "#F3F4F6")}
             />
-            <text x={x + BAR_W / 2} y={y - 5} textAnchor="middle"
-              fontSize="10" fontWeight="700"
+            <text x={x + BAR_W / 2} y={y - 4} textAnchor="middle"
+              fontSize="9" fontWeight="700"
               fill={isTop ? "#0D9488" : (isDark ? "#8B949E" : "#6B7280")}>
               {asset.weekly_bookings}
             </text>
-            <text x={x + BAR_W / 2} y={BAR_H + 14} textAnchor="middle"
-              fontSize="9" fill={isDark ? "#8B949E" : "#6B7280"}>
-              {asset.name.length > 8 ? asset.name.slice(0, 8) + "…" : asset.name}
+            <text x={x + BAR_W / 2} y={BAR_H + 12} textAnchor="middle"
+              fontSize="8" fill={isDark ? "#8B949E" : "#6B7280"}>
+              {asset.name.length > 7 ? asset.name.slice(0, 7) + "…" : asset.name}
             </text>
           </g>
         );
@@ -743,7 +743,7 @@ export default function StaffView() {
             <h3 className="font-bold text-[14px]" style={{ color: text1 }}>Weekly bookings by venue</h3>
             <span className="ml-auto text-[11px]" style={{ color: text2 }}>This week</span>
           </div>
-          <div className="px-5 py-5">
+          <div className="px-5 py-4">
             <BookingTrendChart assets={data.asset_utilisation} isDark={isDark} />
           </div>
         </div>
