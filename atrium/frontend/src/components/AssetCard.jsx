@@ -1,203 +1,161 @@
-import { MapPin, Users, Accessibility, Utensils, Wifi, Car, Leaf, ChevronRight, Star, Clock, CalendarDays } from "lucide-react";
+import {
+  MapPin, Users, Accessibility, Utensils, Wifi, Car, Leaf, ChevronRight, Clock, CalendarDays,
+  Building2, Dumbbell, Trees, BookOpen, Briefcase, Palette, Mic, FileText, Home,
+} from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
-import { useTheme } from "../context/ThemeContext";
 
-const CATEGORY_EMOJI = {
-  hall: "🏛️", community: "🏛️", sport: "⚽", gym: "🏋️", pitch: "⚽",
-  meeting: "📋", office: "📋", park: "🌳", garden: "🌳", library: "📚",
-  youth: "🎨", children: "🎨", equip: "🎤", registry: "📄", housing: "🏠",
-};
-function categoryEmoji(cat = "") {
-  const key = Object.keys(CATEGORY_EMOJI).find((k) => cat.toLowerCase().includes(k));
-  return CATEGORY_EMOJI[key] || "🏢";
+/* Category → lucide icon (replaces emoji for a consistent, premium look) */
+const CATEGORY_ICON = [
+  [/(hall|communit)/, Building2],
+  [/(sport|gym|pitch)/, Dumbbell],
+  [/(park|garden)/, Trees],
+  [/library/, BookOpen],
+  [/(meeting|office)/, Briefcase],
+  [/(youth|children)/, Palette],
+  [/equip/, Mic],
+  [/registry/, FileText],
+  [/housing/, Home],
+];
+function categoryIcon(cat = "") {
+  const c = cat.toLowerCase();
+  const hit = CATEGORY_ICON.find(([re]) => re.test(c));
+  return hit ? hit[1] : Building2;
 }
 
-const SCORE_CONFIG = (s, isDark) => {
-  if (s >= 85) return isDark
-    ? { label: "Excellent match", color: "#34D399", bg: "#052E16", border: "#065F46", bar: "#10b981", stars: 5 }
-    : { label: "Excellent match", color: "#059669", bg: "#ecfdf5", border: "#a7f3d0", bar: "#10b981", stars: 5 };
-  if (s >= 65) return isDark
-    ? { label: "Good match",      color: "#FCD34D", bg: "#1C1200", border: "#78350F", bar: "#f59e0b", stars: 4 }
-    : { label: "Good match",      color: "#d97706", bg: "#fffbeb", border: "#fcd34d", bar: "#f59e0b", stars: 4 };
-  return isDark
-    ? { label: "Possible match",  color: "#93C5FD", bg: "#071932", border: "#1E3A5F", bar: "#3b82f6", stars: 3 }
-    : { label: "Possible match",  color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", bar: "#3b82f6", stars: 3 };
-};
-
-const AMENITY_CHIP = ({ icon: Icon, label, color }) => (
-  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full border ${color}`}>
-    <Icon size={10} />
-    {label}
-  </span>
-);
+/* Match quality → one semantic key. Score is shown ONCE (bar + label),
+   not triple-encoded as it was before (stars + bar + label). */
+function scoreConfig(s) {
+  if (s >= 85) return { label: "Excellent match", key: "success" };
+  if (s >= 65) return { label: "Good match",      key: "warning" };
+  return { label: "Possible match", key: "info" };
+}
 
 export default function AssetCard({ match, onBook, onViewCalendar, searchWindow }) {
   const { t } = useLanguage();
-  const { isDark } = useTheme();
-  const asset  = match.asset || {};
-  const score  = match.match_score ?? 0;
-  const cfg    = SCORE_CONFIG(score, isDark);
-  const price  = asset.hourly_rate > 0
-    ? `£${Number(asset.hourly_rate).toFixed(2)}`
-    : t("card_free");
+  const asset = match.asset || {};
+  const score = match.match_score ?? 0;
+  const sc    = scoreConfig(score);
+  const Icon  = categoryIcon(asset.category);
+  const price = asset.hourly_rate > 0 ? `£${Number(asset.hourly_rate).toFixed(2)}` : t("card_free");
   const amenities = asset.amenities || {};
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 fade-in-up"
-      style={{
-        background: isDark ? "#161B22" : "#ffffff",
-        border: `1px solid ${isDark ? "#30363D" : "#e5e7eb"}`,
-        boxShadow: isDark
-          ? "0 0 0 1px rgba(255,255,255,0.03), 0 4px 16px rgba(0,0,0,0.3)"
-          : "0 1px 4px rgba(0,0,0,0.04)",
-      }}
-    >
+    <div className="civic-card fade-in-up p-5">
+      <div className="flex gap-4">
 
-      {/* Top accent bar */}
-      <div className="h-1" style={{ background: `linear-gradient(90deg, ${cfg.bar}, ${cfg.bar}99)` }} />
+        {/* Category icon — tinted by match quality */}
+        <div
+          className="w-14 h-14 flex-shrink-0 rounded-2xl flex items-center justify-center"
+          style={{ background: `var(--${sc.key}-bg)`, color: `var(--${sc.key})` }}
+        >
+          <Icon size={24} strokeWidth={1.8} />
+        </div>
 
-      <div className="p-5">
-        <div className="flex gap-4">
+        <div className="flex-1 min-w-0">
 
-          {/* Icon */}
-          <div
-            className="w-16 h-16 flex-shrink-0 rounded-2xl flex items-center justify-center text-[28px] shadow-sm"
-            style={{ background: `linear-gradient(135deg, ${cfg.bg}, ${cfg.bg}aa)`, border: `1px solid ${cfg.border}` }}
-          >
-            {categoryEmoji(asset.category)}
+          {/* Title + price */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="t-overline mb-0.5">{(asset.category || "").replace(/_/g, " ")}</p>
+              <h3 className="t-h3 truncate">{asset.name}</h3>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <div className="font-display font-extrabold text-[18px] leading-none" style={{ color: "var(--brand)" }}>
+                {price}
+              </div>
+              <div className="t-caption mt-0.5">{t("card_per_hour")}</div>
+            </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            {/* Header row */}
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
-                  {(asset.category || "").replace(/_/g, " ")}
-                </p>
-                <h3 className="font-display text-[17px] font-bold leading-tight truncate" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>
-                  {asset.name}
-                </h3>
-              </div>
-
-              {/* Price badge */}
-              <div className="flex-shrink-0 text-right">
-                <div className="text-[18px] font-display font-black leading-none" style={{ color: isDark ? "#2DD4BF" : "#0D9488" }}>
-                  {price}
-                </div>
-                <div className="text-[10px] font-medium mt-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>{t("card_per_hour")}</div>
-              </div>
-            </div>
-
-            {/* Meta */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
-              {asset.ward && (
-                <span className="flex items-center gap-1 text-[13px]" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
-                  <MapPin size={11} style={{ color: isDark ? "#484F58" : "#9CA3AF" }} />
-                  {asset.ward}
-                </span>
-              )}
-              {asset.capacity && (
-                <span className="flex items-center gap-1 text-[13px]" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
-                  <Users size={11} style={{ color: isDark ? "#484F58" : "#9CA3AF" }} />
-                  Up to {asset.capacity}
-                </span>
-              )}
-              {/* Score stars */}
-              <span className="flex items-center gap-0.5 ml-auto">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    size={11}
-                    fill={i < cfg.stars ? cfg.color : "none"}
-                    stroke={i < cfg.stars ? cfg.color : "#d1d5db"}
-                  />
-                ))}
-                <span className="text-[11px] font-semibold ml-1" style={{ color: cfg.color }}>
-                  {cfg.label}
-                </span>
+          {/* Meta */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+            {asset.ward && (
+              <span className="t-body-sm inline-flex items-center gap-1.5">
+                <MapPin size={12} style={{ color: "var(--text-3)" }} />{asset.ward}
               </span>
-            </div>
+            )}
+            {asset.capacity && (
+              <span className="t-body-sm inline-flex items-center gap-1.5">
+                <Users size={12} style={{ color: "var(--text-3)" }} />Up to {asset.capacity}
+              </span>
+            )}
+          </div>
 
-            {/* Score bar */}
-            <div className="h-1.5 rounded-full mb-3 overflow-hidden" style={{ background: isDark ? "#21262D" : "#F3F4F6" }}>
+          {/* Match score — single, clear representation */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className={`badge badge-${sc.key}`}>{sc.label}</span>
+              <span className="t-caption t-num" style={{ color: `var(--${sc.key})`, fontWeight: 700 }}>{score}%</span>
+            </div>
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
               <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${score}%`, background: `linear-gradient(90deg, ${cfg.bar}, ${cfg.bar}cc)` }}
+                className="h-full rounded-full"
+                style={{ width: `${score}%`, background: `var(--${sc.key})`, transition: "width 0.7s var(--ease)" }}
               />
             </div>
+          </div>
 
-            {/* AI reasoning */}
-            {match.reasoning && (
-              <p
-                className="text-[13px] leading-relaxed mb-3 italic pl-3"
-                style={{ color: isDark ? "#8B949E" : "#6B7280", borderLeft: `2px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}
-              >
-                {match.reasoning}
-              </p>
+          {/* AI reasoning */}
+          {match.reasoning && (
+            <p className="t-body-sm mt-3 pl-3" style={{ borderLeft: "2px solid var(--border)" }}>
+              {match.reasoning}
+            </p>
+          )}
+
+          {/* Amenities — uniform, monochrome chips (icons carry the meaning) */}
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {match.accessibility_match === "full" && (
+              <span className="chip"><Accessibility size={11} />Fully accessible</span>
             )}
+            {match.accessibility_match === "partial" && (
+              <span className="chip"><Accessibility size={11} />Partial access</span>
+            )}
+            {amenities.kitchen && <span className="chip"><Utensils size={11} />{t("card_kitchen")}</span>}
+            {amenities.wifi && <span className="chip"><Wifi size={11} />{t("card_wifi")}</span>}
+            {(amenities.parking || asset.parking) && <span className="chip"><Car size={11} />{t("card_parking")}</span>}
+            {match.carbon_estimate_kg !== undefined && (
+              <span className="chip"><Leaf size={11} />{match.carbon_estimate_kg} kg CO₂</span>
+            )}
+          </div>
 
-            {/* Amenity chips */}
-            <div className="flex flex-wrap gap-1.5 mb-4">
-              {match.accessibility_match === "full" && (
-                <AMENITY_CHIP icon={Accessibility} label="Fully accessible" color="bg-emerald-50 text-emerald-700 border-emerald-200" />
-              )}
-              {match.accessibility_match === "partial" && (
-                <AMENITY_CHIP icon={Accessibility} label="Partial access" color="bg-amber-50 text-amber-700 border-amber-200" />
-              )}
-              {amenities.kitchen && (
-                <AMENITY_CHIP icon={Utensils} label={t("card_kitchen")} color="bg-orange-50 text-orange-700 border-orange-200" />
-              )}
-              {amenities.wifi && (
-                <AMENITY_CHIP icon={Wifi} label={t("card_wifi")} color="bg-sky-50 text-sky-700 border-sky-200" />
-              )}
-              {(amenities.parking || asset.parking) && (
-                <AMENITY_CHIP icon={Car} label={t("card_parking")} color="bg-violet-50 text-violet-700 border-violet-200" />
-              )}
-              {match.carbon_estimate_kg !== undefined && (
-                <AMENITY_CHIP icon={Leaf} label={`${match.carbon_estimate_kg} kg CO₂`} color="bg-emerald-50 text-emerald-700 border-emerald-200" />
-              )}
+          {/* Proposed time window */}
+          {searchWindow?.start && (
+            <div
+              className="flex items-center gap-2 t-caption rounded-xl px-3 py-2 mt-3"
+              style={{ background: "var(--surface-2)" }}
+            >
+              <Clock size={11} style={{ color: "var(--text-3)" }} className="flex-shrink-0" />
+              <span>
+                {new Date(searchWindow.start).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                {" · "}
+                {new Date(searchWindow.start).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                {" – "}
+                {new Date(searchWindow.end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span className="ml-auto font-semibold" style={{ color: "var(--brand)" }}>Edit time</span>
             </div>
+          )}
 
-            {/* Proposed time window */}
-            {searchWindow?.start && (
-              <div
-                className="flex items-center gap-2 text-[12px] text-gray-500 rounded-xl px-3 py-2 mb-3"
-                style={{ background: isDark ? "#1C2128" : "#F9FAFB" }}
-              >
-                <Clock size={11} className="text-gray-400 flex-shrink-0" />
-                <span>
-                  {new Date(searchWindow.start).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-                  {" · "}
-                  {new Date(searchWindow.start).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                  {" – "}
-                  {new Date(searchWindow.end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                </span>
-                <span className="ml-auto text-teal-600 font-semibold">Edit time</span>
-              </div>
-            )}
-
-            {/* CTA */}
-            <div className="flex gap-2">
-              {onViewCalendar && (
-                <button
-                  onClick={() => onViewCalendar(asset)}
-                  aria-label={`View ${asset.name} availability`}
-                  className="btn-secondary flex-shrink-0 px-3 text-[13px]"
-                  title="View availability calendar"
-                >
-                  <CalendarDays size={14} />
-                </button>
-              )}
+          {/* CTA */}
+          <div className="flex gap-2 mt-4">
+            {onViewCalendar && (
               <button
-                onClick={() => onBook(asset)}
-                aria-label={`Book ${asset.name}`}
-                className="btn-primary flex-1 justify-center"
+                onClick={() => onViewCalendar(asset)}
+                aria-label={`View ${asset.name} availability`}
+                className="btn-secondary btn-sm flex-shrink-0"
+                title="View availability calendar"
               >
-                {t("card_book")}
-                <ChevronRight size={15} />
+                <CalendarDays size={14} />
               </button>
-            </div>
+            )}
+            <button
+              onClick={() => onBook(asset)}
+              aria-label={`Book ${asset.name}`}
+              className="btn-primary flex-1"
+            >
+              {t("card_book")}
+              <ChevronRight size={15} />
+            </button>
           </div>
         </div>
       </div>
