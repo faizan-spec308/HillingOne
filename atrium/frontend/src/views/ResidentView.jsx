@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Network, ArrowLeft, Calendar, Clock, PoundSterling, RefreshCw } from "lucide-react";
+import { Sparkles, Network, ArrowLeft, Calendar, Clock, PoundSterling, RefreshCw, SearchX } from "lucide-react";
 import SearchBox from "../components/SearchBox";
 import AssetCard from "../components/AssetCard";
 import AssetCalendar from "../components/AssetCalendar";
@@ -7,7 +7,6 @@ import BookingConfirmation from "./BookingConfirmation";
 import PaymentForm from "../components/PaymentForm";
 import { api } from "../api/client";
 import { useLanguage } from "../context/LanguageContext";
-import { useTheme } from "../context/ThemeContext";
 
 const STAGE_PATHS = {
   search:    "/",
@@ -21,7 +20,6 @@ const STAGE_PATHS = {
 
 export default function ResidentView({ user, onViewMyBookings }) {
   const { t } = useLanguage();
-  const { isDark } = useTheme();
   const [stage, setStageRaw] = useState("search"); // search | loading | results | hold | payment | confirmed
 
   const setStage = (s) => {
@@ -139,9 +137,9 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
   /* ── Loading state ─────────────────────────────────────────────────────── */
   if (stage === "loading") {
-    const skBg  = isDark ? "#161B22" : "#ffffff";
-    const skBdr = isDark ? "#30363D" : "#E5E7EB";
-    const skEl  = isDark ? "#21262D" : "#F3F4F6";
+    const skBg  = "var(--bg-card)";
+    const skBdr = "var(--border)";
+    const skEl  = "var(--surface-2)";
     return (
       <div className="max-w-2xl mx-auto px-6 py-20">
         <div className="text-center mb-10">
@@ -149,7 +147,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
             <Network size={15} />
             {t("results_loading_label")}
           </div>
-          <p className="text-[15px]" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
+          <p className="text-[15px]" style={{ color: "var(--text-2)" }}>
             {t("results_loading_sub")}
           </p>
         </div>
@@ -178,8 +176,8 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
   /* ── Results state ─────────────────────────────────────────────────────── */
   if (stage === "results") {
-    const t1 = isDark ? "#E6EDF3" : "#111827";
-    const t2 = isDark ? "#8B949E" : "#6B7280";
+    const t1 = "var(--text-1)";
+    const t2 = "var(--text-2)";
     return (
       <div className="max-w-3xl mx-auto px-6 py-8 fade-in-up">
         <button
@@ -195,16 +193,14 @@ export default function ResidentView({ user, onViewMyBookings }) {
         {intent?.extracted_summary && (
           <div
             className="rounded-2xl p-5 mb-6 border"
-            style={isDark
-              ? { background: "#0D1F2D", borderColor: "#1E4A6E" }
-              : { background: "#EBF4FF", borderColor: "#BFDBFE" }}
+            style={{ background: "var(--info-bg)", borderColor: "var(--info)" }}
           >
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-xl bg-hillingdon-navy flex items-center justify-center flex-shrink-0">
                 <Sparkles size={15} className="text-white" />
               </div>
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: isDark ? "#60A5FA" : "#1D4ED8" }}>
+                <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--info)" }}>
                   {t("results_understood")}
                 </div>
                 <p className="text-[14px] leading-relaxed" style={{ color: t1 }}>{intent.extracted_summary}</p>
@@ -226,8 +222,10 @@ export default function ResidentView({ user, onViewMyBookings }) {
         </div>
 
         {matches.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ background: isDark ? "#161B22" : "#ffffff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
-            <div className="text-5xl mb-4">🔍</div>
+          <div className="rounded-2xl p-12 text-center" style={{ background: "var(--bg-card)", border: `1px solid ${"var(--border)"}` }}>
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "var(--surface-2)", color: "var(--text-3)" }}>
+              <SearchX size={26} strokeWidth={1.8} />
+            </div>
             <h3 className="text-[16px] font-bold mb-2" style={{ color: t1 }}>{t("results_none")}</h3>
             <p className="text-[14px] mb-6" style={{ color: t2 }}>
               {t("results_none_sub")}
@@ -336,7 +334,6 @@ export default function ResidentView({ user, onViewMyBookings }) {
 
 /* ── DateTime picker ─────────────────────────────────────────────────────── */
 function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack }) {
-  const { isDark } = useTheme();
   const toLocal = (iso) => {
     const d = new Date(iso);
     const pad = (n) => String(n).padStart(2, "0");
@@ -428,24 +425,24 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 
   return (
     <div className="max-w-md mx-auto px-6 py-10 fade-in-up">
-      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[13px] hover:text-teal-600 mb-6 transition font-medium" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
+      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[13px] hover:text-teal-600 mb-6 transition font-medium" style={{ color: "var(--text-2)" }}>
         <ArrowLeft size={14} /> Back to results
       </button>
 
-      <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: isDark ? "#161B22" : "#ffffff", border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
+      <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: "var(--bg-card)", border: `1px solid ${"var(--border)"}` }}>
         {/* Asset header */}
-        <div className="p-5" style={{ borderBottom: `1px solid ${isDark ? "#21262D" : "#F3F4F6"}` }}>
-          <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
+        <div className="p-5" style={{ borderBottom: `1px solid ${"var(--surface-2)"}` }}>
+          <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: "var(--text-3)" }}>
             {(asset?.category || "").replace(/_/g, " ")}
           </p>
-          <h2 className="text-[18px] font-black" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{asset?.name}</h2>
-          {asset?.ward && <p className="text-[13px] mt-0.5" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>{asset.ward}, Hillingdon</p>}
+          <h2 className="text-[18px] font-black" style={{ color: "var(--text-1)" }}>{asset?.name}</h2>
+          {asset?.ward && <p className="text-[13px] mt-0.5" style={{ color: "var(--text-2)" }}>{asset.ward}, Hillingdon</p>}
         </div>
 
         <div className="p-5 space-y-4">
           {/* Date */}
           <div>
-            <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
+            <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-2)" }}>
               <Calendar size={12} /> Date
             </label>
             <input
@@ -454,41 +451,41 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
-              style={{ background: isDark ? "#0E1117" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#111827" }}
+              style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text-1)" }}
             />
           </div>
 
           {/* Time range */}
           <div>
-            <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
+            <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-2)" }}>
               <Clock size={12} /> Time
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[11px] mb-1" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>From</p>
+                <p className="text-[11px] mb-1" style={{ color: "var(--text-3)" }}>From</p>
                 <input type="time" value={start} onChange={(e) => setStart(e.target.value)}
                   className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
-                  style={{ background: isDark ? "#0E1117" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#111827" }} />
+                  style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text-1)" }} />
               </div>
               <div>
-                <p className="text-[11px] mb-1" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>To</p>
+                <p className="text-[11px] mb-1" style={{ color: "var(--text-3)" }}>To</p>
                 <input type="time" value={end} onChange={(e) => setEnd(e.target.value)}
                   className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
-                  style={{ background: isDark ? "#0E1117" : "#ffffff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#E6EDF3" : "#111827" }} />
+                  style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text-1)" }} />
               </div>
             </div>
           </div>
 
           {/* Already-booked times for the chosen day */}
           {dayBookings.length > 0 && (
-            <div className="rounded-xl px-3.5 py-3" style={{ background: isDark ? "#1C2128" : "#F9FAFB", border: `1px solid ${isDark ? "#30363D" : "#F3F4F6"}` }}>
-              <p className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
+            <div className="rounded-xl px-3.5 py-3" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+              <p className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: "var(--text-3)" }}>
                 Already booked on this day
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {dayBookings.map((b, i) => (
                   <span key={i} className="px-2 py-1 rounded-md text-[11px] font-semibold"
-                    style={{ background: isDark ? "rgba(239,68,68,0.12)" : "#FEF2F2", color: isDark ? "#FCA5A5" : "#B91C1C" }}>
+                    style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }}>
                     {fmtT(b.start_time)} – {fmtT(b.end_time)}
                   </span>
                 ))}
@@ -506,14 +503,14 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
           {/* Recurring booking */}
           <div>
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#8B949E" : "#6B7280" }}>
+              <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>
                 <RefreshCw size={12} /> Repeat booking
               </label>
               <button
                 type="button"
                 onClick={() => setIsRecurring((v) => !v)}
                 className="relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none"
-                style={{ background: isRecurring ? "#0D9488" : (isDark ? "#30363D" : "#D1D5DB") }}
+                style={{ background: isRecurring ? "var(--brand)" : "var(--border-strong)" }}
                 role="switch"
                 aria-checked={isRecurring}
               >
@@ -525,8 +522,8 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
               </button>
             </div>
             {isRecurring && (
-              <div className="mt-3 rounded-xl p-3" style={{ background: isDark ? "#0D2D1E" : "#F0FDF4", border: `1px solid ${isDark ? "#1A4731" : "#BBF7D0"}` }}>
-                <p className="text-[11px] font-medium mb-2" style={{ color: isDark ? "#4ADE80" : "#0D9488" }}>
+              <div className="mt-3 rounded-xl p-3" style={{ background: "var(--brand-tint)", border: `1px solid ${"var(--brand-border)"}` }}>
+                <p className="text-[11px] font-medium mb-2" style={{ color: "var(--brand)" }}>
                   Repeat every week for:
                 </p>
                 <div className="flex gap-2 flex-wrap">
@@ -537,15 +534,15 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
                       onClick={() => setRecurrenceWeeks(w)}
                       className="px-3 py-1.5 rounded-lg text-[12px] font-bold border transition"
                       style={recurrenceWeeks === w
-                        ? { background: "#0D9488", borderColor: "#0D9488", color: "#fff" }
-                        : { background: isDark ? "#21262D" : "#fff", borderColor: isDark ? "#30363D" : "#E5E7EB", color: isDark ? "#8B949E" : "#4B5563" }
+                        ? { background: "var(--brand)", borderColor: "var(--brand)", color: "#fff" }
+                        : { background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text-2)" }
                       }
                     >
                       {w} weeks
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] mt-2" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
+                <p className="text-[11px] mt-2" style={{ color: "var(--text-3)" }}>
                   Up to {recurrenceWeeks} weekly bookings at the same time. Weeks already booked are skipped
                   and you only pay for the sessions you get.
                 </p>
@@ -556,18 +553,18 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
           {/* Price summary */}
           {durationHours > 0 && (
             <div className="rounded-xl p-4 flex items-center justify-between"
-              style={{ background: isDark ? "#0D2D1E" : "#F0FDF4", border: `1px solid ${isDark ? "#1A4731" : "#BBF7D0"}` }}>
+              style={{ background: "var(--brand-tint)", border: `1px solid ${"var(--brand-border)"}` }}>
               <div>
-                <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#4ADE80" : "#6B7280" }}>Duration</p>
-                <p className="text-[15px] font-bold" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{durationHours % 1 === 0 ? durationHours : durationHours.toFixed(1)} hrs</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>Duration</p>
+                <p className="text-[15px] font-bold" style={{ color: "var(--text-1)" }}>{durationHours % 1 === 0 ? durationHours : durationHours.toFixed(1)} hrs</p>
               </div>
               <div className="flex items-center gap-1.5">
                 <PoundSterling size={18} className="text-teal-500" />
                 <div className="text-right">
-                  <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#4ADE80" : "#6B7280" }}>
+                  <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>
                     {sessions > 1 ? `Total · ${sessions} sessions` : "Total"}
                   </p>
-                  <p className="text-[20px] font-black" style={{ color: isDark ? "#2DD4BF" : "#0F766E" }}>{isFree ? "Free" : `£${totalCost}`}</p>
+                  <p className="text-[20px] font-black" style={{ color: "var(--brand)" }}>{isFree ? "Free" : `£${totalCost}`}</p>
                 </div>
               </div>
             </div>
@@ -585,7 +582,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
           >
             {loading ? "Reserving…" : "Hold this space"}
           </button>
-          <p className="text-[11px] text-center" style={{ color: isDark ? "#484F58" : "#9CA3AF" }}>
+          <p className="text-[11px] text-center" style={{ color: "var(--text-3)" }}>
             You'll have 5 minutes to complete your booking after holding.
           </p>
         </div>
@@ -597,7 +594,6 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 /* ── Hold screen ──────────────────────────────────────────────────────────── */
 function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
   const { t } = useLanguage();
-  const { isDark } = useTheme();
   const [proceeding, setProceeding] = useState(false);
   const heldUntil = new Date(booking.held_until).getTime();
   const totalSeconds = Math.max(60, Math.round((heldUntil - Date.now()) / 1000 + 0));
@@ -618,9 +614,9 @@ function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
   const isUrgent = secondsLeft <= 30;
   const expired  = secondsLeft <= 0;
 
-  const t1 = isDark ? "#E6EDF3" : "#111827";
-  const t2 = isDark ? "#8B949E" : "#6B7280";
-  const detailBg = isDark ? "#21262D" : "#F9FAFB";
+  const t1 = "var(--text-1)";
+  const t2 = "var(--text-2)";
+  const detailBg = "var(--surface-2)";
 
   // Price summary — covers every secured weekly occurrence
   const occurrences = booking.recurrence_pattern?.occurrences?.length || 1;
@@ -639,14 +635,14 @@ function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
       <div className="max-w-md mx-auto px-6 py-14 fade-in-up">
         <div
           className="rounded-2xl p-8 text-center"
-          style={{ background: isDark ? "#161B22" : "#ffffff", border: `2px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}
+          style={{ background: "var(--bg-card)", border: "2px solid var(--border)" }}
           role="alert"
         >
           <div
             className="w-20 h-20 rounded-full border-4 flex items-center justify-center mx-auto mb-5"
-            style={{ borderColor: "#EF4444", background: isDark ? "#2D0A0A" : "#FEF2F2" }}
+            style={{ borderColor: "var(--danger)", background: "var(--danger-bg)" }}
           >
-            <Clock size={30} style={{ color: "#EF4444" }} />
+            <Clock size={30} style={{ color: "var(--danger)" }} />
           </div>
           <h2 className="text-[20px] font-bold mb-2" style={{ color: t1 }}>Your hold has expired</h2>
           <p className="text-[14px] mb-7 leading-relaxed" style={{ color: t2 }}>
@@ -666,22 +662,22 @@ function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
       <div
         className="rounded-2xl p-8 text-center"
         style={{
-          background: isDark ? "#161B22" : "#ffffff",
-          border: `2px solid ${isUrgent ? "#EF4444" : (isDark ? "#78350F" : "#F59E0B")}`,
+          background: "var(--bg-card)",
+          border: `2px solid ${isUrgent ? "var(--danger)" : "var(--warning)"}`,
         }}
       >
         {/* Countdown ring */}
         <div
           className="w-20 h-20 rounded-full border-4 flex items-center justify-center mx-auto mb-5 transition-colors"
           style={{
-            borderColor: isUrgent ? "#EF4444" : "#F59E0B",
-            background: isUrgent ? (isDark ? "#2D0A0A" : "#FEF2F2") : (isDark ? "#1C1200" : "#FFFBEB"),
+            borderColor: isUrgent ? "var(--danger)" : "var(--warning)",
+            background: isUrgent ? "var(--danger-bg)" : "var(--warning-bg)",
           }}
           role="timer"
           aria-live="polite"
           aria-label={`${secondsLeft} seconds remaining to complete your booking`}
         >
-          <span className="text-2xl font-black" style={{ color: isUrgent ? "#EF4444" : "#D97706" }}>
+          <span className="text-2xl font-black" style={{ color: isUrgent ? "var(--danger)" : "var(--warning)" }}>
             {secondsLeft}
           </span>
         </div>
@@ -729,10 +725,10 @@ function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
         </p>
 
         {/* Progress bar */}
-        <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: isDark ? "#21262D" : "#F3F4F6" }}>
+        <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "var(--surface-2)" }}>
           <div
             className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${progress}%`, background: isUrgent ? "#EF4444" : "#F59E0B" }}
+            style={{ width: `${progress}%`, background: isUrgent ? "var(--danger)" : "var(--warning)" }}
           />
         </div>
 

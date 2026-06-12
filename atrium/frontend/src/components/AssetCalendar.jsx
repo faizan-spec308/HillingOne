@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X, CalendarCheck } from "lucide-react";
 import { api } from "../api/client";
-import { useTheme } from "../context/ThemeContext";
 
 const HOUR_START = 8;   // 08:00
 const HOUR_END   = 22;  // 22:00 (last slot starts at 21:00)
@@ -49,20 +48,19 @@ function isSlotPast(date, hour) {
 }
 
 export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
-  const { isDark } = useTheme();
   const [weekStart, setWeekStart]   = useState(() => getMondayOf(new Date()));
   const [bookings, setBookings]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [loadError, setLoadError]   = useState(false);
   const [selected, setSelected]     = useState(null); // { date, hour }
 
-  const t1  = isDark ? "#E6EDF3" : "#111827";
-  const t2  = isDark ? "#8B949E" : "#6B7280";
-  const t3  = isDark ? "#484F58" : "#9CA3AF";
-  const bdr = isDark ? "#30363D" : "#E5E7EB";
-  const bdrLight = isDark ? "#21262D" : "#F3F4F6";
-  const card = isDark ? "#161B22" : "#ffffff";
-  const past = isDark ? "#1C2029" : "#F9FAFB";
+  const t1  = "var(--text-1)";
+  const t2  = "var(--text-2)";
+  const t3  = "var(--text-3)";
+  const bdr = "var(--border)";
+  const bdrLight = "var(--border)";
+  const card = "var(--bg-card)";
+  const past = "var(--surface-2)";
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -176,14 +174,14 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
                   {days.map((d, i) => {
                     const isToday = isoDate(d) === isoDate(new Date());
                     return (
-                      <th key={i} className="px-1 py-2 text-center font-semibold" style={{ color: isToday ? "#0D9488" : t1 }}>
-                        <div className="text-[11px] uppercase tracking-wide" style={{ color: isToday ? "#2DD4BF" : t2 }}>
+                      <th key={i} className="px-1 py-2 text-center font-semibold" style={{ color: isToday ? "var(--brand)" : t1 }}>
+                        <div className="text-[11px] uppercase tracking-wide" style={{ color: isToday ? "var(--brand)" : t2 }}>
                           {fmtDay(d)}
                         </div>
                         <div className={`text-[14px] font-black mt-0.5 w-7 h-7 mx-auto flex items-center justify-center rounded-full ${isToday ? "bg-teal-600 text-white" : ""}`}>
                           {d.getDate()}
                         </div>
-                        <div className="text-[10px] mt-0.5" style={{ color: isToday ? "#2DD4BF" : t3 }}>
+                        <div className="text-[10px] mt-0.5" style={{ color: isToday ? "var(--brand)" : t3 }}>
                           {fmtDate(d).split(" ")[1]}
                         </div>
                       </th>
@@ -208,9 +206,9 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
                       if (isPast) {
                         slotStyle = { ...slotStyle, background: past, cursor: "default" };
                       } else if (booked) {
-                        slotStyle = { ...slotStyle, background: isDark ? "rgba(13,148,136,0.08)" : "#F0FDFA", border: `1px solid ${isDark ? "#0F766E40" : "#99F6E4"}`, cursor: "not-allowed" };
+                        slotStyle = { ...slotStyle, background: "var(--brand-tint)", border: "1px solid var(--brand-border)", cursor: "not-allowed" };
                       } else if (sel) {
-                        slotStyle = { ...slotStyle, background: "#0D9488", cursor: "pointer" };
+                        slotStyle = { ...slotStyle, background: "var(--brand)", cursor: "pointer" };
                         slotClass += " text-white shadow-sm";
                       } else {
                         slotStyle = { ...slotStyle, background: "transparent", cursor: "pointer" };
@@ -229,7 +227,7 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
                             className={slotClass}
                             style={slotStyle}
                           >
-                            {booked && <span style={{ color: isDark ? "#2DD4BF" : "#5EEAD4" }}>·</span>}
+                            {booked && <span style={{ color: "var(--brand-soft)" }}>·</span>}
                             {sel    && <CalendarCheck size={12} />}
                           </button>
                         </td>
@@ -246,7 +244,7 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
         <div className="px-5 py-4 flex items-center gap-4" style={{ borderTop: `1px solid ${bdrLight}` }}>
           <div className="flex items-center gap-4 text-[11px]" style={{ color: t2 }}>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm inline-block" style={{ background: isDark ? "rgba(13,148,136,0.08)" : "#F0FDFA", border: `1px solid ${isDark ? "#0F766E40" : "#99F6E4"}` }} /> Booked
+              <span className="w-3 h-3 rounded-sm inline-block" style={{ background: "var(--brand-tint)", border: "1px solid var(--brand-border)" }} /> Booked
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-sm bg-teal-600 inline-block" /> Selected
