@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useTheme } from "../context/ThemeContext";
 import {
   Activity, MapPin, AlertTriangle, TrendingUp,
   ShieldCheck, Clock, RefreshCw, Users, Zap, Download,
@@ -469,17 +468,15 @@ function AgentRunsPanel() {
 
 /* ── Booking trend bar chart ──────────────────────────────────────── */
 export default function StaffView() {
-  const { isDark } = useTheme();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  const card  = isDark ? { background: "#161B22", border: "1px solid #30363D" } : {};
-  const surf  = isDark ? { background: "#0E1117" } : {};
-  const text1 = isDark ? "#E6EDF3" : "#111827";
-  const text2 = isDark ? "#8B949E" : "#6B7280";
-  const divider = isDark ? "#21262D" : "#F3F4F6";
+  const card  = { background: "var(--bg-card)", border: "1px solid var(--border)" };
+  const text1 = "var(--text-1)";
+  const text2 = "var(--text-2)";
+  const divider = "var(--border)";
 
   const refresh = async () => {
     try {
@@ -590,7 +587,7 @@ export default function StaffView() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-6 overflow-x-auto" style={{ borderBottom: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}` }}>
+      <div className="flex items-center gap-1 mb-6 overflow-x-auto" style={{ borderBottom: "1px solid var(--border)" }}>
         {[
           { id: "dashboard",       label: "Dashboard",       icon: <Activity size={14} /> },
           { id: "decision-queue",  label: "Decision Queue",  icon: <ListChecks size={14} />, badge: data?.pending_swap_responses?.length || 0 },
@@ -660,7 +657,7 @@ export default function StaffView() {
       {/* Metrics row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {metrics.map((m) => (
-          <MetricCard key={m.label} {...m} isDark={isDark} />
+          <MetricCard key={m.label} {...m} />
         ))}
       </div>
 
@@ -668,7 +665,7 @@ export default function StaffView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* Asset utilisation table */}
-        <div className="lg:col-span-2 rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+        <div className="lg:col-span-2 rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: "1px solid var(--border)" }}>
           <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
             <MapPin size={16} className="text-teal-600" />
             <h3 className="font-bold text-[15px]" style={{ color: text1 }}>Asset utilisation</h3>
@@ -744,7 +741,7 @@ export default function StaffView() {
         <div className="space-y-4">
 
           {/* Live agent feed */}
-          <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+          <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: "1px solid var(--border)" }}>
             <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
               <Activity size={15} className="text-teal-600" />
               <h3 className="font-bold text-[14px]" style={{ color: text1 }}>Live agent feed</h3>
@@ -786,7 +783,7 @@ export default function StaffView() {
 
           {/* Demand alerts */}
           {data.demand_alerts.length > 0 && (
-            <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+            <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: "1px solid var(--border)" }}>
               <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
                 <AlertTriangle size={15} className="text-amber-500" />
                 <h3 className="font-bold text-[14px]" style={{ color: text1 }}>Unmet demand</h3>
@@ -811,7 +808,7 @@ export default function StaffView() {
 
           {/* Recent agent runs */}
           {data.recent_agent_runs?.length > 0 && (
-            <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: isDark ? "1px solid #30363D" : "1px solid #E5E7EB" }}>
+            <div className="rounded-2xl overflow-hidden shadow-civic" style={{ ...card, border: "1px solid var(--border)" }}>
               <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${divider}` }}>
                 <Bot size={15} className="text-teal-600" />
                 <h3 className="font-bold text-[14px] text-gray-900">AI Agent</h3>
@@ -847,10 +844,10 @@ export default function StaffView() {
   );
 }
 
-function MetricCard({ icon, label, value, accent, isDark }) {
+function MetricCard({ icon, label, value, accent }) {
   if (accent) {
     return (
-      <div className="px-4 py-3.5 rounded-2xl shadow-civic" style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}>
+      <div className="px-4 py-3.5 rounded-2xl shadow-civic" style={{ background: "var(--brand)" }}>
         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-white/70">
           <span className="p-1 rounded-md bg-white/15">{icon}</span>
           {label}
@@ -862,16 +859,13 @@ function MetricCard({ icon, label, value, accent, isDark }) {
   return (
     <div
       className="px-4 py-3.5 rounded-2xl shadow-civic"
-      style={{
-        background: isDark ? "#161B22" : "#ffffff",
-        border: `1px solid ${isDark ? "#30363D" : "#E5E7EB"}`,
-      }}
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: isDark ? "#8B949E" : "#9CA3AF" }}>
-        <span className="p-1 rounded-md" style={{ background: isDark ? "#21262D" : "#F0FDF4", color: "#0D9488" }}>{icon}</span>
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-3)" }}>
+        <span className="p-1 rounded-md" style={{ background: "var(--brand-tint)", color: "var(--brand)" }}>{icon}</span>
         {label}
       </div>
-      <div className="text-[22px] font-black leading-tight tracking-tight" style={{ color: isDark ? "#E6EDF3" : "#111827" }}>{value}</div>
+      <div className="text-[22px] font-black leading-tight tracking-tight" style={{ color: "var(--text-1)" }}>{value}</div>
     </div>
   );
 }
