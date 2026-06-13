@@ -86,8 +86,11 @@ async def resolve_conflict(
         "booking_id": str(req.booking_id),
     }
 
-    if decision == "swap_proposed":
-        alt = await db.get(Asset, booking.alternative_offered_id) if booking.alternative_offered_id else None
+    # The booking's actual state is the source of truth — not just the agent's
+    # self-reported final_decision (the live model may set the swap but forget
+    # to log the decision). If a swap was placed, that's the real outcome.
+    if booking.state == "swap_pending" and booking.alternative_offered_id:
+        alt = await db.get(Asset, booking.alternative_offered_id)
         credit = booking.goodwill_credit_applied or 0
         return {
             **base,
@@ -106,25 +109,18 @@ async def resolve_conflict(
             ),
         }
 
-    if decision == "escalated":
-        return {
-            **base,
-            "outcome": "escalated",
-            "resolved_by_agent": False,
-            "awaiting_resident": False,
-            "requires_human": True,
-            "headline": (
-                "The agent couldn't find a suitable alternative for the resident. "
-                "Escalated for your review — you may proceed with a documented override if it's genuinely necessary."
-            ),
-        }
-
+    # No swap was placed → the agent escalated (or couldn't complete). Either
+    # way the human takes over; the booking is untouched and still confirmed.
     return {
         **base,
-        "outcome": decision or "failed",
+        "outcome": "escalated",
         "resolved_by_agent": False,
+        "awaiting_resident": False,
         "requires_human": True,
-        "headline": "The agent could not complete resolution. Manual review required.",
+        "headline": (
+            "The agent couldn't find a suitable alternative for the resident. "
+            "Escalated for your review — you may proceed with a documented override if it's genuinely necessary."
+        ),
     }
 
 
