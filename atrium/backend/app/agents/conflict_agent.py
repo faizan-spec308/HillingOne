@@ -100,7 +100,20 @@ class ConflictResolutionAgent:
             )
 
         try:
-            return await self._run_with_gemini(client, goal, confirmed_booking_id)
+            result = await self._run_with_gemini(client, goal, confirmed_booking_id)
+            # Trust the live model only if it produced a clear outcome — a placed
+            # swap (booking now swap_pending) or an explicit escalation.
+            refreshed = await self.db.get(Booking, confirmed_booking_id)
+            if (refreshed and refreshed.state == "swap_pending") or result.get("final_decision") == "escalated":
+                return result
+            # The model stalled without a decision — fall back to the deterministic
+            # engine so we never escalate just because the model rambled.
+            self.steps = []
+            return await self._fallback_agent(
+                booking=refreshed or booking,
+                asset=asset,
+                priority_summary=priority_request_summary,
+            )
         except Exception as exc:
             self.steps.append({
                 "step": len(self.steps) + 1,

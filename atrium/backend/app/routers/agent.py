@@ -4,11 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from app.database import get_db
+from app.dependencies import require_staff
 from app.schemas.search import AgentTriggerRequest
 from app.agents.conflict_agent import ConflictResolutionAgent
 from app.models.agent_run import AgentRun
 
-router = APIRouter(prefix="/api/agent", tags=["agent"])
+# Staff-only: triggering the agent and reading its runs both expose booking
+# details and are operational actions, so the whole router requires staff auth.
+router = APIRouter(prefix="/api/agent", tags=["agent"], dependencies=[Depends(require_staff)])
 
 
 @router.post("/conflict-resolution")

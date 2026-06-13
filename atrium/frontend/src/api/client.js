@@ -24,6 +24,8 @@ const ERROR_MESSAGES = {
   invalid_duration:            "Bookings must be between 30 minutes and 12 hours.",
   no_alternative_proposed:     "No alternative venue was proposed for this booking.",
   alternative_no_longer_available: "That alternative venue was just taken. Your original booking is unchanged — staff will find another option.",
+  recurring_not_supported_for_agent: "This is a recurring booking — please manage each occurrence individually rather than via the agent.",
+  only_confirmed_bookings_can_be_resolved: "Only confirmed bookings can be put to the conflict agent.",
   slot_unavailable_payment_refunded:
     "That time was just taken by someone else. Your payment has been refunded automatically.",
 };

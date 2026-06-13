@@ -30,8 +30,15 @@ export default function Header({ userName, role, isStaff }) {
       }
     };
     fetchReminders();
-    const interval = setInterval(fetchReminders, 60_000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchReminders, 20_000);
+    const onFocus = () => fetchReminders();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
   }, []);
 
   const dismissReminder = async (id) => {

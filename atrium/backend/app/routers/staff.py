@@ -71,6 +71,10 @@ async def resolve_conflict(
         raise HTTPException(status_code=404, detail="booking_not_found")
     if booking.state != "confirmed":
         raise HTTPException(status_code=400, detail="only_confirmed_bookings_can_be_resolved")
+    # Recurring series are managed per occurrence and share one payment — the
+    # swap/payment-carry logic isn't series-aware yet, so don't run the agent on them.
+    if booking.is_recurring or booking.parent_booking_id:
+        raise HTTPException(status_code=400, detail="recurring_not_supported_for_agent")
 
     agent = ConflictResolutionAgent(db)
     result = await agent.resolve(
@@ -153,11 +157,18 @@ async def staff_override(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    booking = await db.get(Booking, str(req.booking_id))
+
     # Staff cancelled the booking — the resident is refunded in full (it's not
     # their fault). The goodwill credit + in-app notification are applied in the
     # service; here we issue the Stripe refund and send the cancellation email.
+    # Recurring bookings share one payment across the series, so we skip the
+    # automatic refund for them (it would over-refund) and flag manual review.
     refund_info = None
-    if settings.stripe_secret_key:
+    is_recurring_booking = bool(booking and (booking.is_recurring or booking.parent_booking_id))
+    if is_recurring_booking:
+        refund_info = {"refunded": False, "message": "Recurring booking — refund requires manual review."}
+    elif settings.stripe_secret_key:
         try:
             import stripe as _stripe
             _stripe.api_key = settings.stripe_secret_key
@@ -184,7 +195,6 @@ async def staff_override(
             logger.error("override_refund_error booking_id=%s err=%s", str(req.booking_id), str(exc))
             refund_info = {"refunded": False, "message": "Cancellation processed; refund requires manual review."}
 
-    booking = await db.get(Booking, str(req.booking_id))
     if booking:
         resident = await db.get(User, booking.user_id)
         asset = await db.get(Asset, booking.asset_id)

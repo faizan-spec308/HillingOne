@@ -286,7 +286,6 @@ function DecisionQueue() {
   const [queue, setQueue]       = useState(null);
   const [history, setHistory]   = useState([]);
   const [loading, setLoading]   = useState(true);
-  const [agentState, setAgentState] = useState({}); // { [bookingId]: { running, result, error } }
 
   const load = async () => {
     try {
@@ -305,20 +304,6 @@ function DecisionQueue() {
 
   useEffect(() => { load(); }, []);
 
-  const handleRunAgent = async (row) => {
-    const id = row.booking.id;
-    setAgentState(s => ({ ...s, [id]: { running: true } }));
-    try {
-      const result = await api.triggerAgent({
-        confirmed_booking_id: id,
-        priority_request_summary: `Staff requested conflict resolution for booking ${row.booking.reference}`,
-      });
-      setAgentState(s => ({ ...s, [id]: { running: false, result } }));
-    } catch (e) {
-      setAgentState(s => ({ ...s, [id]: { running: false, error: e.message } }));
-    }
-  };
-
   if (loading) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-24 rounded-2xl" />)}</div>;
 
   return (
@@ -336,7 +321,6 @@ function DecisionQueue() {
         const b = row.booking;
         const a = row.asset;
         const alt = row.alternative;
-        const state = agentState[b.id] || {};
         return (
           <div key={b.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-civic">
             <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-4">
@@ -351,21 +335,12 @@ function DecisionQueue() {
                 <p className="text-[12px] text-gray-500">{a?.ward} · {b.start_time ? new Date(b.start_time).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" }) : "—"}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {/* The swap decision belongs to the resident — staff can only
-                    monitor it or ask the AI agent to find a better outcome. */}
+                {/* The swap decision belongs to the resident — staff monitor it
+                    here; the agent is run from the Resolve Conflict tab. */}
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-[12px] font-bold rounded-lg">
                   <Clock size={12} />
                   Awaiting resident decision
                 </span>
-                <button
-                  onClick={() => handleRunAgent(row)}
-                  disabled={state.running}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-hillingdon-navy hover:opacity-90 text-white text-[12px] font-bold rounded-lg transition disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg, #0F766E, #0D9488)" }}
-                >
-                  {state.running ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
-                  Run AI agent
-                </button>
               </div>
             </div>
 
@@ -376,32 +351,6 @@ function DecisionQueue() {
               </div>
             )}
 
-            {state.result && (
-              <div className="px-5 py-4 bg-teal-50 border-t border-teal-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot size={14} className="text-teal-700" />
-                  <span className="text-[12px] font-bold text-teal-700 uppercase tracking-wide">
-                    Agent result — {state.result.final_decision || "done"}
-                  </span>
-                  <span className="text-[11px] text-teal-500">{state.result.iterations_used} tool call{state.result.iterations_used !== 1 ? "s" : ""}</span>
-                </div>
-                <p className="text-[13px] text-teal-800 leading-relaxed">{state.result.goal_summary}</p>
-                {state.result.steps?.filter(s => s.type === "tool_call").length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {state.result.steps.filter(s => s.type === "tool_call").map((step, i) => (
-                      <li key={i} className="text-[11px] text-teal-600 flex items-start gap-1.5">
-                        <span className="text-teal-400 font-mono">{i + 1}.</span>
-                        <span className="font-semibold">{step.tool}</span>
-                        <span className="text-teal-500 truncate">{step.args ? Object.values(step.args).join(", ").slice(0, 60) : ""}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-            {state.error && (
-              <div className="px-5 py-3 bg-red-50 border-t border-red-100 text-[13px] text-red-700">{state.error}</div>
-            )}
           </div>
         );
       })}
