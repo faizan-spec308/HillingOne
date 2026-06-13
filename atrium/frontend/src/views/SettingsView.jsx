@@ -27,15 +27,24 @@ function SectionCard({ title, icon: Icon, children }) {
   );
 }
 
-function Toast({ toast }) {
-  if (!toast) return null;
-  const ok = toast.type === "success";
+/* Feedback shown inline within a section, right by its action button —
+   so it's always visible without scrolling back to the top. */
+function InlineAlert({ msg }) {
+  if (!msg) return null;
+  const ok = msg.type === "success";
   return (
-    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-5 py-3 rounded-2xl shadow-xl text-[13px] font-semibold border ${
-      ok ? "bg-white border-emerald-200 text-emerald-800" : "bg-red-50 border-red-200 text-red-700"
-    }`}>
-      {ok ? <CheckCircle2 size={15} className="text-emerald-500" /> : <AlertTriangle size={15} />}
-      {toast.msg}
+    <div
+      className="flex items-start gap-2.5 px-4 py-3 rounded-xl mb-4 text-[13px] font-medium"
+      style={{
+        background: ok ? "var(--success-bg)" : "var(--danger-bg)",
+        color: ok ? "var(--success-fg)" : "var(--danger-fg)",
+      }}
+      role={ok ? "status" : "alert"}
+    >
+      {ok
+        ? <CheckCircle2 size={15} className="flex-shrink-0 mt-0.5" />
+        : <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />}
+      <span>{msg.text}</span>
     </div>
   );
 }
@@ -52,20 +61,22 @@ function Field({ label, children }) {
 const inputCls = "w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition";
 
 /* ── Profile section ───────────────────────────────────────────── */
-function ProfileSection({ user, onSaved, showToast }) {
+function ProfileSection({ user, onSaved }) {
   const [name, setName]     = useState(user.name || "");
   const [email, setEmail]   = useState(user.email || "");
   const [ward, setWard]     = useState(user.ward || "");
   const [saving, setSaving] = useState(false);
+  const [msg, setMsg]       = useState(null);
 
   const save = async () => {
     setSaving(true);
+    setMsg(null);
     try {
       const updated = await api.updateProfile(name, email, ward || null);
       onSaved(updated);
-      showToast("success", "Profile updated.");
+      setMsg({ type: "success", text: "Profile updated." });
     } catch (e) {
-      showToast("error", e.message.includes("email_exists") ? "That email is already in use." : e.message);
+      setMsg({ type: "error", text: e.message.includes("email_exists") ? "That email is already in use." : e.message });
     } finally { setSaving(false); }
   };
 
@@ -86,6 +97,7 @@ function ProfileSection({ user, onSaved, showToast }) {
           {WARDS.map(w => <option key={w} value={w}>{w}</option>)}
         </select>
       </Field>
+      <InlineAlert msg={msg} />
       <button
         onClick={save}
         disabled={saving || !dirty}
@@ -99,22 +111,24 @@ function ProfileSection({ user, onSaved, showToast }) {
 }
 
 /* ── Password section ──────────────────────────────────────────── */
-function PasswordSection({ showToast }) {
+function PasswordSection() {
   const [current, setCurrent] = useState("");
   const [next, setNext]       = useState("");
   const [confirm, setConfirm] = useState("");
   const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState(null);
 
   const save = async () => {
-    if (next !== confirm) { showToast("error", "New passwords don't match."); return; }
-    if (next.length < 8)  { showToast("error", "Password must be at least 8 characters."); return; }
+    if (next !== confirm) { setMsg({ type: "error", text: "New passwords don't match." }); return; }
+    if (next.length < 8)  { setMsg({ type: "error", text: "Password must be at least 8 characters." }); return; }
     setSaving(true);
+    setMsg(null);
     try {
       await api.changePassword(current, next);
       setCurrent(""); setNext(""); setConfirm("");
-      showToast("success", "Password changed.");
+      setMsg({ type: "success", text: "Password changed." });
     } catch (e) {
-      showToast("error", e.message.includes("invalid_credentials") ? "Current password is incorrect." : e.message);
+      setMsg({ type: "error", text: e.message.includes("invalid_credentials") ? "Current password is incorrect." : e.message });
     } finally { setSaving(false); }
   };
 
@@ -132,6 +146,7 @@ function PasswordSection({ showToast }) {
       <Field label="Confirm new password">
         <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} className={inputCls} style={inp} autoComplete="new-password" />
       </Field>
+      <InlineAlert msg={msg} />
       <button onClick={save} disabled={saving || !current || !next || !confirm} className="btn-primary text-[13px]">
         <Lock size={13} />
         {saving ? "Saving…" : "Change password"}
@@ -253,12 +268,6 @@ function NotificationsSection() {
 export default function SettingsView() {
   const { user, login }  = useAuth();
   const navigate         = useNavigate();
-  const [toast, setToast] = useState(null);
-
-  const showToast = (type, msg) => {
-    setToast({ type, msg });
-    setTimeout(() => setToast(null), 4000);
-  };
 
   const handleSaved = (updated) => {
     const token = localStorage.getItem("hillingone_token");
@@ -267,8 +276,6 @@ export default function SettingsView() {
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-8 fade-in-up">
-      <Toast toast={toast} />
-
       <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] hover:text-teal-600 mb-7 transition font-medium" style={{ color: "var(--text-3)" }}>
         <ArrowLeft size={14} /> Back
       </button>
@@ -312,8 +319,8 @@ export default function SettingsView() {
         );
       })()}
 
-      <ProfileSection user={user} onSaved={handleSaved} showToast={showToast} />
-      <PasswordSection showToast={showToast} />
+      <ProfileSection user={user} onSaved={handleSaved} />
+      <PasswordSection />
       <AppearanceSection />
       <NotificationsSection />
     </div>
