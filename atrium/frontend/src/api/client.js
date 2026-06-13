@@ -23,6 +23,7 @@ const ERROR_MESSAGES = {
   cannot_reschedule_to_past:   "You cannot move a booking into the past.",
   invalid_duration:            "Bookings must be between 30 minutes and 12 hours.",
   no_alternative_proposed:     "No alternative venue was proposed for this booking.",
+  alternative_no_longer_available: "That alternative venue was just taken. Your original booking is unchanged — staff will find another option.",
   slot_unavailable_payment_refunded:
     "That time was just taken by someone else. Your payment has been refunded automatically.",
 };

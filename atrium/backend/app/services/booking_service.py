@@ -307,6 +307,11 @@ class BookingService:
         if not new_asset_id:
             raise ValueError("no_alternative_proposed")
 
+        # Safety net: re-check the alternative is still free at this time before
+        # moving the resident — it could have been booked since the proposal.
+        if await self.find_conflicts(str(new_asset_id), booking.start_time, booking.end_time):
+            raise ValueError("alternative_no_longer_available")
+
         booking.state = "cancelled"
         booking.cancelled_at = _now()
         booking.cancellation_reason = CancellationReason.SWAP_ACCEPTED.value
