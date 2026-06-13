@@ -346,6 +346,44 @@ async def search_bookings(q: str = "", db: AsyncSession = Depends(get_db)):
     ]
 
 
+@router.get("/decision-history")
+async def decision_history(db: AsyncSession = Depends(get_db)):
+    """Resolved conflict decisions — what happened after a swap was proposed
+    (resident accepted / declined) plus staff overrides, newest first."""
+    actions = ["swap_accepted", "swap_declined", "staff_override"]
+    stmt = (
+        select(AuditLog, Booking, Asset, User)
+        .outerjoin(Booking, Booking.id == AuditLog.booking_id)
+        .outerjoin(Asset, Asset.id == Booking.asset_id)
+        .outerjoin(User, User.id == Booking.user_id)  # resident (booking owner)
+        .where(AuditLog.action.in_(actions))
+        .order_by(desc(AuditLog.created_at))
+        .limit(25)
+    )
+    rows = (await db.execute(stmt)).all()
+
+    LABELS = {
+        "swap_accepted": ("accepted", "Resident accepted the swap"),
+        "swap_declined": ("declined", "Resident kept their booking"),
+        "staff_override": ("overridden", "Staff override — booking cancelled"),
+    }
+    out = []
+    for log, booking, asset, resident in rows:
+        outcome, label = LABELS.get(log.action, (log.action, log.action))
+        out.append({
+            "id": str(log.id),
+            "outcome": outcome,
+            "label": label,
+            "reference": booking.reference if booking else None,
+            "asset_name": asset.name if asset else None,
+            "ward": asset.ward if asset else None,
+            "resident_name": resident.name if resident else None,
+            "reason": (log.reason or "").replace("_", " ") if log.reason else None,
+            "at": log.created_at.isoformat(),
+        })
+    return out
+
+
 @router.get("/decision-queue")
 async def decision_queue(db: AsyncSession = Depends(get_db)):
     """Return pending swap decisions with asset data using a single JOIN query."""

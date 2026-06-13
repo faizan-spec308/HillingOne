@@ -284,13 +284,18 @@ function AssetManagement() {
 /* ── Decision Queue ───────────────────────────────────────────────── */
 function DecisionQueue() {
   const [queue, setQueue]       = useState(null);
+  const [history, setHistory]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [agentState, setAgentState] = useState({}); // { [bookingId]: { running, result, error } }
 
   const load = async () => {
     try {
-      const data = await api.decisionQueue();
-      setQueue(data);
+      const [q, h] = await Promise.all([
+        api.decisionQueue(),
+        api.decisionHistory().catch(() => []),
+      ]);
+      setQueue(q);
+      setHistory(h || []);
     } catch (e) {
       setQueue([]);
     } finally {
@@ -316,18 +321,18 @@ function DecisionQueue() {
 
   if (loading) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-24 rounded-2xl" />)}</div>;
 
-  if (!queue?.length) return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
-      <CheckCircle2 size={32} className="mx-auto mb-3 text-emerald-400" />
-      <p className="text-[15px] font-bold text-gray-700">All clear</p>
-      <p className="text-[13px] text-gray-400 mt-1">No pending swap decisions. The AI is on top of it.</p>
-    </div>
-  );
-
   return (
-    <div className="space-y-4">
-      <p className="text-[13px] text-gray-500">{queue.length} pending decision{queue.length !== 1 ? "s" : ""}</p>
-      {queue.map(row => {
+    <div className="space-y-6">
+      {!queue?.length ? (
+        <div className="rounded-2xl p-10 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <CheckCircle2 size={32} className="mx-auto mb-3 text-emerald-400" />
+          <p className="text-[15px] font-bold" style={{ color: "var(--text-1)" }}>All clear</p>
+          <p className="text-[13px] mt-1" style={{ color: "var(--text-3)" }}>No pending swap decisions. The AI is on top of it.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-[13px]" style={{ color: "var(--text-2)" }}>{queue.length} pending decision{queue.length !== 1 ? "s" : ""}</p>
+          {queue.map(row => {
         const b = row.booking;
         const a = row.asset;
         const alt = row.alternative;
@@ -400,6 +405,31 @@ function DecisionQueue() {
           </div>
         );
       })}
+        </div>
+      )}
+
+      {/* Decision history — what happened after each proposal */}
+      {history.length > 0 && (
+        <div>
+          <p className="text-[12px] font-bold uppercase tracking-wide mb-3" style={{ color: "var(--text-3)" }}>Recent decisions</p>
+          <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            {history.map((h, i) => {
+              const tone = h.outcome === "accepted" ? "badge-success" : h.outcome === "overridden" ? "badge-danger" : "badge-info";
+              return (
+                <div key={h.id} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: i ? "1px solid var(--border)" : "none" }}>
+                  <span className={`badge ${tone} flex-shrink-0`}>{h.label}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>{h.asset_name || "—"}{h.ward ? ` · ${h.ward}` : ""}</p>
+                    <p className="text-[12px] truncate" style={{ color: "var(--text-2)" }}>{h.resident_name || "Resident"}{h.reason ? ` · ${h.reason}` : ""}</p>
+                  </div>
+                  <span className="text-[11px] font-mono flex-shrink-0 hidden sm:block" style={{ color: "var(--text-3)" }}>{h.reference}</span>
+                  <span className="text-[11px] flex-shrink-0" style={{ color: "var(--text-3)" }}>{new Date(h.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -415,6 +445,7 @@ function AgentRunsPanel() {
   }, []);
 
   const statusStyle = {
+    proposed:  { bg: "bg-emerald-50",  text: "text-emerald-700",  label: "Swap proposed" },
     resolved:  { bg: "bg-emerald-50",  text: "text-emerald-700",  label: "Resolved" },
     escalated: { bg: "bg-amber-50",    text: "text-amber-700",    label: "Escalated" },
     failed:    { bg: "bg-red-50",      text: "text-red-700",      label: "Failed" },

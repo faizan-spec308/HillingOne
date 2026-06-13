@@ -175,6 +175,7 @@ export const api = {
   staffDashboard: () => request("/api/staff/dashboard"),
   staffOverride:  (data) => request("/api/staff/override", { method: "POST", body: JSON.stringify(data) }),
   decisionQueue:  () => request("/api/staff/decision-queue"),
+  decisionHistory: () => request("/api/staff/decision-history"),
 
   // Agent-first conflict resolution: runs the agent automatically, returns a verdict
   resolveConflict: (bookingId, prioritySummary) =>

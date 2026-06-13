@@ -20,7 +20,11 @@ class AgentRun(Base):
 
     def to_dict(self) -> dict:
         outcome = (self.final_outcome or "").lower()
-        if "resolv" in outcome or "success" in outcome:
+        if outcome == "swap_proposed":
+            # The agent succeeded in finding and proposing an alternative —
+            # awaiting the resident's decision. This is a success, not a failure.
+            status = "proposed"
+        elif outcome in ("swap_accepted", "completed", "resolved") or "resolv" in outcome or "success" in outcome:
             status = "resolved"
         elif "escalat" in outcome:
             status = "escalated"
