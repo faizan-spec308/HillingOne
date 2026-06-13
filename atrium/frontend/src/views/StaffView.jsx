@@ -477,6 +477,58 @@ const OVERRIDE_REASONS = [
   ["emergency_council_use", "Emergency council use"],
 ];
 
+/* Turn one agent tool-call + its result into a human-readable reasoning line */
+function readableStep(call, result) {
+  const r = (result && result.result) || {};
+  switch (call.tool) {
+    case "search_inventory":
+      return { label: `Searched — ${call.args?.strategy || "inventory"}`, detail: `${r.matches_found ?? 0} venue(s) found`, ok: (r.matches_found ?? 0) > 0 };
+    case "check_availability":
+      return { label: `Checked ${call.args?.asset_name || "venue"}`, detail: r.available ? "free at this time" : `already booked (${r.conflict_count ?? 0} clash)`, ok: !!r.available };
+    case "score_alternative":
+      return { label: `Scored ${r.asset_name || call.args?.asset_name || "alternative"}`, detail: `${r.score}/100 — ${r.reasoning || ""}`, ok: (r.score ?? 0) >= 60 };
+    case "send_swap_request":
+      return { label: "Swap request sent to resident", detail: r.message_preview || "", ok: true };
+    case "escalate_to_staff":
+      return { label: "Escalated to a human officer", detail: call.args?.reason || "", ok: false };
+    case "log_decision":
+      return { label: "Decision logged", detail: call.args?.decision || r.decision || "", ok: true };
+    default:
+      return { label: call.tool, detail: "", ok: true };
+  }
+}
+
+function StepTrace({ steps }) {
+  if (!steps?.length) return null;
+  const pairs = [];
+  for (let i = 0; i < steps.length; i++) {
+    if (steps[i].type === "tool_call") {
+      const res = steps[i + 1] && steps[i + 1].type === "tool_result" ? steps[i + 1] : null;
+      pairs.push(readableStep(steps[i], res));
+    }
+  }
+  return (
+    <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide" style={{ background: "var(--surface-2)", color: "var(--text-3)" }}>
+        Agent reasoning · {pairs.length} steps
+      </p>
+      <div>
+        {pairs.map((p, i) => (
+          <div key={i} className="flex items-start gap-2.5 px-3 py-2" style={{ borderTop: i ? "1px solid var(--border)" : "none" }}>
+            <span className="flex-shrink-0 mt-0.5" style={{ color: p.ok ? "var(--success)" : "var(--text-3)" }}>
+              {p.ok ? <CheckCircle2 size={13} /> : <span className="text-[13px] leading-none">·</span>}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[12.5px] font-semibold" style={{ color: "var(--text-1)" }}>{i + 1}. {p.label}</p>
+              {p.detail && <p className="text-[12px] leading-snug" style={{ color: "var(--text-2)" }}>{p.detail}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ConflictResolver() {
   const [q, setQ]                 = useState("");
   const [results, setResults]     = useState([]);
@@ -506,6 +558,7 @@ function ConflictResolver() {
   };
 
   const pick = (b) => { setSelected(b); setVerdict(null); setErr(null); setOvOpen(false); setOvDone(null); setSummary(""); };
+  const close = () => { setSelected(null); setVerdict(null); setErr(null); setOvOpen(false); setOvDone(null); setSummary(""); };
 
   const run = async () => {
     if (!summary.trim()) { setErr("Describe the priority need first."); return; }
@@ -572,75 +625,89 @@ function ConflictResolver() {
         )}
       </div>
 
-      {/* Selected → run agent */}
-      {selected && (
-        <div className="rounded-2xl p-5" style={card}>
-          <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-3)" }}>Priority need for {selected.reference}</p>
-          <textarea value={summary} onChange={e => setSummary(e.target.value)} rows={3}
-            placeholder="e.g. Councillor needs this hall for an emergency residents meeting at the same time."
-            className="input-base mb-3" />
-          <button onClick={run} disabled={running} className="btn-primary">
-            {running ? <><Loader2 size={14} className="animate-spin" /> Agent working…</> : <><Bot size={14} /> Run conflict agent</>}
-          </button>
-        </div>
-      )}
+      {/* Conflict popup — opens when a booking is selected */}
+      {selected && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 9998 }} onClick={(e) => { if (e.target === e.currentTarget) close(); }} role="dialog" aria-modal="true">
+          <div className="modal-panel" style={{ maxWidth: "32rem", maxHeight: "90vh", overflowY: "auto" }}>
+            {/* Header */}
+            <div className="px-6 py-4 flex items-start justify-between gap-3" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Resolve conflict</p>
+                <h3 className="text-[15px] font-bold truncate" style={{ color: "var(--text-1)" }}>{selected.asset_name}</h3>
+                <p className="text-[12px] mt-0.5" style={{ color: "var(--text-2)" }}>{selected.resident_name} · {fmt(selected.start_time)} · {selected.reference}</p>
+              </div>
+              <button onClick={close} aria-label="Close" className="flex-shrink-0 p-1 rounded-lg transition" style={{ color: "var(--text-3)" }}><X size={18} /></button>
+            </div>
 
-      {err && (
-        <div className="rounded-xl px-4 py-3 text-[13px]" style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }} role="alert">{err}</div>
-      )}
-
-      {/* Verdict */}
-      {verdict && (
-        <div className="rounded-2xl p-5" style={{ background: "var(--bg-card)", border: `1px solid ${verdict.outcome === "swap_proposed" ? "var(--success)" : "var(--warning)"}` }}>
-          <div className="flex items-start gap-3">
-            {verdict.outcome === "swap_proposed"
-              ? <CheckCircle2 size={20} style={{ color: "var(--success)" }} className="flex-shrink-0 mt-0.5" />
-              : <AlertTriangle size={20} style={{ color: "var(--warning)" }} className="flex-shrink-0 mt-0.5" />}
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
-                {verdict.outcome === "swap_proposed" ? "Agent proposed a swap" : "Escalated to you"}
-              </p>
-              <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-2)" }}>{verdict.headline}</p>
-
-              {verdict.outcome === "swap_proposed" && verdict.resident_message && (
-                <div className="mt-3 rounded-xl px-4 py-3 text-[13px] italic" style={{ background: "var(--surface-2)", color: "var(--text-2)" }}>
-                  “{verdict.resident_message}”
-                </div>
+            <div className="px-6 py-5">
+              {!verdict && (
+                <>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: "var(--text-3)" }}>Priority need</label>
+                  <textarea value={summary} onChange={e => setSummary(e.target.value)} rows={3} autoFocus
+                    placeholder="e.g. Councillor needs this hall for an emergency residents meeting at the same time."
+                    className="input-base mb-3" />
+                  <button onClick={run} disabled={running} className="btn-primary w-full justify-center">
+                    {running ? <><Loader2 size={14} className="animate-spin" /> Agent working…</> : <><Bot size={14} /> Run conflict agent</>}
+                  </button>
+                  <p className="text-[12px] mt-2 text-center" style={{ color: "var(--text-3)" }}>The agent tries every option — same ward, then borough-wide — before escalating to you.</p>
+                </>
               )}
 
-              {verdict.steps?.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {verdict.steps.filter(s => s.type === "tool_call").map((s, i) => (
-                    <span key={i} className="badge badge-neutral">{i + 1}. {s.tool}</span>
-                  ))}
-                </div>
+              {err && (
+                <div className="rounded-xl px-4 py-3 text-[13px] mt-3" style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }} role="alert">{err}</div>
               )}
 
-              {verdict.requires_human && !ovDone && (
-                <div className="mt-4">
-                  {!ovOpen ? (
-                    <button onClick={() => setOvOpen(true)} className="btn-secondary">Proceed with documented override</button>
-                  ) : (
-                    <div className="rounded-xl p-4 mt-1" style={{ background: "var(--surface-2)" }}>
-                      <p className="text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-3)" }}>Documented override</p>
-                      <select value={ovReason} onChange={e => setOvReason(e.target.value)} className="input-base mb-2">
-                        {OVERRIDE_REASONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
-                      <textarea value={ovDetails} onChange={e => setOvDetails(e.target.value)} rows={3} placeholder="Document the reason (works order #, nature of the issue)…" className="input-base mb-2" />
-                      <button onClick={submitOverride} disabled={ovBusy} className="btn-danger">{ovBusy ? "Cancelling…" : "Override & cancel booking"}</button>
+              {verdict && (
+                <div className="rounded-2xl p-4" style={{ border: `1px solid ${verdict.outcome === "swap_proposed" ? "var(--success)" : "var(--warning)"}` }}>
+                  <div className="flex items-start gap-2.5">
+                    {verdict.outcome === "swap_proposed"
+                      ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} className="flex-shrink-0 mt-0.5" />
+                      : <AlertTriangle size={18} style={{ color: "var(--warning)" }} className="flex-shrink-0 mt-0.5" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[14px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
+                        {verdict.outcome === "swap_proposed" ? "Agent proposed a swap" : "Escalated to you"}
+                      </p>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-2)" }}>{verdict.headline}</p>
+                      {verdict.outcome === "swap_proposed" && verdict.resident_message && (
+                        <div className="mt-2 rounded-xl px-3 py-2 text-[12.5px] italic" style={{ background: "var(--surface-2)", color: "var(--text-2)" }}>
+                          “{verdict.resident_message}”
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <StepTrace steps={verdict.steps} />
+
+                  {verdict.requires_human && !ovDone && (
+                    <div className="mt-4">
+                      {!ovOpen ? (
+                        <button onClick={() => setOvOpen(true)} className="btn-secondary w-full justify-center">Proceed with documented override</button>
+                      ) : (
+                        <div className="rounded-xl p-4" style={{ background: "var(--surface-2)" }}>
+                          <p className="text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-3)" }}>Documented override</p>
+                          <select value={ovReason} onChange={e => setOvReason(e.target.value)} className="input-base mb-2">
+                            {OVERRIDE_REASONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                          </select>
+                          <textarea value={ovDetails} onChange={e => setOvDetails(e.target.value)} rows={3} placeholder="Document the reason (works order #, nature of the issue)…" className="input-base mb-2" />
+                          <button onClick={submitOverride} disabled={ovBusy} className="btn-danger w-full justify-center">{ovBusy ? "Cancelling…" : "Override & cancel booking"}</button>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {ovDone && (
-                <div className="mt-3 rounded-xl px-4 py-3 text-[13px]" style={{ background: "var(--success-bg)", color: "var(--success-fg)" }}>
-                  Booking cancelled with a documented reason. Resident notified and a {ovDone.goodwill_credit_applied}% goodwill credit applied.
+                  {ovDone && (
+                    <div className="mt-3 rounded-xl px-4 py-3 text-[13px]" style={{ background: "var(--success-bg)", color: "var(--success-fg)" }}>
+                      Booking cancelled with a documented reason. Resident notified and a {ovDone.goodwill_credit_applied}% goodwill credit applied.
+                    </div>
+                  )}
+
+                  <button onClick={close} className="btn-ghost w-full justify-center mt-3">Done</button>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -32,13 +32,13 @@ Strict principles:
 5. If no good alternative exists (best score below 60), escalate to human staff instead of asking.
 6. Always end your run by calling log_decision with your final outcome.
 
-Approach:
-- First call search_inventory to find candidate alternatives in the same ward as the original booking, with sufficient capacity, matching the original booking's accessibility and kitchen needs.
-- Then call check_availability for the most promising candidate at the original booking's time window.
-- Then call score_alternative to evaluate fit.
-- If score >= 60, call send_swap_request with a polite message.
-- If score < 60 or no candidates, call escalate_to_staff.
-- Finally, always call log_decision with your final outcome.
+Approach — try hard before giving up:
+- First call search_inventory for the same ward and category with sufficient capacity, matching the original booking's kitchen and step-free access needs.
+- If that returns no usable candidates, WIDEN your search progressively before escalating: (a) drop the kitchen/step-free filters and treat them as scoring factors instead, then (b) allow any category in the same ward, then (c) search borough-wide. Only conclude there is no alternative after these attempts.
+- For every promising candidate, call check_availability at the original time window, then score_alternative. Evaluate several candidates, not just the first, and prefer the highest score.
+- If the best available candidate scores >= 60, call send_swap_request with a polite message.
+- Only call escalate_to_staff if, after widening, no available venue scores >= 60. When you escalate, give a specific reason (no venues, all booked, or best score too low).
+- Finally, always call log_decision with your final outcome and concise reasoning.
 
 Be efficient. Use British English. Never invent facts."""
 
@@ -254,158 +254,120 @@ class ConflictResolutionAgent:
         asset: Asset,
         priority_summary: str,
     ) -> dict:
-        """Deterministic fallback that mimics the agent loop step by step.
+        """Deterministic resolution that tries hard before escalating.
 
-        Used when Gemini API key is missing or call fails. The visible reasoning
-        trace looks identical to the live agent so the demo still works.
+        Searches with strict criteria first, then progressively widens
+        (drop amenity requirements → any category → borough-wide), evaluates
+        every available candidate, and proposes the best-scoring one. It only
+        escalates when nothing clears the bar — and records exactly why.
         """
         amenities = asset.amenities or {}
         accessibility = asset.accessibility or {}
+        attendees = booking.attendee_count or 0
+        min_cap = attendees if attendees > 0 else 1
+        needs_kitchen = amenities.get("kitchen", False)
+        needs_wheelchair = accessibility.get("wheelchair_access", False)
 
-        # Step 1: search inventory
-        search_args = {
-            "ward": asset.ward,
-            "min_capacity": booking.attendee_count or asset.capacity,
-            "category": asset.category,
-            "kitchen_required": amenities.get("kitchen", False),
-            "wheelchair_required": accessibility.get("wheelchair_access", False),
-        }
-        self.steps.append({
-            "step": 1,
-            "type": "tool_call",
-            "tool": "search_inventory",
-            "args": search_args,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-        search_result = await self.tools_impl.search_inventory(**search_args)
-        self.steps.append({
-            "step": 1,
-            "type": "tool_result",
-            "tool": "search_inventory",
-            "result": search_result,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        start_iso = booking.start_time.isoformat()
+        end_iso = booking.end_time.isoformat()
 
-        candidates = [a for a in search_result.get("assets", []) if a["id"] != str(asset.id)]
+        def _record(tool, args, result):
+            n = len([s for s in self.steps if s["type"] == "tool_call"]) + 1
+            ts = datetime.utcnow().isoformat()
+            self.steps.append({"step": n, "type": "tool_call", "tool": tool, "args": args, "timestamp": ts})
+            self.steps.append({"step": n, "type": "tool_result", "tool": tool, "result": result, "timestamp": ts})
+
+        # ── Progressive search: strict first, then widen until options appear ──
+        plans = [
+            ("Same ward, same type, matching kitchen & step-free access", asset.ward, asset.category, needs_kitchen, needs_wheelchair),
+            ("Same ward, same type", asset.ward, asset.category, False, False),
+            ("Same ward, any type", asset.ward, "any", False, False),
+            ("Borough-wide, same type, matching features", "any", asset.category, needs_kitchen, needs_wheelchair),
+            ("Borough-wide, same type", "any", asset.category, False, False),
+        ]
+
+        candidates: dict = {}
+        for label, ward, category, k_req, w_req in plans:
+            res = await self.tools_impl.search_inventory(
+                ward=ward, min_capacity=min_cap, category=category,
+                kitchen_required=k_req, wheelchair_required=w_req,
+            )
+            _record("search_inventory", {
+                "strategy": label, "ward": ward, "min_capacity": min_cap,
+                "category": category, "kitchen_required": k_req, "wheelchair_required": w_req,
+            }, res)
+            for a in res.get("assets", []):
+                if a["id"] != str(asset.id):
+                    candidates.setdefault(a["id"], a)
+            if len(candidates) >= 3:
+                break
+
         if not candidates:
-            return await self._escalate_and_log(booking.id, "no_candidates_found", "No alternatives in same ward with required features.")
+            return await self._escalate_and_log(
+                booking.id, "no_candidates_found",
+                f"No active venue, even borough-wide, has capacity for {min_cap}+ attendees. "
+                f"A human officer is needed to find or free up a space.",
+            )
 
-        candidate = candidates[0]
+        # ── Evaluate availability + fit for each candidate; keep the best ──
+        scored = []
+        for cand in list(candidates.values())[:6]:
+            avail = await self.tools_impl.check_availability(
+                asset_id=cand["id"], start_time_iso=start_iso, end_time_iso=end_iso,
+            )
+            _record("check_availability", {"asset_id": cand["id"], "asset_name": cand["name"]}, avail)
+            if not avail.get("available"):
+                continue
+            sc = await self.tools_impl.score_alternative(
+                alternative_asset_id=cand["id"], original_booking_id=str(booking.id),
+            )
+            _record("score_alternative", {"asset_id": cand["id"], "asset_name": cand["name"]}, sc)
+            scored.append((sc.get("score", 0), cand, sc))
 
-        # Step 2: check availability
-        avail_args = {
-            "asset_id": candidate["id"],
-            "start_time_iso": booking.start_time.isoformat(),
-            "end_time_iso": booking.end_time.isoformat(),
-        }
-        self.steps.append({
-            "step": 2,
-            "type": "tool_call",
-            "tool": "check_availability",
-            "args": avail_args,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-        avail = await self.tools_impl.check_availability(**avail_args)
-        self.steps.append({
-            "step": 2,
-            "type": "tool_result",
-            "tool": "check_availability",
-            "result": avail,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        if not scored:
+            return await self._escalate_and_log(
+                booking.id, "no_available_alternatives",
+                f"Found {len(candidates)} comparable venue(s), but every one is already booked "
+                f"at this time. A human officer should negotiate an alternative time or space.",
+            )
 
-        if not avail.get("available"):
-            # try next candidate
-            for c in candidates[1:]:
-                a2 = await self.tools_impl.check_availability(
-                    asset_id=c["id"],
-                    start_time_iso=booking.start_time.isoformat(),
-                    end_time_iso=booking.end_time.isoformat(),
-                )
-                if a2.get("available"):
-                    candidate = c
-                    break
-            else:
-                return await self._escalate_and_log(booking.id, "no_available_alternatives", "All candidates have conflicts at the requested time.")
+        scored.sort(key=lambda x: x[0], reverse=True)
+        best_score, best, best_detail = scored[0]
 
-        # Step 3: score alternative
-        score_args = {
-            "alternative_asset_id": candidate["id"],
-            "original_booking_id": str(booking.id),
-        }
-        self.steps.append({
-            "step": 3,
-            "type": "tool_call",
-            "tool": "score_alternative",
-            "args": score_args,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-        score_result = await self.tools_impl.score_alternative(**score_args)
-        self.steps.append({
-            "step": 3,
-            "type": "tool_result",
-            "tool": "score_alternative",
-            "result": score_result,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        if best_score < 60:
+            return await self._escalate_and_log(
+                booking.id, "low_match_score",
+                f"The closest available option, {best['name']}, scored only {best_score}/100 "
+                f"({best_detail.get('reasoning')}) — below the 60-point bar for a fair swap. "
+                f"A human officer should review.",
+            )
 
-        if score_result["score"] < 60:
-            return await self._escalate_and_log(booking.id, "low_match_score", f"Best alternative scored only {score_result['score']}.")
-
-        # Step 4: send swap request
+        # ── Propose the best alternative ──
         swap_message = (
             f"Hello, an unexpected priority need has come up for your booking at {asset.name}. "
-            f"We would like to ask whether you would consider moving to {candidate['name']} "
+            f"We would like to ask whether you would consider moving to {best['name']} "
             f"at the same time. As a thank you for your flexibility, we will apply a 20 percent "
             f"goodwill credit to your next booking. Please feel free to decline and your current "
             f"booking will stay exactly as it is. No pressure at all."
         )
         swap_args = {
             "booking_id": str(booking.id),
-            "alternative_asset_id": candidate["id"],
+            "alternative_asset_id": best["id"],
             "swap_message": swap_message,
             "flexibility_credit_percent": 20,
         }
-        self.steps.append({
-            "step": 4,
-            "type": "tool_call",
-            "tool": "send_swap_request",
-            "args": swap_args,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-        swap_result = await self.tools_impl.send_swap_request(**swap_args)
-        self.steps.append({
-            "step": 4,
-            "type": "tool_result",
-            "tool": "send_swap_request",
-            "result": swap_result,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        _record("send_swap_request", swap_args, await self.tools_impl.send_swap_request(**swap_args))
 
-        # Step 5: log decision
         log_args = {
             "booking_id": str(booking.id),
             "decision": "swap_proposed",
             "reasoning": (
-                f"Found strong alternative {candidate['name']} (score {score_result['score']}). "
-                f"Sent polite swap request with 20 percent goodwill credit. Resident may decline."
+                f"Evaluated {len(scored)} available alternative(s); best match {best['name']} "
+                f"scored {best_score}/100 ({best_detail.get('reasoning')}). Sent a polite swap "
+                f"request with a 20 percent goodwill credit. The resident may decline."
             ),
         }
-        self.steps.append({
-            "step": 5,
-            "type": "tool_call",
-            "tool": "log_decision",
-            "args": log_args,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-        log_result = await self.tools_impl.log_decision(**log_args)
-        self.steps.append({
-            "step": 5,
-            "type": "tool_result",
-            "tool": "log_decision",
-            "result": log_result,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        _record("log_decision", log_args, await self.tools_impl.log_decision(**log_args))
 
         run_record = AgentRun(
             id=uuid.uuid4(),
@@ -423,7 +385,7 @@ class ConflictResolutionAgent:
             "agent": "conflict_resolution",
             "steps": self.steps,
             "final_decision": "swap_proposed",
-            "iterations_used": 5,
+            "iterations_used": len([s for s in self.steps if s["type"] == "tool_call"]),
         }
 
     async def _escalate_and_log(self, booking_id, reason, recommendation):

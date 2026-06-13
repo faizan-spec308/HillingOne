@@ -111,13 +111,20 @@ async def resolve_conflict(
 
     # No swap was placed → the agent escalated (or couldn't complete). Either
     # way the human takes over; the booking is untouched and still confirmed.
+    esc = next(
+        (s for s in result.get("steps", [])
+         if s.get("type") == "tool_call" and s.get("tool") == "escalate_to_staff"),
+        None,
+    )
+    escalation_reason = (esc or {}).get("args", {}).get("recommendation")
     return {
         **base,
         "outcome": "escalated",
         "resolved_by_agent": False,
         "awaiting_resident": False,
         "requires_human": True,
-        "headline": (
+        "escalation_reason": escalation_reason,
+        "headline": escalation_reason or (
             "The agent couldn't find a suitable alternative for the resident. "
             "Escalated for your review — you may proceed with a documented override if it's genuinely necessary."
         ),
