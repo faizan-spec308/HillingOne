@@ -483,9 +483,23 @@ async def swap_accept(
 ):
     svc = BookingService(db)
     try:
-        return await svc.accept_swap(booking_id, str(current_user.id))
+        result = await svc.accept_swap(booking_id, str(current_user.id))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # Confirmation email for the new (moved) booking. In-app notification +
+    # goodwill credit are applied inside accept_swap.
+    new_id = (result.get("new_booking") or {}).get("id")
+    if new_id:
+        new_booking = await db.get(Booking, new_id)
+        if new_booking:
+            new_asset = await db.get(Asset, new_booking.asset_id)
+            asyncio.create_task(send_email(
+                to=current_user.email,
+                subject="Your booking has moved — HillingOne",
+                html=booking_confirmed_html(current_user.name, new_booking, new_asset),
+            ))
+    return result
 
 
 @router.post("/{booking_id}/swap-decline")

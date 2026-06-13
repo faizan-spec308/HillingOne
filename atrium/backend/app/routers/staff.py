@@ -1,4 +1,5 @@
 """Staff router: dashboard, agent feed, override modal, asset management."""
+import asyncio
 import csv
 import io
 import logging
@@ -12,15 +13,18 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func, or_
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import require_staff
 from app.schemas.search import StaffOverrideRequest
 from app.services.booking_service import BookingService
 from app.agents.conflict_agent import ConflictResolutionAgent
+from app.services.email_service import send_email, booking_cancelled_html
 from app.models.user import User
 from app.models.audit_log import AuditLog
 from app.models.booking import Booking
 from app.models.asset import Asset
+from app.models.payment import Payment
 from app.models.agent_run import AgentRun
 from app.models.search_log import SearchLog
 
@@ -146,9 +150,58 @@ async def staff_override(
             details=req.details,
             alternative_asset_id=str(req.alternative_asset_id) if req.alternative_asset_id else None,
         )
-        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # Staff cancelled the booking — the resident is refunded in full (it's not
+    # their fault). The goodwill credit + in-app notification are applied in the
+    # service; here we issue the Stripe refund and send the cancellation email.
+    refund_info = None
+    if settings.stripe_secret_key:
+        try:
+            import stripe as _stripe
+            _stripe.api_key = settings.stripe_secret_key
+            pres = await db.execute(
+                select(Payment).where(
+                    Payment.booking_id == req.booking_id,
+                    Payment.status == "succeeded",
+                ).with_for_update()
+            )
+            payment = pres.scalar_one_or_none()
+            if payment and payment.amount_pence > 0:
+                refunded = payment.amount_pence
+                refund = await asyncio.to_thread(
+                    _stripe.Refund.create,
+                    payment_intent=payment.stripe_payment_intent_id,
+                    amount=refunded,
+                )
+                payment.refund_id = refund.id
+                payment.status = "refunded"
+                payment.amount_pence = 0
+                await db.commit()
+                refund_info = {"refunded": True, "amount": f"£{refunded / 100:.2f}"}
+        except Exception as exc:
+            logger.error("override_refund_error booking_id=%s err=%s", str(req.booking_id), str(exc))
+            refund_info = {"refunded": False, "message": "Cancellation processed; refund requires manual review."}
+
+    booking = await db.get(Booking, str(req.booking_id))
+    if booking:
+        resident = await db.get(User, booking.user_id)
+        asset = await db.get(Asset, booking.asset_id)
+        if resident and resident.email:
+            asyncio.create_task(send_email(
+                to=resident.email,
+                subject="Your HillingOne booking has been cancelled by the council",
+                html=booking_cancelled_html(
+                    resident.name, booking, asset,
+                    refund_info.get("amount") if refund_info else None,
+                    late_cancel=False,
+                ),
+            ))
+
+    if refund_info:
+        result["refund"] = refund_info
+    return result
 
 
 @router.get("/dashboard")

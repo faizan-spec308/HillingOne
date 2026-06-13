@@ -22,6 +22,22 @@ from app.services.gemini_client import generate_encouragement
 DEFAULT_OFFSETS = [timedelta(days=1), timedelta(hours=1)]
 
 
+def build_notification(user_id, message: str, booking_id=None) -> Reminder:
+    """Build an immediate in-app notification (appears in the bell straight away).
+
+    Returned unsaved — the caller adds it to its session and commits within its
+    own transaction so the notification is atomic with the action it describes.
+    """
+    return Reminder(
+        id=uuid.uuid4(),
+        booking_id=booking_id,
+        user_id=user_id,
+        remind_at=datetime.utcnow(),
+        channel="in_app",
+        message=message,
+    )
+
+
 class ReminderService:
     def __init__(self, db: AsyncSession):
         self.db = db

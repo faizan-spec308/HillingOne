@@ -207,6 +207,43 @@ def booking_rescheduled_html(user_name: str, booking: object, asset: object,
     return _base("Booking rescheduled — HillingOne", body)
 
 
+def booking_swap_proposed_html(user_name: str, booking: object, original_asset: object,
+                               alt_asset: object, credit_percent: int, swap_message: str) -> str:
+    start = booking.start_time
+    end   = booking.end_time
+    body = f"""
+<h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#111827;">
+  A proposed change to your booking
+</h1>
+<p style="margin:0 0 28px;font-size:15px;color:#6B7280;">
+  Hi {_e(user_name)}, an unexpected priority need has come up for your booking at
+  {_e(getattr(original_asset, "name", "your venue"))}. We would like to ask whether you would
+  consider moving — but the choice is entirely yours.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background:#F9FAFB;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+  {_detail_row("Your booking", _e(getattr(original_asset, "name", "—")))}
+  {_detail_row("Reference", _e(booking.reference))}
+  {_detail_row("Proposed venue", _e(getattr(alt_asset, "name", "—")))}
+  {_detail_row("Time (unchanged)", f"{_fmt_dt(start)}, {_fmt_time(start)} – {_fmt_time(end)}")}
+  {_detail_row("Goodwill credit", f"{credit_percent}% off your next booking")}
+</table>
+
+<div style="margin-top:4px;padding:16px 20px;background:#ECFDF5;border-radius:10px;border:1px solid #A7F3D0;">
+  <span style="font-size:14px;font-weight:600;color:#065F46;">
+    You decide. Open <strong>My Bookings</strong> to accept the move or keep your booking.
+    If you do nothing, your original booking stays exactly as it is.
+  </span>
+</div>
+
+<p style="margin-top:20px;font-size:13px;color:#6B7280;line-height:1.6;font-style:italic;">
+  {_e(swap_message)}
+</p>
+"""
+    return _base("A proposed change to your booking — HillingOne", body)
+
+
 def password_reset_html(user_name: str, reset_url: str) -> str:
     body = f"""
 <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#111827;">

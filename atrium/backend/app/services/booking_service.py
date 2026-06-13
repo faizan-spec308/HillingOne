@@ -22,6 +22,8 @@ from app.models.booking import Booking, VALID_OVERRIDE_REASONS, DUAL_APPROVAL_RE
 from app.models.asset import Asset
 from app.models.user import User
 from app.models.audit_log import AuditLog
+from app.models.payment import Payment
+from app.services.reminder_service import build_notification
 
 
 def _generate_reference() -> str:
@@ -277,6 +279,16 @@ class BookingService:
             action="user_cancelled",
         )
         self.db.add(log)
+
+        cancel_asset = await self.db.get(Asset, booking.asset_id)
+        self.db.add(build_notification(
+            user_id,
+            f"Your booking at {cancel_asset.name if cancel_asset else 'the venue'} on "
+            f"{booking.start_time:%a %d %b at %H:%M} has been cancelled. Any refund will be "
+            f"returned to your card within 5–10 business days.",
+            booking.id,
+        ))
+
         await self.db.commit()
         await self.db.refresh(booking)
         return booking
@@ -319,6 +331,27 @@ class BookingService:
         if user:
             user.flexibility_credits = (user.flexibility_credits or 0) + booking.goodwill_credit_applied
 
+        # Carry any successful payment across to the new booking — the resident
+        # is moving venues at the council's request, so they are neither
+        # refunded-and-rebooked nor charged twice; the payment simply follows.
+        existing_payment = (await self.db.execute(
+            select(Payment).where(
+                Payment.booking_id == booking.id,
+                Payment.status == "succeeded",
+            )
+        )).scalar_one_or_none()
+        if existing_payment:
+            existing_payment.booking_id = new_booking.id
+
+        new_asset = await self.db.get(Asset, new_asset_id)
+        self.db.add(build_notification(
+            user_id,
+            f"Your booking has moved to {new_asset.name if new_asset else 'the alternative venue'} "
+            f"at the same time, and a {booking.goodwill_credit_applied}% goodwill credit has been "
+            f"applied to your account. New reference {new_booking.reference}.",
+            new_booking.id,
+        ))
+
         log = AuditLog(
             id=uuid.uuid4(),
             booking_id=booking.id,
@@ -355,6 +388,15 @@ class BookingService:
             ai_reasoning="Resident declined. Booking remains confirmed. Staff alerted to seek alternative.",
         )
         self.db.add(log)
+
+        decline_asset = await self.db.get(Asset, booking.asset_id)
+        self.db.add(build_notification(
+            user_id,
+            f"You kept your booking at {decline_asset.name if decline_asset else 'the venue'}. "
+            f"It remains confirmed — the council will look for another option.",
+            booking.id,
+        ))
+
         await self.db.commit()
         await self.db.refresh(booking)
         return booking
@@ -420,6 +462,17 @@ class BookingService:
             },
         )
         self.db.add(log)
+
+        override_asset = await self.db.get(Asset, booking.asset_id)
+        self.db.add(build_notification(
+            booking.user_id,
+            f"Your booking at {override_asset.name if override_asset else 'the venue'} on "
+            f"{booking.start_time:%a %d %b at %H:%M} was cancelled by the council "
+            f"({reason_enum.value.replace('_', ' ')}). A {settings.default_goodwill_credit_percentage}% "
+            f"goodwill credit has been applied and any payment will be refunded to your card.",
+            booking.id,
+        ))
+
         await self.db.commit()
         await self.db.refresh(booking)
 

@@ -6,11 +6,15 @@ and a real implementation in AgentTools that performs the action.
 When Gemini decides which tool to call, our agent loop dispatches to the
 matching method on AgentTools. This is genuine function-calling agentic AI.
 """
+import asyncio
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from app.models.asset import Asset
 from app.models.booking import Booking
+from app.models.user import User
+from app.services.reminder_service import build_notification
+from app.services.email_service import send_email, booking_swap_proposed_html
 
 
 # Tool declarations as plain dictionaries.
@@ -323,7 +327,37 @@ class AgentTools:
         booking.alternative_offered_id = alternative_asset_id
         booking.swap_message = swap_message
         booking.goodwill_credit_applied = flexibility_credit_percent
+
+        # Notify the resident in-app and by email — they decide.
+        user = await self.db.get(User, booking.user_id)
+        original_asset = await self.db.get(Asset, booking.asset_id)
+        alt_asset = await self.db.get(Asset, alternative_asset_id)
+        alt_name = alt_asset.name if alt_asset else "an alternative venue"
+
+        self.db.add(build_notification(
+            booking.user_id,
+            f"The council has proposed moving your booking to {alt_name} (same time) with a "
+            f"{flexibility_credit_percent}% goodwill credit. Open My Bookings to accept or keep your booking.",
+            booking.id,
+        ))
+
+        # Build the email body while attributes are loaded (before commit expires them).
+        email_html = None
+        if user and user.email:
+            email_html = booking_swap_proposed_html(
+                user.name, booking, original_asset, alt_asset,
+                flexibility_credit_percent, swap_message,
+            )
+
         await self.db.commit()
+
+        if email_html and user and user.email:
+            asyncio.create_task(send_email(
+                to=user.email,
+                subject="A proposed change to your HillingOne booking",
+                html=email_html,
+            ))
+
         return {
             "success": True,
             "booking_id": booking_id,
