@@ -523,7 +523,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
           {/* Recurring booking */}
           <div>
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>
+              <label id="recurring-label" className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>
                 <RefreshCw size={12} /> Repeat booking
               </label>
               <button
@@ -533,6 +533,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
                 style={{ background: isRecurring ? "var(--brand)" : "var(--border-strong)" }}
                 role="switch"
                 aria-checked={isRecurring}
+                aria-labelledby="recurring-label"
               >
                 <span
                   className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
@@ -620,6 +621,8 @@ function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
   const durationRef = useState(totalSeconds)[0];
 
+  const [announce, setAnnounce] = useState("");
+
   useEffect(() => {
     const tick = () => {
       const remaining = Math.max(0, Math.round((heldUntil - Date.now()) / 1000));
@@ -629,6 +632,14 @@ function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
     const interval = setInterval(tick, 500);
     return () => clearInterval(interval);
   }, [heldUntil]);
+
+  // Announce only at key thresholds — never every second (that would make
+  // a screen reader read the countdown continuously and trap the user).
+  useEffect(() => {
+    if ([120, 60, 30, 10].includes(secondsLeft)) {
+      setAnnounce(`${secondsLeft} seconds remaining to complete your booking.`);
+    }
+  }, [secondsLeft]);
 
   const progress = Math.min(100, (secondsLeft / durationRef) * 100);
   const isUrgent = secondsLeft <= 30;
@@ -686,16 +697,17 @@ function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
           border: `2px solid ${isUrgent ? "var(--danger)" : "var(--warning)"}`,
         }}
       >
-        {/* Countdown ring */}
+        {/* Polite announcements only at thresholds — keeps screen readers usable */}
+        <span className="sr-only" aria-live="polite" role="status">{announce}</span>
+
+        {/* Countdown ring — visual only; not a live region */}
         <div
           className="w-20 h-20 rounded-full border-4 flex items-center justify-center mx-auto mb-5 transition-colors"
           style={{
             borderColor: isUrgent ? "var(--danger)" : "var(--warning)",
             background: isUrgent ? "var(--danger-bg)" : "var(--warning-bg)",
           }}
-          role="timer"
-          aria-live="polite"
-          aria-label={`${secondsLeft} seconds remaining to complete your booking`}
+          aria-hidden="true"
         >
           <span className="text-2xl font-black" style={{ color: isUrgent ? "var(--danger)" : "var(--warning)" }}>
             {secondsLeft}

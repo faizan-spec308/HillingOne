@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff, ArrowRight, ShieldCheck, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+import { WARDS } from "../lib/constants";
 import { api } from "../api/client";
 
 export default function AuthPage({ initialMode = "login" }) {
@@ -321,7 +322,18 @@ export default function AuthPage({ initialMode = "login" }) {
               </div>
 
               {mode === "register" && (
-                <Field label={t("auth_ward")} type="text" value={form.ward} onChange={set("ward")} placeholder={t("auth_ward_ph")} inp={inp} t1={t1} />
+                <div>
+                  <label className="block text-[13px] font-semibold mb-1.5" style={{ color: "var(--text-2)" }}>{t("auth_ward")}</label>
+                  <select
+                    value={form.ward}
+                    onChange={set("ward")}
+                    className="w-full rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
+                    style={inp}
+                  >
+                    <option value="">Select your ward (optional)</option>
+                    {WARDS.map((w) => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                </div>
               )}
 
               {error && (

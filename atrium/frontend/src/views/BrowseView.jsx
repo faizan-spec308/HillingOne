@@ -36,11 +36,15 @@ export default function BrowseView({ onBook, onBack }) {
   const [accessibleOnly, setAccessibleOnly] = useState(false);
   const [sort, setSort]                   = useState("name");
 
-  useEffect(() => {
+  const load = () => {
+    setError(null);
+    setAssets(null);
     api.listAssets()
       .then(setAssets)
       .catch(() => setError("We couldn't load spaces right now. Please try again."));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   const wards = useMemo(
     () => (assets ? [...new Set(assets.map((a) => a.ward).filter(Boolean))].sort() : []),
@@ -162,7 +166,8 @@ export default function BrowseView({ onBook, onBack }) {
       {/* States */}
       {error ? (
         <div className="rounded-2xl p-10 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="t-body" style={{ color: "var(--text-1)" }}>{error}</p>
+          <p className="t-body mb-4" style={{ color: "var(--text-1)" }}>{error}</p>
+          <button onClick={load} className="btn-secondary">Try again</button>
         </div>
       ) : !assets ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
