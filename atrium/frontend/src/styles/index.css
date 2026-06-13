@@ -198,6 +198,10 @@ body {
 }
 .dark input::placeholder, .dark textarea::placeholder { color: var(--text-3) !important; }
 
+/* The search composer sits flush on its card surface — exempt it from the
+   filled-field treatment above so the card stays a single shade. */
+.dark textarea.search-textarea { background-color: transparent !important; }
+
 /* Dropdown panels */
 .dark .border.border-gray-100.rounded-2xl.shadow-lg {
   background-color: var(--bg-card) !important;

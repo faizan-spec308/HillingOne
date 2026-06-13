@@ -113,7 +113,7 @@ export default function SearchBox({ onSearch, loading, onBrowse }) {
                 rows={3}
                 autoFocus
                 aria-label={t("search_ph")}
-                className="w-full text-[15px] resize-none focus:outline-none leading-relaxed font-normal"
+                className="search-textarea w-full text-[15px] resize-none focus:outline-none leading-relaxed font-normal"
                 style={{ background: "transparent", color: "var(--text-1)", caretColor: "var(--brand)" }}
               />
             </div>
