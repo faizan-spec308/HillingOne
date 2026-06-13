@@ -113,44 +113,160 @@ function ProfileSection({ user, onSaved }) {
 /* ── Password section ──────────────────────────────────────────── */
 function PasswordSection() {
   const [current, setCurrent] = useState("");
-  const [next, setNext]       = useState("");
+  const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [saving, setSaving]   = useState(false);
-  const [msg, setMsg]         = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
 
-  const save = async () => {
-    if (next !== confirm) { setMsg({ type: "error", text: "New passwords don't match." }); return; }
-    if (next.length < 8)  { setMsg({ type: "error", text: "Password must be at least 8 characters." }); return; }
-    setSaving(true);
+  const save = async (e) => {
+    e?.preventDefault();
+
+    if (saving) return;
+
     setMsg(null);
+
+    if (!current || !next || !confirm) {
+      setMsg({
+        type: "error",
+        text: "Please fill in all fields.",
+      });
+      return;
+    }
+
+    if (next !== confirm) {
+      setMsg({
+        type: "error",
+        text: "New passwords don't match.",
+      });
+      return;
+    }
+
+    if (current === next) {
+      setMsg({
+        type: "error",
+        text: "New password must be different from your current password.",
+      });
+      return;
+    }
+
+    const strongPassword =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+    if (!strongPassword.test(next)) {
+      setMsg({
+        type: "error",
+        text:
+          "Password must be at least 8 characters and include an uppercase letter and a number.",
+      });
+      return;
+    }
+
+    setSaving(true);
+
     try {
       await api.changePassword(current, next);
-      setCurrent(""); setNext(""); setConfirm("");
-      setMsg({ type: "success", text: "Password changed." });
+
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+
+      setMsg({
+        type: "success",
+        text: "Password changed successfully.",
+      });
     } catch (e) {
-      setMsg({ type: "error", text: e.message.includes("invalid_credentials") ? "Current password is incorrect." : e.message });
-    } finally { setSaving(false); }
+      console.error("Change password error:", e);
+
+      const errorMessage =
+        e?.message?.toLowerCase() || "";
+
+      if (
+        errorMessage.includes("invalid_credentials") ||
+        errorMessage.includes("incorrect") ||
+        errorMessage.includes("wrong password")
+      ) {
+        setMsg({
+          type: "error",
+          text: "Current password is incorrect.",
+        });
+      } else {
+        setMsg({
+          type: "error",
+          text:
+            "Unable to change password right now. Please try again.",
+        });
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const inp = { background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-1)" };
+  const inp = {
+    background: "var(--bg)",
+    border: "1px solid var(--border)",
+    color: "var(--text-1)",
+  };
 
   return (
     <SectionCard title="Security" icon={Lock}>
-      <Field label="Current password">
-        <input type="password" value={current} onChange={e => setCurrent(e.target.value)} className={inputCls} style={inp} autoComplete="current-password" />
-      </Field>
-      <Field label="New password">
-        <input type="password" value={next} onChange={e => setNext(e.target.value)} className={inputCls} style={inp} autoComplete="new-password" />
-        <p className="text-[11px] mt-1.5" style={{ color: "var(--text-3)" }}>Min. 8 characters, one uppercase, one number.</p>
-      </Field>
-      <Field label="Confirm new password">
-        <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} className={inputCls} style={inp} autoComplete="new-password" />
-      </Field>
-      <InlineAlert msg={msg} />
-      <button onClick={save} disabled={saving || !current || !next || !confirm} className="btn-primary text-[13px]">
-        <Lock size={13} />
-        {saving ? "Saving…" : "Change password"}
-      </button>
+      <form onSubmit={save} className="space-y-4">
+        <Field label="Current password">
+          <input
+            type="password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            className={inputCls}
+            style={inp}
+            autoComplete="current-password"
+          />
+        </Field>
+
+        <Field label="New password">
+          <input
+            type="password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            className={inputCls}
+            style={inp}
+            autoComplete="new-password"
+          />
+
+          <p
+            className="text-[11px] mt-1.5"
+            style={{ color: "var(--text-3)" }}
+          >
+            Minimum 8 characters, one uppercase letter, and one number.
+          </p>
+        </Field>
+
+        <Field label="Confirm new password">
+          <input
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className={inputCls}
+            style={inp}
+            autoComplete="new-password"
+          />
+        </Field>
+
+        <InlineAlert msg={msg} />
+
+        <button
+          type="submit"
+          disabled={
+            saving ||
+            !current ||
+            !next ||
+            !confirm
+          }
+          className="btn-primary text-[13px]"
+        >
+          <Lock size={13} />
+
+          {saving ? "Saving..." : "Change password"}
+        </button>
+      </form>
     </SectionCard>
   );
 }
