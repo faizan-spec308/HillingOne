@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, or_
 
 from app.database import get_db
 from app.dependencies import require_staff
@@ -251,6 +251,43 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
             for s in weak
         ],
     }
+
+
+@router.get("/bookings")
+async def search_bookings(q: str = "", db: AsyncSession = Depends(get_db)):
+    """Staff booking lookup by reference, resident name/email, or venue name.
+    Used to find a confirmed booking to put to the conflict-resolution agent."""
+    stmt = (
+        select(Booking, Asset, User)
+        .outerjoin(Asset, Asset.id == Booking.asset_id)
+        .outerjoin(User, User.id == Booking.user_id)
+        .order_by(Booking.start_time.desc())
+        .limit(25)
+    )
+    q = (q or "").strip()
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where(or_(
+            Booking.reference.ilike(like),
+            User.email.ilike(like),
+            User.name.ilike(like),
+            Asset.name.ilike(like),
+        ))
+    result = await db.execute(stmt)
+    return [
+        {
+            "id": str(b.id),
+            "reference": b.reference,
+            "state": b.state,
+            "start_time": b.start_time.isoformat() if b.start_time else None,
+            "end_time": b.end_time.isoformat() if b.end_time else None,
+            "resident_name": u.name if u else None,
+            "resident_email": u.email if u else None,
+            "asset_name": a.name if a else None,
+            "ward": a.ward if a else None,
+        }
+        for b, a, u in result.all()
+    ]
 
 
 @router.get("/decision-queue")

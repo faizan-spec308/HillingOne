@@ -4,7 +4,7 @@ import {
   Activity, MapPin, AlertTriangle, TrendingUp,
   ShieldCheck, Clock, RefreshCw, Users, Zap, Download,
   Plus, Edit2, ToggleLeft, ToggleRight, X, CheckCircle2, Building2,
-  Bot, ListChecks, ChevronDown, ChevronUp, Loader2, ArrowLeftRight,
+  Bot, ListChecks, ChevronDown, ChevronUp, Loader2, ArrowLeftRight, Search,
 } from "lucide-react";
 import { api } from "../api/client";
 
@@ -467,6 +467,185 @@ function AgentRunsPanel() {
 }
 
 /* ── Booking trend bar chart ──────────────────────────────────────── */
+/* ── Agent-first conflict resolver ─────────────────────────────────── */
+const OVERRIDE_REASONS = [
+  ["room_damage", "Room damage"],
+  ["safety_issue", "Safety issue"],
+  ["mandatory_closure", "Mandatory closure"],
+  ["contractor_access", "Contractor access"],
+  ["statutory_inspection", "Statutory inspection"],
+  ["emergency_council_use", "Emergency council use"],
+];
+
+function ConflictResolver() {
+  const [q, setQ]                 = useState("");
+  const [results, setResults]     = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched]   = useState(false);
+  const [selected, setSelected]   = useState(null);
+  const [summary, setSummary]     = useState("");
+  const [running, setRunning]     = useState(false);
+  const [verdict, setVerdict]     = useState(null);
+  const [err, setErr]             = useState(null);
+
+  const [ovReason, setOvReason]   = useState("room_damage");
+  const [ovDetails, setOvDetails] = useState("");
+  const [ovOpen, setOvOpen]       = useState(false);
+  const [ovBusy, setOvBusy]       = useState(false);
+  const [ovDone, setOvDone]       = useState(null);
+
+  const card = { background: "var(--bg-card)", border: "1px solid var(--border)" };
+  const fmt = (iso) => iso ? new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+
+  const search = async (e) => {
+    e?.preventDefault();
+    setSearching(true); setErr(null);
+    try { setResults(await api.staffSearchBookings(q)); setSearched(true); }
+    catch (ex) { setErr(ex.message); }
+    finally { setSearching(false); }
+  };
+
+  const pick = (b) => { setSelected(b); setVerdict(null); setErr(null); setOvOpen(false); setOvDone(null); setSummary(""); };
+
+  const run = async () => {
+    if (!summary.trim()) { setErr("Describe the priority need first."); return; }
+    setRunning(true); setErr(null); setVerdict(null);
+    try { setVerdict(await api.resolveConflict(selected.id, summary.trim())); }
+    catch (ex) { setErr(ex.message); }
+    finally { setRunning(false); }
+  };
+
+  const submitOverride = async () => {
+    if (!ovDetails.trim()) { setErr("Document the reason before overriding."); return; }
+    setOvBusy(true); setErr(null);
+    try { setOvDone(await api.staffOverride({ booking_id: selected.id, reason: ovReason, details: ovDetails.trim() })); }
+    catch (ex) { setErr(ex.message); }
+    finally { setOvBusy(false); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl p-5" style={card}>
+        <div className="flex items-center gap-2 mb-1">
+          <ArrowLeftRight size={16} className="text-teal-600" />
+          <h3 className="font-bold text-[15px]" style={{ color: "var(--text-1)" }}>Resolve a booking conflict</h3>
+        </div>
+        <p className="text-[13px]" style={{ color: "var(--text-2)" }}>
+          Find a confirmed booking and hand the conflict to the agent. It looks for a suitable alternative
+          and proposes a swap with a goodwill credit, or escalates to you if none fits.
+        </p>
+      </div>
+
+      {/* Search */}
+      <div className="rounded-2xl p-4" style={card}>
+        <form onSubmit={search} className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-3)" }} />
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by reference, resident, email or venue…" className="input-base" style={{ paddingLeft: 38 }} />
+          </div>
+          <button type="submit" disabled={searching} className="btn-primary">{searching ? "Searching…" : "Search"}</button>
+        </form>
+
+        {searched && results.length === 0 && (
+          <p className="text-[13px] mt-3" style={{ color: "var(--text-3)" }}>No bookings found.</p>
+        )}
+
+        {results.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            {results.map(b => {
+              const isSel = selected?.id === b.id;
+              const actionable = b.state === "confirmed";
+              return (
+                <button key={b.id} onClick={() => actionable && pick(b)} disabled={!actionable}
+                  className="w-full text-left rounded-xl px-4 py-3 transition flex items-center gap-3"
+                  style={{ background: isSel ? "var(--brand-tint)" : "var(--surface-2)", border: `1px solid ${isSel ? "var(--brand)" : "var(--border)"}`, opacity: actionable ? 1 : 0.55, cursor: actionable ? "pointer" : "not-allowed" }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>{b.asset_name} · {b.ward}</p>
+                    <p className="text-[12px] truncate" style={{ color: "var(--text-2)" }}>{b.resident_name} · {fmt(b.start_time)}</p>
+                  </div>
+                  <span className="text-[11px] font-mono flex-shrink-0" style={{ color: "var(--text-3)" }}>{b.reference}</span>
+                  <span className={`badge flex-shrink-0 ${b.state === "confirmed" ? "badge-success" : "badge-neutral"}`}>{b.state}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Selected → run agent */}
+      {selected && (
+        <div className="rounded-2xl p-5" style={card}>
+          <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-3)" }}>Priority need for {selected.reference}</p>
+          <textarea value={summary} onChange={e => setSummary(e.target.value)} rows={3}
+            placeholder="e.g. Councillor needs this hall for an emergency residents meeting at the same time."
+            className="input-base mb-3" />
+          <button onClick={run} disabled={running} className="btn-primary">
+            {running ? <><Loader2 size={14} className="animate-spin" /> Agent working…</> : <><Bot size={14} /> Run conflict agent</>}
+          </button>
+        </div>
+      )}
+
+      {err && (
+        <div className="rounded-xl px-4 py-3 text-[13px]" style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }} role="alert">{err}</div>
+      )}
+
+      {/* Verdict */}
+      {verdict && (
+        <div className="rounded-2xl p-5" style={{ background: "var(--bg-card)", border: `1px solid ${verdict.outcome === "swap_proposed" ? "var(--success)" : "var(--warning)"}` }}>
+          <div className="flex items-start gap-3">
+            {verdict.outcome === "swap_proposed"
+              ? <CheckCircle2 size={20} style={{ color: "var(--success)" }} className="flex-shrink-0 mt-0.5" />
+              : <AlertTriangle size={20} style={{ color: "var(--warning)" }} className="flex-shrink-0 mt-0.5" />}
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
+                {verdict.outcome === "swap_proposed" ? "Agent proposed a swap" : "Escalated to you"}
+              </p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-2)" }}>{verdict.headline}</p>
+
+              {verdict.outcome === "swap_proposed" && verdict.resident_message && (
+                <div className="mt-3 rounded-xl px-4 py-3 text-[13px] italic" style={{ background: "var(--surface-2)", color: "var(--text-2)" }}>
+                  “{verdict.resident_message}”
+                </div>
+              )}
+
+              {verdict.steps?.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {verdict.steps.filter(s => s.type === "tool_call").map((s, i) => (
+                    <span key={i} className="badge badge-neutral">{i + 1}. {s.tool}</span>
+                  ))}
+                </div>
+              )}
+
+              {verdict.requires_human && !ovDone && (
+                <div className="mt-4">
+                  {!ovOpen ? (
+                    <button onClick={() => setOvOpen(true)} className="btn-secondary">Proceed with documented override</button>
+                  ) : (
+                    <div className="rounded-xl p-4 mt-1" style={{ background: "var(--surface-2)" }}>
+                      <p className="text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-3)" }}>Documented override</p>
+                      <select value={ovReason} onChange={e => setOvReason(e.target.value)} className="input-base mb-2">
+                        {OVERRIDE_REASONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                      <textarea value={ovDetails} onChange={e => setOvDetails(e.target.value)} rows={3} placeholder="Document the reason (works order #, nature of the issue)…" className="input-base mb-2" />
+                      <button onClick={submitOverride} disabled={ovBusy} className="btn-danger">{ovBusy ? "Cancelling…" : "Override & cancel booking"}</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {ovDone && (
+                <div className="mt-3 rounded-xl px-4 py-3 text-[13px]" style={{ background: "var(--success-bg)", color: "var(--success-fg)" }}>
+                  Booking cancelled with a documented reason. Resident notified and a {ovDone.goodwill_credit_applied}% goodwill credit applied.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StaffView() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
@@ -590,6 +769,7 @@ export default function StaffView() {
       <div className="flex items-center gap-1 mb-6 overflow-x-auto" style={{ borderBottom: "1px solid var(--border)" }}>
         {[
           { id: "dashboard",       label: "Dashboard",       icon: <Activity size={14} /> },
+          { id: "conflicts",       label: "Resolve Conflict",icon: <ArrowLeftRight size={14} /> },
           { id: "decision-queue",  label: "Decision Queue",  icon: <ListChecks size={14} />, badge: data?.pending_swap_responses?.length || 0 },
           { id: "agent-runs",      label: "AI Agent Runs",   icon: <Bot size={14} /> },
           { id: "assets",          label: "Manage Assets",   icon: <Building2 size={14} /> },
@@ -614,6 +794,9 @@ export default function StaffView() {
           </button>
         ))}
       </div>
+
+      {/* Resolve Conflict tab */}
+      {activeTab === "conflicts" && <ConflictResolver />}
 
       {/* Manage Assets tab */}
       {activeTab === "assets" && <AssetManagement />}

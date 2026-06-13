@@ -183,6 +183,8 @@ export const api = {
       body: JSON.stringify({ booking_id: bookingId, priority_request_summary: prioritySummary }),
     }),
 
+  staffSearchBookings: (q = "") => request(`/api/staff/bookings?q=${encodeURIComponent(q)}`),
+
   // Assets (public)
   listAssets: () => request("/api/assets"),
   getAssetAvailability: (assetId, fromDate, toDate) =>
