@@ -85,8 +85,12 @@ function CheckoutForm({ amountDisplay, onSuccess, onBack }) {
   );
 }
 
-export default function PaymentForm({ clientSecret, amountDisplay, onSuccess, onBack }) {
+export default function PaymentForm({ clientSecret, amountDisplay, asset, booking, onSuccess, onBack }) {
   const { isDark } = useTheme();
+
+  const venueLine = asset && booking?.start_time
+    ? `${asset.name} · ${new Date(booking.start_time).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}, ${new Date(booking.start_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}–${new Date(booking.end_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+    : null;
 
   const options = {
     clientSecret,
@@ -117,6 +121,9 @@ export default function PaymentForm({ clientSecret, amountDisplay, onSuccess, on
           </div>
           <h2 className="text-[20px] font-bold mb-1" style={{ color: "var(--text-1)" }}>Complete payment</h2>
           <p className="text-[32px] font-black" style={{ color: "var(--brand)" }}>{amountDisplay}</p>
+          {venueLine && (
+            <p className="text-[13px] mt-1 font-medium" style={{ color: "var(--text-1)" }}>{venueLine}</p>
+          )}
           <p className="text-[13px] mt-1" style={{ color: "var(--text-2)" }}>Booking fee · Fully refundable on cancellation</p>
         </div>
 

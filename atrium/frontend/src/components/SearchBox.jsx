@@ -8,6 +8,12 @@ export default function SearchBox({ onSearch, loading, onBrowse }) {
   const [query,     setQuery]     = useState("");
   const [listening, setListening] = useState(false);
   const [focused,   setFocused]   = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
+
+  const showVoiceError = (text) => {
+    setVoiceError(text);
+    setTimeout(() => setVoiceError(null), 5000);
+  };
 
   const recRef      = useRef(null);
   const textareaRef = useRef(null);
@@ -33,16 +39,16 @@ export default function SearchBox({ onSearch, loading, onBrowse }) {
 
   const startVoice = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert("Voice input isn't supported in this browser."); return; }
+    if (!SR) { showVoiceError("Voice input isn't supported in this browser."); return; }
     const rec = new SR();
     rec.lang     = lang === "ur" ? "ur" : lang === "ar" ? "ar" : lang === "pl" ? "pl-PL" : "en-GB";
-    rec.onstart  = () => setListening(true);
+    rec.onstart  = () => { setVoiceError(null); setListening(true); };
     rec.onend    = () => setListening(false);
     rec.onerror  = (e) => {
       setListening(false);
-      if (e.error === "not-allowed") alert("Microphone permission was denied. Please allow microphone access in your browser settings.");
-      else if (e.error === "no-speech") alert("No speech detected. Please try again.");
-      else if (e.error === "network") alert("Voice input requires an internet connection.");
+      if (e.error === "not-allowed") showVoiceError("Microphone permission denied. Allow mic access in your browser settings.");
+      else if (e.error === "no-speech") showVoiceError("No speech detected. Please try again.");
+      else if (e.error === "network") showVoiceError("Voice input requires an internet connection.");
     };
     rec.onresult = (e) => { setQuery(e.results[0][0].transcript); setListening(false); };
     recRef.current = rec;
@@ -138,6 +144,12 @@ export default function SearchBox({ onSearch, loading, onBrowse }) {
                   <Mic size={13} />
                   {listening ? t("search_listening") : t("search_voice")}
                 </button>
+
+                {voiceError && (
+                  <span className="text-[12px] leading-tight" style={{ color: "var(--danger)" }} role="alert">
+                    {voiceError}
+                  </span>
+                )}
 
               </div>
 

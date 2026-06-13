@@ -223,6 +223,7 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
     setErr(null);
     if (!date)         { setErr("Please select a date."); return; }
     if (start >= end)  { setErr("End time must be after start time."); return; }
+    if (start < "08:00" || end > "22:00") { setErr("Bookings are available between 08:00 and 22:00."); return; }
     if (newHours < 0.5){ setErr("Minimum booking is 30 minutes."); return; }
     if (newHours > 12) { setErr("Maximum booking is 12 hours."); return; }
     setSaving(true);
@@ -281,13 +282,13 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: t2 }}>From</label>
-                  <input type="time" value={start} onChange={ev => setStart(ev.target.value)}
+                  <input type="time" value={start} min="08:00" max="21:00" step="900" onChange={ev => setStart(ev.target.value)}
                     className="w-full rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
                     style={inputStyle} />
                 </div>
                 <div>
                   <label className="block text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: t2 }}>To</label>
-                  <input type="time" value={end} onChange={ev => setEnd(ev.target.value)}
+                  <input type="time" value={end} min="08:30" max="22:00" step="900" onChange={ev => setEnd(ev.target.value)}
                     className="w-full rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
                     style={inputStyle} />
                 </div>

@@ -302,6 +302,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
         booking={holdBooking}
         asset={holdAsset}
         error={error}
+        isFree={Number(holdAsset?.hourly_rate || 0) === 0}
         onConfirm={handleProceedToPayment}
         onCancel={reset}
       />
@@ -314,6 +315,8 @@ export default function ResidentView({ user, onViewMyBookings }) {
       <PaymentForm
         clientSecret={clientSecret}
         amountDisplay={paymentAmount}
+        asset={holdAsset}
+        booking={holdBooking}
         onSuccess={handleConfirm}
         onBack={() => setStage("hold")}
       />
@@ -416,6 +419,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
     setErr(null);
     if (!date) { setErr("Please select a date."); return; }
     if (start >= end) { setErr("End time must be after start time."); return; }
+    if (start < "08:00" || end > "22:00") { setErr("Bookings are available between 08:00 and 22:00."); return; }
     if (durationHours < 0.5) { setErr("Minimum booking is 30 minutes."); return; }
     if (durationHours > 12)  { setErr("Maximum booking is 12 hours."); return; }
 
@@ -483,13 +487,13 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-[11px] mb-1" style={{ color: "var(--text-3)" }}>From</p>
-                <input type="time" value={start} onChange={(e) => setStart(e.target.value)}
+                <input type="time" value={start} min="08:00" max="21:00" step="900" onChange={(e) => setStart(e.target.value)}
                   className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
                   style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text-1)" }} />
               </div>
               <div>
                 <p className="text-[11px] mb-1" style={{ color: "var(--text-3)" }}>To</p>
-                <input type="time" value={end} onChange={(e) => setEnd(e.target.value)}
+                <input type="time" value={end} min="08:30" max="22:00" step="900" onChange={(e) => setEnd(e.target.value)}
                   className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
                   style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text-1)" }} />
               </div>
@@ -613,7 +617,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
 }
 
 /* ── Hold screen ──────────────────────────────────────────────────────────── */
-function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
+function HoldScreen({ booking, asset, error, isFree, onConfirm, onCancel }) {
   const { t } = useLanguage();
   const [proceeding, setProceeding] = useState(false);
   const heldUntil = new Date(booking.held_until).getTime();
@@ -775,7 +779,7 @@ function HoldScreen({ booking, asset, error, onConfirm, onCancel }) {
             {t("hold_release")}
           </button>
           <button onClick={handleProceed} disabled={proceeding} className="btn-primary">
-            {proceeding ? "One moment…" : t("hold_proceed")}
+            {proceeding ? "One moment…" : (isFree ? "Confirm booking" : t("hold_proceed"))}
           </button>
         </div>
       </div>
