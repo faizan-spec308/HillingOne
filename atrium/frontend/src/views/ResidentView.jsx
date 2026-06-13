@@ -3,6 +3,7 @@ import { Sparkles, Network, ArrowLeft, Calendar, Clock, PoundSterling, RefreshCw
 import SearchBox from "../components/SearchBox";
 import AssetCard from "../components/AssetCard";
 import AssetCalendar from "../components/AssetCalendar";
+import BrowseView from "./BrowseView";
 import BookingConfirmation from "./BookingConfirmation";
 import PaymentForm from "../components/PaymentForm";
 import { api } from "../api/client";
@@ -10,6 +11,7 @@ import { useLanguage } from "../context/LanguageContext";
 
 const STAGE_PATHS = {
   search:    "/",
+  browse:    "/browse",
   loading:   "/search",
   results:   "/results",
   datetime:  "/book",
@@ -230,9 +232,14 @@ export default function ResidentView({ user, onViewMyBookings }) {
             <p className="text-[14px] mb-6" style={{ color: t2 }}>
               {t("results_none_sub")}
             </p>
-            <button onClick={reset} className="btn-primary">
-              {t("results_search_again")}
-            </button>
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <button onClick={reset} className="btn-primary">
+                {t("results_search_again")}
+              </button>
+              <button onClick={() => setStage("browse")} className="btn-secondary">
+                Browse all spaces
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -255,10 +262,23 @@ export default function ResidentView({ user, onViewMyBookings }) {
                 </div>
               ))}
             </div>
+
+            {/* Didn't find the right space? Fall back to manual browse */}
+            <div className="text-center mt-8 pt-6" style={{ borderTop: "1px solid var(--border)" }}>
+              <p className="text-[14px] mb-3" style={{ color: t2 }}>Didn't find the right space?</p>
+              <button onClick={() => setStage("browse")} className="btn-secondary">
+                Browse all spaces manually
+              </button>
+            </div>
           </>
         )}
       </div>
     );
+  }
+
+  /* ── Manual browse (fallback) ─────────────────────────────────────────── */
+  if (stage === "browse") {
+    return <BrowseView onBook={handleBook} onBack={() => setStage("search")} />;
   }
 
   /* ── DateTime picker ──────────────────────────────────────────────────── */
@@ -327,7 +347,7 @@ export default function ResidentView({ user, onViewMyBookings }) {
           </div>
         </div>
       )}
-      <SearchBox onSearch={handleSearch} loading={holding} />
+      <SearchBox onSearch={handleSearch} loading={holding} onBrowse={() => setStage("browse")} />
     </div>
   );
 }

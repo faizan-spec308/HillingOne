@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Search, Mic, Sparkles, ArrowRight, MapPin, Users, Clock } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 
-export default function SearchBox({ onSearch, loading }) {
+export default function SearchBox({ onSearch, loading, onBrowse }) {
   const { t, lang } = useLanguage();
 
   const [query,     setQuery]     = useState("");
@@ -176,6 +176,16 @@ export default function SearchBox({ onSearch, loading }) {
               </button>
             ))}
           </div>
+
+          {/* Manual browse fallback — quiet, directly under the search */}
+          {onBrowse && (
+            <div className="text-center mt-6">
+              <button onClick={onBrowse} className="text-[13px] font-medium transition" style={{ color: "var(--text-2)" }}>
+                Prefer manual search?{" "}
+                <span className="font-semibold hover:underline" style={{ color: "var(--brand)" }}>Browse all spaces →</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
