@@ -118,10 +118,11 @@ export default function SearchBox({ onSearch, loading, onBrowse }) {
               />
             </div>
 
-            {/* Toolbar */}
+            {/* Toolbar — same surface as the card; a hairline divider does
+                the separation, so dark mode isn't two competing shades */}
             <div
               className="flex items-center justify-between px-4 py-3 gap-3"
-              style={{ borderTop: "1px solid var(--border)", background: "var(--surface-2)" }}
+              style={{ borderTop: "1px solid var(--border)", background: "transparent" }}
             >
               <div className="flex items-center gap-2">
 
@@ -131,7 +132,7 @@ export default function SearchBox({ onSearch, loading, onBrowse }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-all"
                   style={listening
                     ? { background: "var(--danger-bg)", borderColor: "var(--danger)", color: "var(--danger)" }
-                    : { background: "var(--bg-card)", borderColor: "var(--border)", color: "var(--text-2)" }
+                    : { background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text-2)" }
                   }
                 >
                   <Mic size={13} />
