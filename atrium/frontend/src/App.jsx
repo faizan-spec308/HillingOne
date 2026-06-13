@@ -25,8 +25,15 @@ function AppShell() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[1000] focus:px-4 focus:py-2 focus:rounded-xl focus:font-bold focus:shadow-lg"
+        style={{ background: "var(--brand)", color: "#fff" }}
+      >
+        Skip to main content
+      </a>
       <Header userName={user.name} role={user.role} isStaff={isStaff} />
-      <main className="pb-20">
+      <main id="main-content" className="pb-20">
         <Routes>
           {/* Booking flow — all render ResidentView; URL synced via replaceState in the component */}
           <Route path="/"         element={<ResidentView user={user} onViewMyBookings={() => navigate("/bookings")} />} />

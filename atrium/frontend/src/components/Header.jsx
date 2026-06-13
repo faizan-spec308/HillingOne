@@ -56,12 +56,13 @@ export default function Header({ userName, role, isStaff }) {
   }, []);
 
   const tabs = [
-    { path: "/",      label: t("nav_resident"), icon: null },
-    { path: "/staff", label: t("nav_staff"),    icon: <Shield size={11} />, staffOnly: true },
+    { path: "/",         label: t("nav_resident"),    icon: null },
+    { path: "/bookings", label: t("nav_my_bookings"), icon: <BookOpen size={11} /> },
+    { path: "/staff",    label: t("nav_staff"),       icon: <Shield size={11} />, staffOnly: true },
   ].filter((tab) => !tab.staffOnly || isStaff);
 
   // Treat all booking-flow sub-paths as "/"
-  const FLOW_PATHS = new Set(["/search", "/results", "/hold", "/pay", "/confirmed"]);
+  const FLOW_PATHS = new Set(["/search", "/results", "/book", "/hold", "/pay", "/confirmed"]);
   const activePath = FLOW_PATHS.has(location.pathname) ? "/" : location.pathname;
 
   return (
@@ -251,7 +252,7 @@ export default function Header({ userName, role, isStaff }) {
                 {[
                   { label: t("nav_resident"), icon: Home,    path: "/",         mobileOnly: true },
                   { label: t("nav_staff"),    icon: Shield,  path: "/staff",    mobileOnly: true, staffOnly: true },
-                  { label: t("nav_my_bookings"), icon: BookOpen, path: "/bookings" },
+                  { label: t("nav_my_bookings"), icon: BookOpen, path: "/bookings", mobileOnly: true },
                   { label: "Settings",        icon: Settings, path: "/settings" },
                 ].filter(item => (!item.staffOnly || isStaff)).map(({ label, icon: Icon, path, mobileOnly }) => (
                   <button

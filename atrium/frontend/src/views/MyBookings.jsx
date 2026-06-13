@@ -445,13 +445,13 @@ function BookingCard({ booking, onCancel, onReschedule, onAcceptSwap, onDeclineS
             <div className="flex items-center gap-1">
               {onReschedule && !isSwapPending && (
                 <button onClick={onReschedule}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-teal-600 hover:bg-teal-50/10 px-3 py-1.5 rounded-xl transition">
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-teal-600 hover:bg-teal-50/10 px-3 py-2.5 min-h-[44px] rounded-xl transition">
                   <Edit2 size={12} /> Edit time
                 </button>
               )}
               {onCancel && (
                 <button onClick={onCancel}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-red-500 hover:bg-red-50/10 px-3 py-1.5 rounded-xl transition">
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-red-500 hover:bg-red-50/10 px-3 py-2.5 min-h-[44px] rounded-xl transition">
                   <X size={12} /> Cancel
                 </button>
               )}
