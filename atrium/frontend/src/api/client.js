@@ -176,6 +176,13 @@ export const api = {
   staffOverride:  (data) => request("/api/staff/override", { method: "POST", body: JSON.stringify(data) }),
   decisionQueue:  () => request("/api/staff/decision-queue"),
 
+  // Agent-first conflict resolution: runs the agent automatically, returns a verdict
+  resolveConflict: (bookingId, prioritySummary) =>
+    request("/api/staff/resolve-conflict", {
+      method: "POST",
+      body: JSON.stringify({ booking_id: bookingId, priority_request_summary: prioritySummary }),
+    }),
+
   // Assets (public)
   listAssets: () => request("/api/assets"),
   getAssetAvailability: (assetId, fromDate, toDate) =>

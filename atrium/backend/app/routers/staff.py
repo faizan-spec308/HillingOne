@@ -3,6 +3,7 @@ import csv
 import io
 import logging
 import uuid
+from uuid import UUID
 from datetime import datetime, timedelta
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,12 +16,18 @@ from app.database import get_db
 from app.dependencies import require_staff
 from app.schemas.search import StaffOverrideRequest
 from app.services.booking_service import BookingService
+from app.agents.conflict_agent import ConflictResolutionAgent
 from app.models.user import User
 from app.models.audit_log import AuditLog
 from app.models.booking import Booking
 from app.models.asset import Asset
 from app.models.agent_run import AgentRun
 from app.models.search_log import SearchLog
+
+
+class ConflictResolveRequest(BaseModel):
+    booking_id: UUID
+    priority_request_summary: str = Field(..., min_length=1, max_length=500)
 
 
 class AssetUpsertRequest(BaseModel):
@@ -36,6 +43,89 @@ class AssetUpsertRequest(BaseModel):
 
 router = APIRouter(prefix="/api/staff", tags=["staff"], dependencies=[Depends(require_staff)])
 logger = logging.getLogger("hillingone.staff")
+
+
+@router.post("/resolve-conflict")
+async def resolve_conflict(
+    req: ConflictResolveRequest,
+    db: AsyncSession = Depends(get_db),
+    current_staff: User = Depends(require_staff),
+):
+    """Agent-first conflict resolution.
+
+    When staff raise a priority need over a confirmed booking, the autonomous
+    agent runs immediately and either:
+      • proposes a swap to the resident (alternative + goodwill credit), or
+      • escalates to a human when no suitable alternative exists.
+
+    The booking is never cancelled here — the resident decides on a proposed
+    swap, and a human handles escalations via /override. Returns a shaped
+    verdict the staff UI can act on directly.
+    """
+    booking = await db.get(Booking, str(req.booking_id))
+    if not booking:
+        raise HTTPException(status_code=404, detail="booking_not_found")
+    if booking.state != "confirmed":
+        raise HTTPException(status_code=400, detail="only_confirmed_bookings_can_be_resolved")
+
+    agent = ConflictResolutionAgent(db)
+    result = await agent.resolve(
+        confirmed_booking_id=str(req.booking_id),
+        priority_request_summary=req.priority_request_summary,
+    )
+    decision = result.get("final_decision")
+
+    # The agent wrote to the booking via this same session and committed; reload
+    # so we report the freshest state (swap fields / state).
+    await db.refresh(booking)
+
+    base = {
+        "agent_run_id": result.get("agent_run_id"),
+        "final_decision": decision,
+        "steps": result.get("steps", []),
+        "booking_id": str(req.booking_id),
+    }
+
+    if decision == "swap_proposed":
+        alt = await db.get(Asset, booking.alternative_offered_id) if booking.alternative_offered_id else None
+        credit = booking.goodwill_credit_applied or 0
+        return {
+            **base,
+            "outcome": "swap_proposed",
+            "resolved_by_agent": True,
+            "awaiting_resident": True,
+            "requires_human": False,
+            "alternative": alt.to_dict() if alt else None,
+            "goodwill_credit_percent": credit,
+            "resident_message": booking.swap_message,
+            "headline": (
+                f"Agent proposed a swap to {alt.name} ({alt.ward}) with a {credit}% goodwill credit. "
+                f"Awaiting the resident's decision — their original booking stays put unless they accept."
+                if alt else
+                f"Agent proposed a swap with a {credit}% goodwill credit. Awaiting the resident's decision."
+            ),
+        }
+
+    if decision == "escalated":
+        return {
+            **base,
+            "outcome": "escalated",
+            "resolved_by_agent": False,
+            "awaiting_resident": False,
+            "requires_human": True,
+            "headline": (
+                "The agent couldn't find a suitable alternative for the resident. "
+                "Escalated for your review — you may proceed with a documented override if it's genuinely necessary."
+            ),
+        }
+
+    return {
+        **base,
+        "outcome": decision or "failed",
+        "resolved_by_agent": False,
+        "requires_human": True,
+        "headline": "The agent could not complete resolution. Manual review required.",
+    }
 
 
 @router.post("/override")
