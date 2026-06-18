@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import String, Integer, DateTime, Boolean, Numeric, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from app.db_types import GUID, JSONType
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -11,14 +11,14 @@ from app.database import Base
 class Asset(Base):
     __tablename__ = "assets"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(100), nullable=False)
     ward: Mapped[str] = mapped_column(String(100), nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    accessibility: Mapped[dict] = mapped_column(JSONB, default=dict)
-    amenities: Mapped[dict] = mapped_column(JSONB, default=dict)
+    accessibility: Mapped[dict] = mapped_column(JSONType, default=dict)
+    amenities: Mapped[dict] = mapped_column(JSONType, default=dict)
     hourly_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
     longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)

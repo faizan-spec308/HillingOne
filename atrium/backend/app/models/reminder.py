@@ -6,7 +6,7 @@ reminders before their bookings, with calendar invite generation.
 import uuid
 from datetime import datetime
 from sqlalchemy import String, DateTime, Boolean, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID
+from app.db_types import GUID
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -14,9 +14,9 @@ from app.database import Base
 class Reminder(Base):
     __tablename__ = "reminders"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    booking_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=False)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    booking_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("bookings.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("users.id"), nullable=False)
     remind_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     channel: Mapped[str] = mapped_column(String(20), nullable=False, default="in_app")
     message: Mapped[str] = mapped_column(Text, nullable=False)

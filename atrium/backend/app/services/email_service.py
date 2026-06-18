@@ -16,7 +16,8 @@ BRAND_COLOR  = "#0D9488"
 
 
 def _fmt_dt(dt: datetime) -> str:
-    return dt.strftime("%-d %B %Y") if hasattr(dt, "strftime") else str(dt)
+    # Portable day-without-leading-zero (%-d is glibc-only and fails on Windows).
+    return f"{dt.day} {dt.strftime('%B %Y')}" if hasattr(dt, "strftime") else str(dt)
 
 
 def _fmt_time(dt: datetime) -> str:

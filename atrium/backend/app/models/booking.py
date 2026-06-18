@@ -3,7 +3,7 @@ import uuid
 import enum
 from datetime import datetime
 from sqlalchemy import String, Integer, DateTime, Boolean, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from app.db_types import GUID, JSONType
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -48,24 +48,24 @@ DUAL_APPROVAL_REASONS = {
 class Booking(Base):
     __tablename__ = "bookings"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=False)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    asset_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("assets.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("users.id"), nullable=False)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="open")
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
     attendee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
-    recurrence_pattern: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    parent_booking_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True)
+    recurrence_pattern: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
+    parent_booking_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), ForeignKey("bookings.id"), nullable=True)
     held_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cancellation_reason: Mapped[str | None] = mapped_column(String(100), nullable=True)
     cancellation_details: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cancelled_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    alternative_offered_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=True)
+    cancelled_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), ForeignKey("users.id"), nullable=True)
+    alternative_offered_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), ForeignKey("assets.id"), nullable=True)
     goodwill_credit_applied: Mapped[int] = mapped_column(Integer, default=0)
     swap_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     reference: Mapped[str | None] = mapped_column(String(50), unique=True, nullable=True)

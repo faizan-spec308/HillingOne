@@ -2,15 +2,15 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from app.db_types import GUID
 from app.database import Base
 
 
 class Payment(Base):
     __tablename__ = "payments"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    booking_id = Column(GUID(), ForeignKey("bookings.id"), nullable=False)
     stripe_payment_intent_id = Column(String(255), unique=True, nullable=False)
     amount_pence = Column(Integer, nullable=False)
     currency = Column(String(10), default="gbp")

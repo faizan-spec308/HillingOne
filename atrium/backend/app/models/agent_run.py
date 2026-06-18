@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import String, DateTime, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from app.db_types import GUID, JSONType
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -10,12 +10,12 @@ from app.database import Base
 class AgentRun(Base):
     __tablename__ = "agent_runs"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
     agent_name: Mapped[str] = mapped_column(String(50), nullable=False)
     goal: Mapped[str] = mapped_column(Text, nullable=False)
-    steps: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    steps: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
     final_outcome: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    related_booking_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True)
+    related_booking_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), ForeignKey("bookings.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     def to_dict(self) -> dict:
