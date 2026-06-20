@@ -48,6 +48,21 @@ jobs:
           print('All Atrium imports OK')
           "
 
+      - name: Run tests
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///:memory:
+          JWT_SECRET: ci-test-secret
+          ADMIN_SECRET: ci-test-admin
+          GEMINI_API_KEY: ""
+        run: |
+          pip install -r requirements-dev.txt
+          pytest
+
+      - name: Dependency vulnerability scan (advisory)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt || true
+
   frontend:
     name: Frontend — install & build
     runs-on: ubuntu-latest
@@ -73,3 +88,6 @@ jobs:
         env:
           VITE_API_BASE: ""
           VITE_BASE_URL: /HillingOne/
+
+      - name: Dependency audit (advisory)
+        run: npm audit --omit=dev || true
