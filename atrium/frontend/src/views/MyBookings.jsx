@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { api } from "../api/client";
+import DatePickerField from "../components/DatePickerField";
 import { stripePromise, IS_STRIPE_TEST_MODE } from "../lib/stripe";
 
 /* ─── helpers ──────────────────────────────────────────────────────── */
@@ -275,9 +276,7 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
             <div className="space-y-4 mb-4">
               <div>
                 <label className="block text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: t2 }}>Date</label>
-                <input type="date" min={today} value={date} onChange={ev => setDate(ev.target.value)}
-                  className="w-full rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
-                  style={inputStyle} />
+                <DatePickerField min={today} value={date} onChange={setDate} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -477,6 +476,7 @@ export default function MyBookings({ user, onBack }) {
   const [cancelling, setCancelling]     = useState(false);
   const [swapBusyId, setSwapBusyId]     = useState(null);
   const [filter, setFilter]             = useState("all");
+  const [error, setError]               = useState(null);
 
   const t1   = "var(--text-1)";
   const t2   = "var(--text-3)";
@@ -484,13 +484,25 @@ export default function MyBookings({ user, onBack }) {
   const surf = "var(--bg-card)";
   const skel = "var(--surface-2)";
 
-  useEffect(() => {
-    api.listUserBookings(1).then((res) => {
-      setUpcoming(res.upcoming);
-      setPast(res.past);
-      setHasMore(res.has_more);
+  const loadBookings = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.listUserBookings(1);
+      setUpcoming(res.upcoming || []);
+      setPast(res.past || []);
+      setHasMore(!!res.has_more);
       setPage(1);
-    }).finally(() => setLoading(false));
+    } catch (ex) {
+      setError(ex.message || "We couldn't load your bookings. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
 
   const loadMore = async () => {
@@ -636,7 +648,7 @@ export default function MyBookings({ user, onBack }) {
         })()}
 
         {/* Filter tabs */}
-        {!loading && (
+        {!loading && !error && (
           <div className="flex items-center gap-1 mb-6" style={{ borderBottom: `1px solid ${bdr}` }}>
             {[
               { id: "all",       label: "All",       count: upcoming.length + past.length },
@@ -687,8 +699,22 @@ export default function MyBookings({ user, onBack }) {
           </div>
         )}
 
+        {/* Error state — couldn't load bookings */}
+        {!loading && error && (
+          <div className="text-center py-20 rounded-3xl" style={{ background: surf, border: `1px solid ${bdr}` }}>
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "var(--danger-tint, #fef2f2)", color: "var(--danger)" }}>
+              <AlertTriangle size={26} strokeWidth={1.8} />
+            </div>
+            <p className="text-[18px] font-bold mb-2" style={{ color: t1 }}>We couldn't load your bookings</p>
+            <p className="text-[14px] mb-6 max-w-sm mx-auto" style={{ color: t2 }}>{error}</p>
+            <button onClick={loadBookings} className="btn-primary inline-flex items-center gap-2">
+              <RefreshCw size={15} /> Try again
+            </button>
+          </div>
+        )}
+
         {/* Empty state */}
-        {!loading && upcoming.length === 0 && past.length === 0 && (
+        {!loading && !error && upcoming.length === 0 && past.length === 0 && (
           <div className="text-center py-24 rounded-3xl" style={{ background: surf, border: `1px solid ${bdr}` }}>
             <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "var(--brand-tint)", color: "var(--brand)" }}>
               <Calendar size={26} strokeWidth={1.8} />

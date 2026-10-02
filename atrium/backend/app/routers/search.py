@@ -31,8 +31,13 @@ async def search(request: Request, req: SearchRequest, db: AsyncSession = Depend
     else:
         base = datetime.utcnow() + timedelta(days=2)
 
+    # An explicit hour ("2pm", "14:00") takes precedence over the coarse
+    # time-of-day bucket; both fall back to the afternoon default.
+    specific_hour = intent.get("specific_hour")
     tod = intent.get("time_of_day")
-    if tod == "morning":
+    if isinstance(specific_hour, int) and 0 <= specific_hour <= 23:
+        base = base.replace(hour=specific_hour, minute=0, second=0, microsecond=0)
+    elif tod == "morning":
         base = base.replace(hour=10, minute=0, second=0, microsecond=0)
     elif tod == "evening":
         base = base.replace(hour=18, minute=0, second=0, microsecond=0)

@@ -1,5 +1,16 @@
 const BASE = import.meta.env.VITE_API_BASE || "";
 
+// A production build with no API base means every /api/* request resolves
+// same-origin and is served the SPA index.html by the catch-all rewrite.
+// Surface that misconfiguration early rather than letting bookings/auth fail silently.
+if (import.meta.env.PROD && !BASE) {
+  // eslint-disable-next-line no-console
+  console.error(
+    "VITE_API_BASE is not set for this production build — API calls will not reach the backend. " +
+    "Set VITE_API_BASE (e.g. https://hillingone-api.onrender.com) in your Vercel project settings and redeploy."
+  );
+}
+
 const ERROR_MESSAGES = {
   slot_unavailable:            "This slot was just taken. Please choose another time.",
   hold_expired:                "Your hold timed out. Please search again.",
@@ -72,7 +83,24 @@ async function request(path, options = {}) {
     error.status = res.status;
     throw error;
   }
-  if (res.headers.get("content-type")?.includes("application/json")) return res.json();
+  // Empty-body success (e.g. 204 from logout) — nothing to parse.
+  if (res.status === 204 || res.headers.get("content-length") === "0") return res;
+
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) return res.json();
+
+  // Binary/non-JSON bodies are fetched directly by the dedicated download
+  // helpers below, never through request(). Any caller here expects JSON, so a
+  // non-JSON 200 means something is wrong — most commonly the SPA index.html
+  // being served because VITE_API_BASE is unset. Fail loudly instead of
+  // handing back a raw Response that callers will read undefined fields off.
+  if (contentType.includes("text/html")) {
+    const error = new Error(
+      "The server returned a web page instead of data — the app's API base URL is likely misconfigured."
+    );
+    error.status = res.status;
+    throw error;
+  }
   return res;
 }
 
