@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { WARDS } from "../lib/constants";
 import { api } from "../api/client";
+import { PrivacyModal, TermsModal } from "../components/Footer";
 
 export default function AuthPage({ initialMode = "login" }) {
   const { login } = useAuth();
@@ -19,6 +20,7 @@ export default function AuthPage({ initialMode = "login" }) {
   const [success, setSuccess]   = useState(null);
   const [showPw, setShowPw]     = useState(false);
   const [agreed, setAgreed]     = useState(false);
+  const [policyModal, setPolicyModal] = useState(null); // "terms" | "privacy" | null
   const [form, setForm]         = useState({ name: "", email: "", password: "", ward: "", newPassword: "" });
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -75,6 +77,9 @@ export default function AuthPage({ initialMode = "login" }) {
 
   return (
     <div className="min-h-screen flex">
+      {/* Policy modals opened from the registration consent checkbox */}
+      {policyModal === "terms"   && <TermsModal   onClose={() => setPolicyModal(null)} />}
+      {policyModal === "privacy" && <PrivacyModal onClose={() => setPolicyModal(null)} />}
 
       {/* ── Left panel ─────────────────────────────────────────────────────── */}
       <div
@@ -353,8 +358,15 @@ export default function AuthPage({ initialMode = "login" }) {
                   />
                   <span id="consent-text" className="text-[12.5px] leading-relaxed" style={{ color: t2 }}>
                     I confirm I am <strong>18 or over</strong> and agree to HillingOne's{" "}
-                    <strong>Terms of Use</strong> and <strong>Privacy Policy</strong>. HillingOne uses
-                    essential cookies only and does not track you.
+                    <button type="button" onClick={(e) => { e.preventDefault(); setPolicyModal("terms"); }}
+                      className="font-bold underline hover:no-underline" style={{ color: "var(--brand)" }}>
+                      Terms of Use
+                    </button>{" "}
+                    and{" "}
+                    <button type="button" onClick={(e) => { e.preventDefault(); setPolicyModal("privacy"); }}
+                      className="font-bold underline hover:no-underline" style={{ color: "var(--brand)" }}>
+                      Privacy Policy
+                    </button>. HillingOne uses essential cookies only and does not track you.
                   </span>
                 </label>
               )}

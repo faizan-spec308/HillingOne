@@ -320,16 +320,31 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/bookings")
-async def search_bookings(q: str = "", db: AsyncSession = Depends(get_db)):
-    """Staff booking lookup by reference, resident name/email, or venue name.
-    Used to find a confirmed booking to put to the conflict-resolution agent."""
+async def search_bookings(
+    q: str = "",
+    upcoming: bool = False,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    time_from: str | None = None,
+    time_to: str | None = None,
+    ward: str | None = None,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+):
+    """Staff booking lookup / list with optional filters.
+
+    - q: free text (reference, resident name/email, venue)
+    - upcoming: only future, still-active bookings (confirmed/held/swap_pending)
+    - from_date / to_date: ISO dates (YYYY-MM-DD) bounding the booking start
+    - time_from / time_to: HH:MM bounding the time-of-day of the start
+    - ward: filter by venue location (ward)
+    """
     stmt = (
         select(Booking, Asset, User)
         .outerjoin(Asset, Asset.id == Booking.asset_id)
         .outerjoin(User, User.id == Booking.user_id)
-        .order_by(Booking.start_time.desc())
-        .limit(25)
     )
+
     q = (q or "").strip()
     if q:
         like = f"%{q}%"
@@ -339,7 +354,46 @@ async def search_bookings(q: str = "", db: AsyncSession = Depends(get_db)):
             User.name.ilike(like),
             Asset.name.ilike(like),
         ))
+
+    if upcoming:
+        stmt = stmt.where(
+            Booking.state.in_(["confirmed", "held", "swap_pending"]),
+            Booking.end_time >= datetime.utcnow(),
+        )
+
+    if from_date:
+        try:
+            stmt = stmt.where(Booking.start_time >= datetime.fromisoformat(from_date))
+        except ValueError:
+            pass
+    if to_date:
+        # Inclusive of the whole end day
+        try:
+            end_dt = datetime.fromisoformat(to_date) + timedelta(days=1)
+            stmt = stmt.where(Booking.start_time < end_dt)
+        except ValueError:
+            pass
+    if ward:
+        stmt = stmt.where(Asset.ward.ilike(f"%{ward}%"))
+
+    # Order: upcoming lists read best ascending (soonest first); history desc.
+    stmt = stmt.order_by(Booking.start_time.asc() if upcoming else Booking.start_time.desc())
+    stmt = stmt.limit(max(1, min(limit, 500)))
+
     result = await db.execute(stmt)
+    rows = result.all()
+
+    # Time-of-day filter applied in Python (portable across DB backends).
+    def _in_time_window(b) -> bool:
+        if not b.start_time:
+            return True
+        hm = b.start_time.strftime("%H:%M")
+        if time_from and hm < time_from:
+            return False
+        if time_to and hm > time_to:
+            return False
+        return True
+
     return [
         {
             "id": str(b.id),
@@ -352,7 +406,8 @@ async def search_bookings(q: str = "", db: AsyncSession = Depends(get_db)):
             "asset_name": a.name if a else None,
             "ward": a.ward if a else None,
         }
-        for b, a, u in result.all()
+        for b, a, u in rows
+        if _in_time_window(b)
     ]
 
 

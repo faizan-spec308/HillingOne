@@ -336,17 +336,19 @@ class BookingService:
         if user:
             user.flexibility_credits = (user.flexibility_credits or 0) + booking.goodwill_credit_applied
 
-        # Carry any successful payment across to the new booking — the resident
+        # Carry any successful payment(s) across to the new booking — the resident
         # is moving venues at the council's request, so they are neither
         # refunded-and-rebooked nor charged twice; the payment simply follows.
-        existing_payment = (await self.db.execute(
+        # A booking can have more than one succeeded payment (e.g. an original
+        # payment plus a reschedule upcharge), so move all of them.
+        existing_payments = (await self.db.execute(
             select(Payment).where(
                 Payment.booking_id == booking.id,
                 Payment.status == "succeeded",
             )
-        )).scalar_one_or_none()
-        if existing_payment:
-            existing_payment.booking_id = new_booking.id
+        )).scalars().all()
+        for payment in existing_payments:
+            payment.booking_id = new_booking.id
 
         new_asset = await self.db.get(Asset, new_asset_id)
         self.db.add(build_notification(

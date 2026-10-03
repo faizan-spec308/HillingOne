@@ -199,7 +199,7 @@ async def refund_booking(
             Payment.status == "succeeded",
         )
     )
-    payment = result.scalar_one_or_none()
+    payment = result.scalars().first()
 
     if not payment:
         return {"refunded": False, "message": "No completed payment found for this booking."}

@@ -218,6 +218,15 @@ export const api = {
 
   staffSearchBookings: (q = "") => request(`/api/staff/bookings?q=${encodeURIComponent(q)}`),
 
+  // Filtered staff booking list. params: { q, upcoming, from_date, to_date, time_from, time_to, ward, limit }
+  staffBookings: (params = {}) => {
+    const clean = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== "" && v !== null && v !== undefined && v !== false)
+    );
+    const qs = new URLSearchParams(clean).toString();
+    return request(`/api/staff/bookings${qs ? `?${qs}` : ""}`);
+  },
+
   // Assets (public)
   listAssets: () => request("/api/assets"),
   getAssetAvailability: (assetId, fromDate, toDate) =>

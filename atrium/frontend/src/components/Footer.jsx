@@ -128,7 +128,7 @@ function FAQModal({ onClose }) {
 }
 
 /* ─── Privacy Policy modal ──────────────────────────────────────────── */
-function PrivacyModal({ onClose }) {
+export function PrivacyModal({ onClose }) {
   return (
     <Modal title="Privacy Policy" onClose={onClose}>
       <div className="space-y-5 text-[13px] leading-relaxed">
@@ -186,7 +186,7 @@ function PrivacyModal({ onClose }) {
 }
 
 /* ─── Terms of Use modal ────────────────────────────────────────────── */
-function TermsModal({ onClose }) {
+export function TermsModal({ onClose }) {
   return (
     <Modal title="Terms of Use" onClose={onClose}>
       <div className="space-y-5 text-[13px] leading-relaxed">

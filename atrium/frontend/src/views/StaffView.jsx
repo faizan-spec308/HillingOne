@@ -4,7 +4,7 @@ import {
   Activity, MapPin, AlertTriangle, TrendingUp,
   ShieldCheck, Clock, RefreshCw, Users, Zap, Download,
   Plus, Edit2, ToggleLeft, ToggleRight, X, CheckCircle2, Building2,
-  Bot, ListChecks, ChevronDown, ChevronUp, Loader2, ArrowLeftRight, Search,
+  Bot, ListChecks, ChevronDown, ChevronUp, ChevronRight, Loader2, ArrowLeftRight, Search, Calendar,
 } from "lucide-react";
 import { api } from "../api/client";
 
@@ -693,11 +693,139 @@ function ConflictResolver() {
   );
 }
 
+/* ── All bookings (filterable list) ───────────────────────────────── */
+function AllBookings() {
+  const emptyFilters = { q: "", from_date: "", to_date: "", time_from: "", time_to: "", ward: "", upcoming: true };
+  const [filters, setFilters] = useState(emptyFilters);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async (f) => {
+    setLoading(true);
+    try {
+      const res = await api.staffBookings({ ...f, limit: 300 });
+      setRows(res || []);
+    } catch {
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load(emptyFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const set = (k) => (e) => setFilters((prev) => ({ ...prev, [k]: e.target.value }));
+  const apply = () => load(filters);
+  const clear = () => { setFilters(emptyFilters); load(emptyFilters); };
+
+  const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "—";
+  const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
+
+  const STATE_BADGE = {
+    confirmed:    "bg-emerald-50 text-emerald-700",
+    held:         "bg-amber-50 text-amber-700",
+    swap_pending: "bg-blue-50 text-blue-700",
+    cancelled:    "bg-red-50 text-red-700",
+    completed:    "bg-gray-100 text-gray-600",
+  };
+
+  const inp = { background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-1)" };
+  const labelCls = "block text-[11px] font-bold uppercase tracking-wide mb-1";
+
+  return (
+    <div className="rounded-2xl overflow-hidden shadow-civic" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+      <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: "1px solid var(--border)" }}>
+        <Calendar size={16} className="text-teal-600" />
+        <h3 className="font-bold text-[15px]" style={{ color: "var(--text-1)" }}>All bookings</h3>
+        <span className="ml-auto text-[12px]" style={{ color: "var(--text-3)" }}>{loading ? "Loading…" : `${rows.length} shown`}</span>
+      </div>
+
+      {/* Filters */}
+      <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-4 gap-3" style={{ borderBottom: "1px solid var(--border)" }}>
+        <div className="col-span-2 md:col-span-1">
+          <label className={labelCls} style={{ color: "var(--text-3)" }}>Search</label>
+          <input value={filters.q} onChange={set("q")} onKeyDown={(e) => e.key === "Enter" && apply()}
+            placeholder="Name, email, ref, venue" className="w-full rounded-xl px-3 py-2 text-[13px]" style={inp} />
+        </div>
+        <div>
+          <label className={labelCls} style={{ color: "var(--text-3)" }}>Location (ward)</label>
+          <select value={filters.ward} onChange={set("ward")} className="w-full rounded-xl px-3 py-2 text-[13px]" style={inp}>
+            <option value="">All wards</option>
+            {WARDS.map((w) => <option key={w} value={w}>{w}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls} style={{ color: "var(--text-3)" }}>From date</label>
+          <input type="date" value={filters.from_date} onChange={set("from_date")} className="w-full rounded-xl px-3 py-2 text-[13px]" style={inp} />
+        </div>
+        <div>
+          <label className={labelCls} style={{ color: "var(--text-3)" }}>To date</label>
+          <input type="date" value={filters.to_date} onChange={set("to_date")} className="w-full rounded-xl px-3 py-2 text-[13px]" style={inp} />
+        </div>
+        <div>
+          <label className={labelCls} style={{ color: "var(--text-3)" }}>Time from</label>
+          <input type="time" value={filters.time_from} onChange={set("time_from")} className="w-full rounded-xl px-3 py-2 text-[13px]" style={inp} />
+        </div>
+        <div>
+          <label className={labelCls} style={{ color: "var(--text-3)" }}>Time to</label>
+          <input type="time" value={filters.time_to} onChange={set("time_to")} className="w-full rounded-xl px-3 py-2 text-[13px]" style={inp} />
+        </div>
+        <label className="flex items-center gap-2 text-[13px] self-end pb-2" style={{ color: "var(--text-2)" }}>
+          <input type="checkbox" checked={filters.upcoming}
+            onChange={(e) => setFilters((p) => ({ ...p, upcoming: e.target.checked }))}
+            className="h-4 w-4 accent-teal-600" />
+          Upcoming only
+        </label>
+        <div className="flex items-end gap-2">
+          <button onClick={apply} className="btn-primary text-[13px] px-4 py-2 flex-1 justify-center"><Search size={13} /> Apply</button>
+          <button onClick={clear} className="btn-secondary text-[13px] px-3 py-2">Clear</button>
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="overflow-x-auto">
+        {loading ? (
+          <div className="py-16 text-center text-[13px]" style={{ color: "var(--text-3)" }}>Loading bookings…</div>
+        ) : rows.length === 0 ? (
+          <div className="py-16 text-center text-[13px]" style={{ color: "var(--text-3)" }}>No bookings match these filters.</div>
+        ) : (
+          <table className="w-full staff-table">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Date", "Time", "Venue", "Ward", "Resident", "Status", "Ref"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((b) => (
+                <tr key={b.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td className="px-4 py-3 text-[13px] whitespace-nowrap" style={{ color: "var(--text-1)" }}>{fmtDate(b.start_time)}</td>
+                  <td className="px-4 py-3 text-[13px] whitespace-nowrap" style={{ color: "var(--text-2)" }}>{fmtTime(b.start_time)} – {fmtTime(b.end_time)}</td>
+                  <td className="px-4 py-3 text-[13px]" style={{ color: "var(--text-1)" }}>{b.asset_name || "—"}</td>
+                  <td className="px-4 py-3 text-[13px]" style={{ color: "var(--text-2)" }}>{b.ward || "—"}</td>
+                  <td className="px-4 py-3 text-[13px]" style={{ color: "var(--text-2)" }}>{b.resident_name || "—"}</td>
+                  <td className="px-4 py-3"><span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${STATE_BADGE[b.state] || "bg-gray-100 text-gray-600"}`}>{(b.state || "").replace("_", " ")}</span></td>
+                  <td className="px-4 py-3 text-[11px] font-mono" style={{ color: "var(--text-3)" }}>{b.reference || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function StaffView() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [metricInfo, setMetricInfo] = useState(null); // {label, value, info} or null
 
   const card  = { background: "var(--bg-card)", border: "1px solid var(--border)" };
   const text1 = "var(--text-1)";
@@ -759,24 +887,28 @@ export default function StaffView() {
       label: "Bookings this week",
       value: data.metrics.weekly_bookings,
       accent: false,
+      info: "Bookings made across all venues in the last 7 days. Click to open the full bookings list filtered to upcoming bookings.",
     },
     {
       icon: <Clock size={20} />,
       label: "Staff hours saved",
       value: `${Math.round(data.metrics.estimated_staff_hours_saved)}h`,
       accent: true,
+      info: "Estimated staff time saved versus handling each of these bookings manually by phone or email — the whole search-to-confirmation journey is now self-service.",
     },
     {
       icon: <TrendingUp size={20} />,
       label: "Phone calls avoided",
       value: data.metrics.phone_calls_avoided,
       accent: false,
+      info: "Every self-service booking is a call the contact centre did not have to take — estimated from the number of completed bookings.",
     },
     {
       icon: <ShieldCheck size={20} />,
       label: "Interfaces replaced",
       value: data.metrics.interfaces_replaced,
       accent: false,
+      info: "The number of separate legacy booking systems HillingOne consolidates into a single front door for residents and staff.",
     },
   ];
 
@@ -816,6 +948,7 @@ export default function StaffView() {
       <div className="flex items-center gap-1 mb-6 overflow-x-auto" style={{ borderBottom: "1px solid var(--border)" }}>
         {[
           { id: "dashboard",       label: "Dashboard",       icon: <Activity size={14} /> },
+          { id: "bookings",        label: "All Bookings",    icon: <Calendar size={14} /> },
           { id: "conflicts",       label: "Resolve Conflict",icon: <ArrowLeftRight size={14} /> },
           { id: "decision-queue",  label: "Decision Queue",  icon: <ListChecks size={14} />, badge: data?.pending_swap_responses?.length || 0 },
           { id: "agent-runs",      label: "AI Agent Runs",   icon: <Bot size={14} /> },
@@ -841,6 +974,29 @@ export default function StaffView() {
           </button>
         ))}
       </div>
+
+      {/* All Bookings tab */}
+      {activeTab === "bookings" && <AllBookings />}
+
+      {/* Metric info modal */}
+      {metricInfo && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{ backdropFilter: "blur(4px)", background: "rgba(8,11,17,0.6)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setMetricInfo(null); }}
+          role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-3)" }}>{metricInfo.label}</p>
+                <p className="text-[32px] font-black leading-tight" style={{ color: "var(--brand)" }}>{metricInfo.value}</p>
+              </div>
+              <button onClick={() => setMetricInfo(null)} aria-label="Close" style={{ color: "var(--text-3)" }}><X size={18} /></button>
+            </div>
+            <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-2)" }}>{metricInfo.info}</p>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Resolve Conflict tab */}
       {activeTab === "conflicts" && <ConflictResolver />}
@@ -887,7 +1043,11 @@ export default function StaffView() {
       {/* Metrics row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {metrics.map((m) => (
-          <MetricCard key={m.label} {...m} />
+          <MetricCard
+            key={m.label}
+            {...m}
+            onClick={m.label === "Bookings this week" ? () => setActiveTab("bookings") : () => setMetricInfo(m)}
+          />
         ))}
       </div>
 
@@ -1074,13 +1234,26 @@ export default function StaffView() {
   );
 }
 
-function MetricCard({ icon, label, value, accent }) {
+function MetricCard({ icon, label, value, accent, onClick }) {
+  const clickable = typeof onClick === "function";
+  const interactive = clickable
+    ? {
+        onClick,
+        role: "button",
+        tabIndex: 0,
+        title: "View details",
+        onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } },
+      }
+    : {};
+  const hoverCls = clickable ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-lg" : "";
+
   if (accent) {
     return (
-      <div className="px-4 py-3.5 rounded-2xl shadow-civic" style={{ background: "var(--brand)" }}>
+      <div {...interactive} className={`px-4 py-3.5 rounded-2xl shadow-civic ${hoverCls}`} style={{ background: "var(--brand)" }}>
         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-white/70">
           <span className="p-1 rounded-md bg-white/15">{icon}</span>
           {label}
+          {clickable && <ChevronRight size={12} className="ml-auto text-white/60" />}
         </div>
         <div className="text-[22px] font-black leading-tight tracking-tight text-white">{value}</div>
       </div>
@@ -1088,12 +1261,14 @@ function MetricCard({ icon, label, value, accent }) {
   }
   return (
     <div
-      className="px-4 py-3.5 rounded-2xl shadow-civic"
+      {...interactive}
+      className={`px-4 py-3.5 rounded-2xl shadow-civic ${hoverCls}`}
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-3)" }}>
         <span className="p-1 rounded-md" style={{ background: "var(--brand-tint)", color: "var(--brand)" }}>{icon}</span>
         {label}
+        {clickable && <ChevronRight size={12} className="ml-auto" style={{ color: "var(--text-3)" }} />}
       </div>
       <div className="text-[22px] font-black leading-tight tracking-tight" style={{ color: "var(--text-1)" }}>{value}</div>
     </div>

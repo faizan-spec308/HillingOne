@@ -156,7 +156,7 @@ async def confirm(
                     Payment.status == "succeeded",
                 )
             )
-            paid = pay_result.scalar_one_or_none() is not None
+            paid = pay_result.scalars().first() is not None
             if not paid:
                 import stripe as _stripe
                 _stripe.api_key = settings.stripe_secret_key
@@ -251,7 +251,7 @@ async def cancel_user(
                     Payment.status == "succeeded",
                 ).with_for_update()
             )
-            payment = result.scalar_one_or_none()
+            payment = result.scalars().first()
             if payment:
                 # Only child occurrences (with a parent) get a per-occurrence refund.
                 # The parent booking holds the full payment; cancelling it refunds all remaining.
@@ -362,7 +362,7 @@ async def reschedule_booking(
                 Payment.status == "succeeded",
             )
         )
-        payment = pay_result.scalar_one_or_none()
+        payment = pay_result.scalars().first()
         if payment:
             try:
                 import stripe as _stripe
