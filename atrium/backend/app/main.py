@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -72,28 +72,20 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Admin-Secret"],
-)
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    """Return a JSON 500 for any unhandled error. This handler runs inside the
-    CORS middleware, so the response carries CORS headers — without it, an
-    unhandled exception produces a header-less 500 that the browser reports as
-    a network failure ("we can't reach the server") instead of a real error."""
-    logger.exception("unhandled_error path=%s", request.url.path)
-    return JSONResponse(status_code=500, content={"detail": "internal_error"})
-
-
+# Middleware ordering matters. Starlette makes the LAST-added middleware the
+# OUTERMOST, so we add `security_headers` first and CORS last — CORS must be the
+# outer layer so that error responses produced inside also carry CORS headers.
+# `security_headers` converts any unhandled exception into a JSON 500 *inside*
+# CORS; without this, an unhandled error produces a header-less 500 that the
+# browser reports as a network failure ("we can't reach the server") rather than
+# a real error the UI can display.
 @app.middleware("http")
 async def security_headers(request, call_next):
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("unhandled_error path=%s", request.url.path)
+        response = JSONResponse(status_code=500, content={"detail": "internal_error"})
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -101,6 +93,15 @@ async def security_headers(request, call_next):
     if settings.environment == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Secret"],
+)
 
 app.include_router(auth.router)
 app.include_router(search.router)
