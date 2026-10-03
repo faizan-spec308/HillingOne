@@ -64,8 +64,11 @@ def _base(title: str, body_html: str) -> str:
           <tr>
             <td style="padding:20px 40px 28px;border-top:1px solid #E5E7EB;">
               <p style="margin:0;font-size:12px;color:#9CA3AF;">
-                HillingOne · London Borough of Hillingdon<br />
-                This is an automated message — please do not reply to this email.
+                HillingOne · London Borough of Hillingdon · Civic Centre, High Street, Uxbridge UB8 1UW<br />
+                This is an automated service message about your booking — please do not reply to this email.<br />
+                Manage your reminder preferences or unsubscribe from reminders in
+                <a href="https://hilling-one.vercel.app/settings" style="color:{BRAND_COLOR};">your account settings</a>,
+                or email <a href="mailto:hillingone@hillingdon.gov.uk" style="color:{BRAND_COLOR};">hillingone@hillingdon.gov.uk</a>.
               </p>
             </td>
           </tr>

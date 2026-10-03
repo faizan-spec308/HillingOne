@@ -2,15 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Timer } from "lucide-react";
 
-const IDLE_MS = 30 * 60 * 1000; // 30 minutes
-const WARN_MS = 60 * 1000;       // warn 60 seconds before logout
+const IDLE_MS = 2 * 60 * 1000;  // 2 minutes of inactivity → sign out
+const WARN_MS = 30 * 1000;       // warn 30 seconds before logout
 const THROTTLE_MS = 2000;
 const EVENTS = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
 
 export default function IdleLogout() {
   const { user, logout } = useAuth();
   const [warning, setWarning]     = useState(false);
-  const [secondsLeft, setSeconds] = useState(60);
+  const [secondsLeft, setSeconds] = useState(WARN_MS / 1000);
 
   const warnRef      = useRef(null);
   const countRef     = useRef(null);
@@ -33,7 +33,7 @@ export default function IdleLogout() {
 
     warnRef.current = setTimeout(() => {
       setWarning(true);
-      setSeconds(60);
+      setSeconds(WARN_MS / 1000);
       countRef.current = setInterval(() => {
         setSeconds(prev => {
           if (prev <= 1) {

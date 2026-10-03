@@ -337,6 +337,46 @@ function CookieModal({ onClose }) {
   );
 }
 
+/* ─── Refund Policy modal ───────────────────────────────────────────── */
+function RefundModal({ onClose }) {
+  return (
+    <Modal title="Refund Policy" onClose={onClose}>
+      <div className="space-y-5 text-[13px] leading-relaxed">
+        <p className="text-[12px] opacity-50">Last updated: June 2026</p>
+
+        <section>
+          <h3 className="text-[14px] font-bold mb-2">Cancellations by you</h3>
+          <ul className="list-disc list-inside space-y-1">
+            <li><strong>More than 24 hours</strong> before the booking start — full refund.</li>
+            <li><strong>Within 24 hours</strong> of the start — 50% refund.</li>
+            <li><strong>No-shows</strong> — no refund.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3 className="text-[14px] font-bold mb-2">Rescheduling</h3>
+          <p>If your new time costs more, you pay only the difference; if it costs less, the difference is refunded automatically. Rescheduling must be done more than 24 hours before the original start time.</p>
+        </section>
+
+        <section>
+          <h3 className="text-[14px] font-bold mb-2">Cancellations by the Council</h3>
+          <p>If the Council cancels for a documented operational reason, you receive a <strong>full refund</strong>, an equivalent alternative venue where possible, and a <strong>20% goodwill credit</strong> towards a future booking.</p>
+        </section>
+
+        <section>
+          <h3 className="text-[14px] font-bold mb-2">How refunds are paid</h3>
+          <p>Refunds are issued to your original payment method via Stripe and typically appear within 5–10 business days, depending on your bank. There are no booking fees or hidden charges — you pay only the advertised hourly rate for the time you book.</p>
+        </section>
+
+        <section>
+          <h3 className="text-[14px] font-bold mb-2">Contact</h3>
+          <p>For refund queries email <a href="mailto:hillingone@hillingdon.gov.uk" className="text-teal-600 font-medium">hillingone@hillingdon.gov.uk</a>.</p>
+        </section>
+      </div>
+    </Modal>
+  );
+}
+
 /* ─── Footer ────────────────────────────────────────────────────────── */
 export default function Footer({ cookieModalOpen = false, onCookieModalClose = () => {} }) {
   const [modal, setModal] = useState(null);
@@ -426,8 +466,8 @@ export default function Footer({ cookieModalOpen = false, onCookieModalClose = (
                   </span>
                 </li>
                 <li>
-                  <span className={linkCls} style={{ color: textMuted }}>
-                    Modern slavery statement
+                  <span className={linkCls} style={{ color: textMuted }} onClick={() => setModal("refund")}>
+                    Refund policy
                   </span>
                 </li>
               </ul>
@@ -524,6 +564,7 @@ export default function Footer({ cookieModalOpen = false, onCookieModalClose = (
       {modal === "faq"           && <FAQModal           onClose={() => setModal(null)} />}
       {modal === "privacy"       && <PrivacyModal       onClose={() => setModal(null)} />}
       {modal === "terms"         && <TermsModal         onClose={() => setModal(null)} />}
+      {modal === "refund"        && <RefundModal        onClose={() => setModal(null)} />}
       {modal === "accessibility" && <AccessibilityModal onClose={() => setModal(null)} />}
       {showCookieModal           && <CookieModal        onClose={closeCookieModal} />}
     </>

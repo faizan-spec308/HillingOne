@@ -18,6 +18,7 @@ export default function AuthPage({ initialMode = "login" }) {
   const [error, setError]       = useState(null);
   const [success, setSuccess]   = useState(null);
   const [showPw, setShowPw]     = useState(false);
+  const [agreed, setAgreed]     = useState(false);
   const [form, setForm]         = useState({ name: "", email: "", password: "", ward: "", newPassword: "" });
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -43,6 +44,11 @@ export default function AuthPage({ initialMode = "login" }) {
         const res = await api.login(form.email, form.password);
         login(res.token, res.user);
       } else if (mode === "register") {
+        if (!agreed) {
+          setError("Please confirm you are 18 or over and agree to the Terms of Use and Privacy Policy.");
+          setLoading(false);
+          return;
+        }
         const res = await api.register(form.name, form.email, form.password, form.ward);
         login(res.token, res.user);
       } else if (mode === "forgot") {
@@ -334,6 +340,23 @@ export default function AuthPage({ initialMode = "login" }) {
                     {WARDS.map((w) => <option key={w} value={w}>{w}</option>)}
                   </select>
                 </div>
+              )}
+
+              {mode === "register" && (
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 flex-shrink-0 accent-teal-600 cursor-pointer"
+                    aria-describedby="consent-text"
+                  />
+                  <span id="consent-text" className="text-[12.5px] leading-relaxed" style={{ color: t2 }}>
+                    I confirm I am <strong>18 or over</strong> and agree to HillingOne's{" "}
+                    <strong>Terms of Use</strong> and <strong>Privacy Policy</strong>. HillingOne uses
+                    essential cookies only and does not track you.
+                  </span>
+                </label>
               )}
 
               {error && (
