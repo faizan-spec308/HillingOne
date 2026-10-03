@@ -3,6 +3,7 @@ import { Sparkles, Network, ArrowLeft, Calendar, Clock, PoundSterling, RefreshCw
 import SearchBox from "../components/SearchBox";
 import AssetCard from "../components/AssetCard";
 import AssetCalendar from "../components/AssetCalendar";
+import DatePickerField from "../components/DatePickerField";
 import BrowseView from "./BrowseView";
 import BookingConfirmation from "./BookingConfirmation";
 import PaymentForm from "../components/PaymentForm";
@@ -469,14 +470,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
             <label className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-2)" }}>
               <Calendar size={12} /> Date
             </label>
-            <input
-              type="date"
-              min={today}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition"
-              style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text-1)" }}
-            />
+            <DatePickerField min={today} value={date} onChange={setDate} />
           </div>
 
           {/* Time range */}

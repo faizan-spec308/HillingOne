@@ -8,8 +8,9 @@ Used by:
 Each call has a deterministic fallback so the system never breaks.
 """
 import json
+import re
 import time
-from datetime import date
+from datetime import date, timedelta
 from app.config import settings
 
 # Cache intent parsing results — same query text always maps to same intent.
@@ -49,6 +50,7 @@ Return a JSON object matching this exact schema (no other text):
   "venue_type": "office" | "meeting_room" | "hall" | "sports" | "outdoor" | "community" | "studio" | "other" | null,
   "frequency": "one-off" | "weekly" | "monthly" | null,
   "specific_date": <ISO date string "YYYY-MM-DD" if a specific date was mentioned, else null>,
+  "specific_hour": <integer 0-23 if an explicit clock time was mentioned (e.g. "2pm" -> 14), else null>,
   "day_of_week": <string or null>,
   "time_of_day": "morning" | "afternoon" | "evening" | null,
   "duration_hours": <number or null>,
@@ -215,6 +217,112 @@ async def generate_encouragement(
         return _fallback_encouragement(asset_name, ward)
 
 
+_WEEKDAYS = {
+    "monday": 0, "mon": 0, "tuesday": 1, "tue": 1, "tues": 1, "wednesday": 2, "wed": 2,
+    "thursday": 3, "thu": 3, "thurs": 3, "friday": 4, "fri": 4, "saturday": 5, "sat": 5,
+    "sunday": 6, "sun": 6,
+}
+_MONTHS = {
+    "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3, "april": 4, "apr": 4,
+    "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7, "august": 8, "aug": 8,
+    "september": 9, "sep": 9, "sept": 9, "october": 10, "oct": 10,
+    "november": 11, "nov": 11, "december": 12, "dec": 12,
+}
+
+
+def _parse_when(text: str) -> tuple[str | None, int | None, str | None]:
+    """Deterministically extract (specific_date 'YYYY-MM-DD', specific_hour 0-23, time_of_day).
+
+    Mirrors what the live Gemini intent parser resolves, so booking requests honour the
+    requested date/time even when the model is unavailable. Never raises — a parse miss
+    simply returns None for that field.
+    """
+    today = date.today()
+    target: date | None = None
+
+    try:
+        # ── Date ────────────────────────────────────────────────────────────
+        # Relative keywords
+        if re.search(r"\bday after tomorrow\b", text):
+            target = today + timedelta(days=2)
+        elif re.search(r"\btomorrow\b", text):
+            target = today + timedelta(days=1)
+        elif re.search(r"\btoday\b|\btonight\b", text):
+            target = today
+
+        # "in N days"
+        if target is None:
+            m = re.search(r"\bin (\d{1,2}) days?\b", text)
+            if m:
+                target = today + timedelta(days=int(m.group(1)))
+
+        # ISO date YYYY-MM-DD
+        if target is None:
+            m = re.search(r"\b(\d{4})-(\d{2})-(\d{2})\b", text)
+            if m:
+                try:
+                    target = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                except ValueError:
+                    target = None
+
+        # "10th of October" / "10 oct" / "october 10" (day + month, either order)
+        if target is None:
+            months_re = "|".join(_MONTHS.keys())
+            m = (re.search(rf"\b(\d{{1,2}})(?:st|nd|rd|th)?\s+(?:of\s+)?({months_re})\b", text)
+                 or re.search(rf"\b({months_re})\s+(\d{{1,2}})(?:st|nd|rd|th)?\b", text))
+            if m:
+                g1, g2 = m.group(1), m.group(2)
+                if g1.isdigit():
+                    day, month = int(g1), _MONTHS[g2]
+                else:
+                    day, month = int(g2), _MONTHS[g1]
+                for year in (today.year, today.year + 1):
+                    try:
+                        cand = date(year, month, day)
+                    except ValueError:
+                        break
+                    if cand >= today:
+                        target = cand
+                        break
+
+        # Weekday: "next friday" / "this saturday" / "on monday"
+        if target is None:
+            for name, wd in _WEEKDAYS.items():
+                if re.search(rf"\b{name}\b", text):
+                    ahead = (wd - today.weekday()) % 7
+                    if ahead == 0:
+                        ahead = 7  # same-day name means the next one
+                    if re.search(rf"\bnext\s+{name}\b", text) and ahead <= 7:
+                        pass  # "next <day>" is already the upcoming one here
+                    target = today + timedelta(days=ahead)
+                    break
+
+        # ── Time ────────────────────────────────────────────────────────────
+        hour: int | None = None
+        tm = re.search(r"\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b", text)
+        if tm:
+            hour = int(tm.group(1)) % 12
+            if tm.group(3) == "pm":
+                hour += 12
+        else:
+            tm = re.search(r"\b(\d{1,2}):(\d{2})\b", text)  # 24h "14:00"
+            if tm and 0 <= int(tm.group(1)) <= 23:
+                hour = int(tm.group(1))
+
+        if "evening" in text or "night" in text:
+            tod = "evening"
+        elif "afternoon" in text:
+            tod = "afternoon"
+        elif "morning" in text:
+            tod = "morning"
+        else:
+            tod = None
+
+        return (target.isoformat() if target else None, hour, tod)
+    except Exception:
+        return (None, None, None)
+
+
 def _fallback_intent(user_input: str) -> dict:
     text = user_input.lower()
     capacity = None
@@ -233,12 +341,16 @@ def _fallback_intent(user_input: str) -> dict:
             location = w.title()
             break
 
+    specific_date, specific_hour, time_of_day = _parse_when(text)
+
     return {
         "capacity": capacity,
         "location": location,
+        "specific_date": specific_date,
+        "specific_hour": specific_hour,
         "frequency": "weekly" if "weekly" in text or "every" in text else "one-off",
         "day_of_week": None,
-        "time_of_day": "afternoon" if "afternoon" in text else ("morning" if "morning" in text else None),
+        "time_of_day": time_of_day,
         "duration_hours": 2.0,
         "accessibility_required": {"wheelchair_access": "wheelchair" in text or "accessible" in text},
         "kitchen_required": "kitchen" in text,

@@ -313,16 +313,24 @@ streamlit run app.py
 | `DB_USER` | No | PostgreSQL username (default: `postgres`) |
 | `DB_PASSWORD` | Yes | PostgreSQL password |
 
-### `atrium/backend/.env` — atrium backend + frontend
+### `atrium/backend/.env` — atrium backend
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DATABASE_URL` | `postgresql+asyncpg://atrium:atrium@localhost:5432/atrium` | Async database URL |
 | `GEMINI_API_KEY` | — | Same key as above |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model for agents |
-| `CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed frontend origins |
+| `CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed frontend origins (include the Vercel URL in prod) |
 | `HOLD_DURATION_SECONDS` | `60` | How long a slot hold lasts |
 | `DEFAULT_GOODWILL_CREDIT_PERCENTAGE` | `20` | Credit % offered on conflict swaps |
+| `JWT_SECRET` | — | **Required in prod** — app refuses to start on the insecure default |
+| `STRIPE_SECRET_KEY` | — | Optional; enables payments/refunds when set |
+
+### `atrium/frontend` — frontend build (Vite)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_BASE` | `""` (dev proxy) | **Required in prod** — origin of the backend API (no trailing slash). See [.env.example](atrium/frontend/.env.example). |
 
 ---
 
@@ -375,15 +383,35 @@ HillingOne/
 
 ## Deployment
 
-The backend deploys to [Render](https://render.com) in one click:
+Production runs as **two** deployments that must be wired together:
+
+**Backend → [Render](https://render.com)** (the `atrium/backend` FastAPI app, via Docker):
 
 1. Fork this repository
 2. Connect it to Render as a new Web Service
-3. Render detects `render.yaml` automatically
-4. Add `GEMINI_API_KEY` and database credentials in the Render dashboard
-5. Deploy
+3. Render detects `render.yaml` automatically — it builds `atrium/backend/Dockerfile` and
+   starts `uvicorn app.main:app` (migrations + idempotent seed run on boot)
+4. Set `GEMINI_API_KEY`, `DATABASE_URL`, `JWT_SECRET`, `ADMIN_SECRET`, and (optionally)
+   `STRIPE_SECRET_KEY` in the Render dashboard
+5. Deploy. Health check: `/health`
 
-The `render.yaml` configures the Python environment, `uvicorn main:app` start command, and the `/health` health check endpoint.
+**Frontend → [Vercel](https://vercel.com)** (the `atrium/frontend` Vite SPA):
+
+1. Import the repo; set the project root to `atrium/frontend`
+2. **Set `VITE_API_BASE` to the Render backend origin** (e.g. `https://hillingone-api.onrender.com`,
+   no trailing slash). This is **required** — Vite inlines it at build time. Without it, every
+   `/api/*` call resolves same-origin and the SPA-fallback rewrite in `vercel.json` serves
+   `index.html` instead of data, so bookings and auth silently fail.
+3. Ensure the backend's `CORS_ORIGINS` (in `render.yaml`) includes the Vercel origin
+4. Deploy
+
+> Local dev doesn't need `VITE_API_BASE`: `vite.config.js` proxies `/api` → `localhost:8000`.
+> This is why a missing `VITE_API_BASE` only breaks production.
+
+> **Note:** the sections above (root `main.py`, `schema.sql`, `/api/ai/*` endpoints, the
+> two-database setup) describe an earlier single-backend prototype. The deployed system is the
+> `atrium/backend` async API — its real endpoints are defined in `atrium/frontend/src/api/client.js`.
+> This README predates that split and is pending a full rewrite.
 
 ---
 
