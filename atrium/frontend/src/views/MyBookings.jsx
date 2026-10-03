@@ -8,6 +8,7 @@ import {
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { api } from "../api/client";
 import DatePickerField from "../components/DatePickerField";
+import { toLocalNaiveIso, toLocalDateIso } from "../lib/datetime";
 import { stripePromise, IS_STRIPE_TEST_MODE } from "../lib/stripe";
 
 /* ─── helpers ──────────────────────────────────────────────────────── */
@@ -186,16 +187,15 @@ function RescheduleCheckout({ clientSecret, amountDisplay, onPaid, onBack }) {
 function RescheduleModal({ booking, onClose, onSuccess }) {
   const s   = new Date(booking.start_time);
   const e   = new Date(booking.end_time);
-  const pad = (d) => d.toISOString().slice(0, 10);
   const hm  = (d) => d.toTimeString().slice(0, 5);
 
-  const [date,  setDate]  = useState(pad(s));
+  const [date,  setDate]  = useState(toLocalDateIso(s));
   const [start, setStart] = useState(hm(s));
   const [end,   setEnd]   = useState(hm(e));
   const [saving, setSaving]         = useState(false);
   const [err,    setErr]            = useState(null);
   const [payment, setPayment]       = useState(null); // {clientSecret, paymentIntentId, amountDisplay, newStart, newEnd}
-  const today    = new Date().toISOString().slice(0, 10);
+  const today    = toLocalDateIso(new Date());
   const payRef   = useRef(null);
 
   const t1 = "var(--text-1)";
@@ -229,8 +229,9 @@ function RescheduleModal({ booking, onClose, onSuccess }) {
     if (newHours > 12) { setErr("Maximum booking is 12 hours."); return; }
     setSaving(true);
     try {
-      const ns = newStart.toISOString();
-      const ne = newEnd.toISOString();
+      // Wall-clock, no UTC conversion — keeps stored/displayed time matching the pick.
+      const ns = toLocalNaiveIso(newStart);
+      const ne = toLocalNaiveIso(newEnd);
       const res = await api.rescheduleBooking(booking.id, ns, ne);
 
       if (res.requires_payment) {
@@ -389,7 +390,7 @@ function BookingCard({ booking, onCancel, onReschedule, onAcceptSwap, onDeclineS
 
         {/* Info grid */}
         <div className="grid grid-cols-3 gap-3 mb-4">
-          {[["Date", fmtShort(booking.start_time)], ["Time", fmtTime(booking.start_time)], ["Duration", `${duration}h`]].map(([label, val]) => (
+          {[["Date", fmtShort(booking.start_time)], ["Time", `${fmtTime(booking.start_time)} – ${fmtTime(booking.end_time)}`], ["Duration", `${duration}h`]].map(([label, val]) => (
             <div key={label} className="rounded-xl p-3" style={{ background: "var(--surface-2)" }}>
               <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: "var(--text-3)" }}>{label}</p>
               <p className="text-[13px] font-semibold" style={{ color: "var(--text-1)" }}>{val}</p>

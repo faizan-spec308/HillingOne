@@ -8,6 +8,7 @@ The agent uses Gemini 2.5 Flash with native function calling. Each step of the
 agent's reasoning is captured and exposed to the frontend so judges can watch
 the agent think live.
 """
+import asyncio
 import json
 import uuid
 from datetime import datetime
@@ -51,6 +52,10 @@ class ConflictResolutionAgent:
     """
 
     MAX_ITERATIONS = 10
+    # Per-model-call timeout. A hung Gemini call is not an exception, so without
+    # this the whole request could block; on timeout we raise and resolve()'s
+    # existing handler degrades to the deterministic fallback engine.
+    GEMINI_CALL_TIMEOUT_SECONDS = 20
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -168,10 +173,13 @@ class ConflictResolutionAgent:
         final_decision = None
 
         for iteration in range(self.MAX_ITERATIONS):
-            response = await client.aio.models.generate_content(
-                model=settings.gemini_model,
-                contents=history,
-                config=config,
+            response = await asyncio.wait_for(
+                client.aio.models.generate_content(
+                    model=settings.gemini_model,
+                    contents=history,
+                    config=config,
+                ),
+                timeout=self.GEMINI_CALL_TIMEOUT_SECONDS,
             )
 
             if not response.candidates:

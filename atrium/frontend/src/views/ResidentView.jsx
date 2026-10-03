@@ -4,6 +4,7 @@ import SearchBox from "../components/SearchBox";
 import AssetCard from "../components/AssetCard";
 import AssetCalendar from "../components/AssetCalendar";
 import DatePickerField from "../components/DatePickerField";
+import { toLocalNaiveIso, toLocalDateIso } from "../lib/datetime";
 import BrowseView from "./BrowseView";
 import BookingConfirmation from "./BookingConfirmation";
 import PaymentForm from "../components/PaymentForm";
@@ -25,11 +26,32 @@ export default function ResidentView({ user, onViewMyBookings }) {
   const { t } = useLanguage();
   const [stage, setStageRaw] = useState("search"); // search | loading | results | hold | payment | confirmed
 
+  const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+  // Advance the flow AND push a history entry, so the browser Back button steps
+  // back through the flow instead of exiting the app. "loading" is transient —
+  // it replaces, so Back never lands on a stuck spinner.
   const setStage = (s) => {
     setStageRaw(s);
-    const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-    window.history.replaceState(null, "", base + (STAGE_PATHS[s] ?? "/"));
+    const url = base + (STAGE_PATHS[s] ?? "/");
+    if (s === "loading") window.history.replaceState(null, "", url);
+    else window.history.pushState(null, "", url);
   };
+
+  // Back/Forward: map the URL back to a stage without touching history. Flow
+  // data lives in component state, which survives because every flow path
+  // renders this same component (it is never unmounted mid-flow).
+  useEffect(() => {
+    const onPop = () => {
+      let p = window.location.pathname;
+      if (base && p.startsWith(base)) p = p.slice(base.length) || "/";
+      const match = Object.entries(STAGE_PATHS).find(([, path]) => path === p);
+      const next = match ? match[0] : "search";
+      setStageRaw(next === "loading" ? "search" : next);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [base]);
   const [intent, setIntent] = useState(null);
   const [matches, setMatches] = useState([]);
   const [searchWindow, setSearchWindow] = useState(null);
@@ -367,7 +389,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
     };
   };
 
-  const sw = searchWindow || { start: new Date(Date.now() + 172800000).toISOString(), end: new Date(Date.now() + 179200000).toISOString() };
+  const sw = searchWindow || { start: toLocalNaiveIso(new Date(Date.now() + 172800000)), end: toLocalNaiveIso(new Date(Date.now() + 179200000)) };
   const startLocal = toLocal(sw.start);
   const endLocal   = toLocal(sw.end);
 
@@ -379,7 +401,7 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
   const [recurrenceWeeks, setRecurrenceWeeks] = useState(4);
   const [dayBookings,    setDayBookings]    = useState([]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateIso(new Date());
   const rate  = Number(asset?.hourly_rate || 0);
 
   // Live availability for the chosen day, so conflicts surface before submitting
@@ -443,8 +465,10 @@ function DateTimePicker({ asset, searchWindow, loading, error, onConfirm, onBack
       // If re-fetch fails, let the server be the final arbiter
     }
 
-    const startIso = new Date(`${date}T${start}:00`).toISOString();
-    const endIso   = new Date(`${date}T${end}:00`).toISOString();
+    // Send the chosen wall-clock time as-is (no UTC conversion) — the backend
+    // stores and returns it naive, so what the resident picks is what they see.
+    const startIso = `${date}T${start}:00`;
+    const endIso   = `${date}T${end}:00`;
     onConfirm(startIso, endIso, isRecurring, recurrenceWeeks);
   };
 

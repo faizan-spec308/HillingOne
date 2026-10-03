@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X, CalendarCheck } from "lucide-react";
 import { api } from "../api/client";
+import { toLocalNaiveIso } from "../lib/datetime";
 
 const HOUR_START = 8;   // 08:00
 const HOUR_END   = 22;  // 22:00 (last slot starts at 21:00)
@@ -98,7 +99,7 @@ export default function AssetCalendar({ asset, onClose, onSelectSlot }) {
     const start = new Date(`${selected.date}T${String(selected.hour).padStart(2, "0")}:00:00`);
     const end   = new Date(start);
     end.setHours(end.getHours() + 1);
-    onSelectSlot(asset, start.toISOString(), end.toISOString());
+    onSelectSlot(asset, toLocalNaiveIso(start), toLocalNaiveIso(end));
   };
 
   const fmtDay   = (d) => d.toLocaleDateString("en-GB", { weekday: "short" });

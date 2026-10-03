@@ -7,11 +7,16 @@ Used by:
 
 Each call has a deterministic fallback so the system never breaks.
 """
+import asyncio
 import json
 import re
 import time
 from datetime import date, timedelta
 from app.config import settings
+
+# A hung model call is not an exception; bound each one so a slow Gemini
+# response degrades to the deterministic fallback instead of hanging the request.
+_GEMINI_TIMEOUT_SECONDS = 15
 
 # Cache intent parsing results — same query text always maps to same intent.
 # Saves one Gemini call per repeated search. TTL: 10 minutes.
@@ -150,13 +155,16 @@ async def parse_intent(user_input: str) -> dict:
         return result
     try:
         from google.genai import types
-        response = await client.aio.models.generate_content(
-            model=settings.gemini_model,
-            contents=INTENT_PROMPT.format(user_input=user_input, today=date.today().isoformat()),
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
+        response = await asyncio.wait_for(
+            client.aio.models.generate_content(
+                model=settings.gemini_model,
+                contents=INTENT_PROMPT.format(user_input=user_input, today=date.today().isoformat()),
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                ),
             ),
+            timeout=_GEMINI_TIMEOUT_SECONDS,
         )
         result = json.loads(response.text)
         _intent_cache[cache_key] = (now, result)
@@ -173,16 +181,19 @@ async def rank_matches(intent: dict, inventory: list[dict]) -> list[dict]:
         return _fallback_matches(inventory, intent)
     try:
         from google.genai import types
-        response = await client.aio.models.generate_content(
-            model=settings.gemini_model,
-            contents=MATCH_PROMPT.format(
-                intent_json=json.dumps(intent),
-                inventory_json=json.dumps(inventory[:20]),
+        response = await asyncio.wait_for(
+            client.aio.models.generate_content(
+                model=settings.gemini_model,
+                contents=MATCH_PROMPT.format(
+                    intent_json=json.dumps(intent),
+                    inventory_json=json.dumps(inventory[:20]),
+                ),
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                ),
             ),
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-            ),
+            timeout=_GEMINI_TIMEOUT_SECONDS,
         )
         return json.loads(response.text)
     except Exception:
@@ -201,16 +212,19 @@ async def generate_encouragement(
         return _fallback_encouragement(asset_name, ward)
     try:
         from google.genai import types
-        response = await client.aio.models.generate_content(
-            model=settings.gemini_model,
-            contents=ENCOURAGEMENT_PROMPT.format(
-                user_name=user_name,
-                asset_name=asset_name,
-                ward=ward,
-                start_time=start_time,
-                purpose=purpose or "your booking",
+        response = await asyncio.wait_for(
+            client.aio.models.generate_content(
+                model=settings.gemini_model,
+                contents=ENCOURAGEMENT_PROMPT.format(
+                    user_name=user_name,
+                    asset_name=asset_name,
+                    ward=ward,
+                    start_time=start_time,
+                    purpose=purpose or "your booking",
+                ),
+                config=types.GenerateContentConfig(temperature=0.7),
             ),
-            config=types.GenerateContentConfig(temperature=0.7),
+            timeout=_GEMINI_TIMEOUT_SECONDS,
         )
         return response.text.strip()
     except Exception:
