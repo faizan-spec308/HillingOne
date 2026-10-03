@@ -81,6 +81,16 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Return a JSON 500 for any unhandled error. This handler runs inside the
+    CORS middleware, so the response carries CORS headers — without it, an
+    unhandled exception produces a header-less 500 that the browser reports as
+    a network failure ("we can't reach the server") instead of a real error."""
+    logger.exception("unhandled_error path=%s", request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "internal_error"})
+
+
 @app.middleware("http")
 async def security_headers(request, call_next):
     response = await call_next(request)

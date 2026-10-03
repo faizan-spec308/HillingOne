@@ -39,6 +39,7 @@ const ERROR_MESSAGES = {
   only_confirmed_bookings_can_be_resolved: "Only confirmed bookings can be put to the conflict agent.",
   slot_unavailable_payment_refunded:
     "That time was just taken by someone else. Your payment has been refunded automatically.",
+  internal_error:              "Something went wrong on our side. Please try again in a moment.",
 };
 
 function getToken() {

@@ -10,6 +10,7 @@ the agent think live.
 """
 import asyncio
 import json
+import time
 import uuid
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,11 +52,17 @@ class ConflictResolutionAgent:
     a multi-step resolution strategy.
     """
 
-    MAX_ITERATIONS = 10
+    MAX_ITERATIONS = 8
     # Per-model-call timeout. A hung Gemini call is not an exception, so without
     # this the whole request could block; on timeout we raise and resolve()'s
     # existing handler degrades to the deterministic fallback engine.
-    GEMINI_CALL_TIMEOUT_SECONDS = 20
+    GEMINI_CALL_TIMEOUT_SECONDS = 12
+    # Total wall-clock budget for the whole live-model loop. Staff trigger this
+    # synchronously and wait on the HTTP response, so the loop must finish well
+    # within any gateway timeout; if it doesn't, we fall back to the fast
+    # deterministic engine rather than let the request hang (and surface to the
+    # user as "we can't reach the server").
+    GEMINI_TOTAL_BUDGET_SECONDS = 25
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -126,8 +133,17 @@ class ConflictResolutionAgent:
                 "content": f"Agent execution failed: {exc}. Falling back to deterministic resolution.",
                 "timestamp": datetime.utcnow().isoformat(),
             })
+            # If the model already placed the swap before we ran out of time,
+            # keep it — re-running the deterministic engine would double-act.
+            placed = await self.db.get(Booking, confirmed_booking_id)
+            if placed and placed.state == "swap_pending" and placed.alternative_offered_id:
+                return {
+                    "agent_run_id": None,
+                    "final_decision": "swap_proposed",
+                    "steps": self.steps,
+                }
             return await self._fallback_agent(
-                booking=booking,
+                booking=placed or booking,
                 asset=asset,
                 priority_summary=priority_request_summary,
             )
@@ -171,8 +187,14 @@ class ConflictResolutionAgent:
         ]
 
         final_decision = None
+        started = time.monotonic()
 
         for iteration in range(self.MAX_ITERATIONS):
+            # Enforce the total budget BETWEEN iterations (never cancel a call
+            # mid-flight — cancelling a DB tool call would corrupt the session).
+            # Breaking out with no decision lets resolve() use the fast fallback.
+            if time.monotonic() - started > self.GEMINI_TOTAL_BUDGET_SECONDS:
+                break
             response = await asyncio.wait_for(
                 client.aio.models.generate_content(
                     model=settings.gemini_model,

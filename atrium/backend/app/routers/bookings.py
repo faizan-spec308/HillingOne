@@ -489,16 +489,21 @@ async def swap_accept(
 
     # Confirmation email for the new (moved) booking. In-app notification +
     # goodwill credit are applied inside accept_swap.
-    new_id = (result.get("new_booking") or {}).get("id")
-    if new_id:
-        new_booking = await db.get(Booking, new_id)
-        if new_booking:
-            new_asset = await db.get(Asset, new_booking.asset_id)
-            asyncio.create_task(send_email(
-                to=current_user.email,
-                subject="Your booking has moved — HillingOne",
-                html=booking_confirmed_html(current_user.name, new_booking, new_asset),
-            ))
+    # The swap has already been committed — never let a notification/email error
+    # fail the resident's accept. Best-effort only.
+    try:
+        new_id = (result.get("new_booking") or {}).get("id")
+        if new_id:
+            new_booking = await db.get(Booking, new_id)
+            if new_booking:
+                new_asset = await db.get(Asset, new_booking.asset_id)
+                asyncio.create_task(send_email(
+                    to=current_user.email,
+                    subject="Your booking has moved — HillingOne",
+                    html=booking_confirmed_html(current_user.name, new_booking, new_asset),
+                ))
+    except Exception:
+        logger.warning("swap_accept_email_failed booking_id=%s", booking_id)
     return result
 
 
