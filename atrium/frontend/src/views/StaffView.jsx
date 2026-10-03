@@ -7,6 +7,7 @@ import {
   Bot, ListChecks, ChevronDown, ChevronUp, ChevronRight, Loader2, ArrowLeftRight, Search, Calendar,
 } from "lucide-react";
 import { api } from "../api/client";
+import DatePickerField from "../components/DatePickerField";
 
 const WARDS = [
   "Botwell","Brunel","Charville","Heathrow Villages","Hayes Town",
@@ -759,11 +760,11 @@ function AllBookings() {
         </div>
         <div>
           <label className={labelCls} style={{ color: "var(--text-3)" }}>From date</label>
-          <input type="date" value={filters.from_date} onChange={set("from_date")} className="w-full rounded-xl px-3 py-2 text-[13px]" style={inp} />
+          <DatePickerField value={filters.from_date} onChange={(v) => setFilters((p) => ({ ...p, from_date: v }))} />
         </div>
         <div>
           <label className={labelCls} style={{ color: "var(--text-3)" }}>To date</label>
-          <input type="date" value={filters.to_date} onChange={set("to_date")} className="w-full rounded-xl px-3 py-2 text-[13px]" style={inp} />
+          <DatePickerField value={filters.to_date} onChange={(v) => setFilters((p) => ({ ...p, to_date: v }))} />
         </div>
         <div>
           <label className={labelCls} style={{ color: "var(--text-3)" }}>Time from</label>
