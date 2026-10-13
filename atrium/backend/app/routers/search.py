@@ -1,4 +1,5 @@
 """Search router: parse intent + rank matches."""
+import re
 import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -10,16 +11,42 @@ from app.models.asset import Asset
 from app.models.booking import Booking
 from app.models.search_log import SearchLog
 from app.schemas.search import SearchRequest
-from app.services.gemini_client import parse_intent, rank_matches
+from app.services.gemini_client import parse_intent, rank_matches, _match_ward
 from app.limiter import limiter
 
 router = APIRouter(prefix="/api/search", tags=["search"])
+
+
+def _extract_capacity(text: str) -> int | None:
+    """Pull a headcount from the raw query. Prefers an explicit '... people'
+    style phrase so dates/times ('20th', '12pm') are never mistaken for it."""
+    t = text.lower()
+    m = re.search(r"(\d{1,4})\s*(?:people|person|persons|ppl|guests?|attendees?|pax|seats?)", t)
+    if m:
+        return int(m.group(1))
+    for tok in re.findall(r"(?<![\w])(\d{1,4})(?![\w])", t):
+        n = int(tok)
+        if 2 <= n <= 1000:
+            return n
+    return None
 
 
 @router.post("")
 @limiter.limit("20/minute")
 async def search(request: Request, req: SearchRequest, db: AsyncSession = Depends(get_db)):
     intent = await parse_intent(req.query)
+
+    # Enforce hard constraints deterministically from the raw query. The model
+    # reliably *echoes* the location/headcount in its summary but often fails to
+    # populate the structured fields the search filters on, which let venues in
+    # the wrong ward or far too small slip into the results. When the query
+    # plainly states a ward or a headcount, that wins over the model.
+    det_ward = _match_ward(req.query)
+    if det_ward:
+        intent["location"] = det_ward
+    det_capacity = _extract_capacity(req.query)
+    if det_capacity:
+        intent["capacity"] = det_capacity
 
     # Build the target window — use specific_date if Gemini resolved one, else default to +2 days
     specific_date = intent.get("specific_date")
