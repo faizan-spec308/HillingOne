@@ -84,7 +84,8 @@ venue_type guidance:
 specific_date rules: Today is {today}. If the user says "10th of June", "next Friday", "this Saturday", "tomorrow" etc., resolve it to an absolute YYYY-MM-DD date and put it in specific_date. If no date is mentioned, set specific_date to null.
 
 If the request is clear and complete, set follow_up_question to null. British English.
-Hillingdon wards include: Botwell, Hayes Town, Yiewsley, Uxbridge, Northwood, Ruislip, Manor, Brunel, Pinkwell, Heathrow Villages, Hillingdon East, West Drayton, Townfield, Charville."""
+Valid Hillingdon wards (use EXACTLY one of these for "location", or "anywhere", or null):
+Botwell, Eastcote, Harlington, Hayes Town, Hillingdon East, Ickenham, Manor, Northwood, Ruislip, South Ruislip, Uxbridge, Yeading, Yiewsley. If the user names a place, map it to the closest ward on this list."""
 
 
 MATCH_PROMPT = """You are HillingOne's matching engine. Rank council assets against the user's intent using STRICT scoring rules.
@@ -337,6 +338,30 @@ def _parse_when(text: str) -> tuple[str | None, int | None, str | None]:
         return (None, None, None)
 
 
+# The actual wards that assets live in (must match seed/data Asset.ward values,
+# since the search filters by Asset.ward). Keep this the single source of truth.
+WARD_NAMES = [
+    "Botwell", "Eastcote", "Harlington", "Hayes Town", "Hillingdon East",
+    "Ickenham", "Manor", "Northwood", "Ruislip", "South Ruislip",
+    "Uxbridge", "Yeading", "Yiewsley",
+]
+
+
+def _match_ward(text: str) -> str | None:
+    """Deterministically map free text to a real ward. Prefers a full ward-name
+    match (longest first, so 'South Ruislip' wins over 'Ruislip'); otherwise
+    falls back to a distinctive first word (e.g. 'Hayes' -> 'Hayes Town')."""
+    t = text.lower()
+    for w in sorted(WARD_NAMES, key=len, reverse=True):
+        if w.lower() in t:
+            return w
+    for w in WARD_NAMES:
+        first = w.split()[0].lower()
+        if len(first) >= 4 and first in t:
+            return w
+    return None
+
+
 def _fallback_intent(user_input: str) -> dict:
     text = user_input.lower()
     capacity = None
@@ -347,13 +372,7 @@ def _fallback_intent(user_input: str) -> dict:
                 capacity = n
                 break
 
-    location = None
-    wards = ["botwell", "hayes", "yiewsley", "uxbridge", "northwood", "ruislip",
-             "west drayton", "ickenham", "harefield", "cowley"]
-    for w in wards:
-        if w in text:
-            location = w.title()
-            break
+    location = _match_ward(text)
 
     specific_date, specific_hour, time_of_day = _parse_when(text)
 

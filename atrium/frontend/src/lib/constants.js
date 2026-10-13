@@ -1,10 +1,12 @@
 // Shared reference data so wards/categories never drift between
 // registration, settings, staff management and browse filters.
 
+// Must match the wards that assets actually live in (Asset.ward), otherwise
+// filtering/search by a listed ward returns nothing.
 export const WARDS = [
-  "Botwell", "Brunel", "Charville", "Heathrow Villages", "Hayes Town",
-  "Hillingdon East", "Manor", "Northwood", "Pinkwell", "Ruislip",
-  "Townfield", "Uxbridge", "West Drayton", "Yiewsley",
+  "Botwell", "Eastcote", "Harlington", "Hayes Town", "Hillingdon East",
+  "Ickenham", "Manor", "Northwood", "Ruislip", "South Ruislip",
+  "Uxbridge", "Yeading", "Yiewsley",
 ];
 
 export const CATEGORIES = [

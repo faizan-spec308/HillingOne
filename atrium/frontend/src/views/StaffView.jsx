@@ -10,9 +10,9 @@ import { api } from "../api/client";
 import DatePickerField from "../components/DatePickerField";
 
 const WARDS = [
-  "Botwell","Brunel","Charville","Heathrow Villages","Hayes Town",
-  "Hillingdon East","Manor","Northwood","Pinkwell","Ruislip",
-  "Townfield","Uxbridge","West Drayton","Yiewsley",
+  "Botwell","Eastcote","Harlington","Hayes Town","Hillingdon East",
+  "Ickenham","Manor","Northwood","Ruislip","South Ruislip",
+  "Uxbridge","Yeading","Yiewsley",
 ];
 
 const CATEGORIES = [
