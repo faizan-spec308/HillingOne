@@ -90,21 +90,13 @@ async def search(request: Request, req: SearchRequest, db: AsyncSession = Depend
     if intent.get("capacity"):
         stmt = stmt.where(Asset.capacity >= intent["capacity"])
 
-    # When a specific location is requested, only rank assets in that ward.
-    # Fall back to all available assets only if zero ward matches exist.
+    # Capacity is a hard filter (above) — it keeps equipment and far-too-small
+    # rooms out. Location is NOT a hard filter: a resident who names a ward wants
+    # that ward's venue ranked first and treated as a strong match, but should
+    # still see other options below (that's what the confidence scores are for).
     location = (intent.get("location") or "").strip().lower()
-    if location and location != "anywhere":
-        ward_stmt = stmt.where(Asset.ward.ilike(f"%{location}%"))
-        ward_result = await db.execute(ward_stmt)
-        ward_assets = list(ward_result.scalars().all())
-        if ward_assets:
-            available = ward_assets
-        else:
-            result = await db.execute(stmt)
-            available = list(result.scalars().all())
-    else:
-        result = await db.execute(stmt)
-        available = list(result.scalars().all())
+    result = await db.execute(stmt)
+    available = list(result.scalars().all())
 
     inventory_dicts = [a.to_dict() for a in available]
     matches = await rank_matches(intent, inventory_dicts)
@@ -113,6 +105,36 @@ async def search(request: Request, req: SearchRequest, db: AsyncSession = Depend
     asset_by_id = {a.to_dict()["id"]: a.to_dict() for a in available}
     for m in matches:
         m["asset"] = asset_by_id.get(m.get("asset_id"), {})
+
+    # Promote the requested ward: its venues go to the top as high-confidence
+    # matches (never dropped just because the model ranked them lower), and other
+    # options are kept below with their confidence capped under the ward matches.
+    if location and location != "anywhere":
+        ward_ids = [aid for aid, a in asset_by_id.items() if location in (a.get("ward") or "").lower()]
+        ward_matches = []
+        for aid in ward_ids:
+            a = asset_by_id[aid]
+            existing = next((m for m in matches if m.get("asset_id") == aid), None)
+            if existing:
+                existing["match_score"] = max(existing.get("match_score") or 0, 90)
+                existing["reasoning"] = existing.get("reasoning") or f"{a.get('name')} is in {a.get('ward')} and fits your group."
+                ward_matches.append(existing)
+            else:
+                ward_matches.append({
+                    "asset_id": aid,
+                    "rank": 1,
+                    "match_score": 92,
+                    "reasoning": f"{a.get('name')} is in {a.get('ward')} and fits your group size.",
+                    "carbon_estimate_kg": a.get("co2_per_visit") or 0.5,
+                    "accessibility_match": "full" if (a.get("accessibility") or {}).get("wheelchair_access") else "partial",
+                    "asset": a,
+                })
+        others = [m for m in matches if m.get("asset_id") not in set(ward_ids)]
+        for m in others:
+            m["match_score"] = min(m.get("match_score") or 50, 70)
+        # Sort ward matches by best capacity fit (smallest venue that still fits first)
+        ward_matches.sort(key=lambda m: (m["asset"].get("capacity") or 9999))
+        matches = ward_matches + others
 
     # Log the search
     sl = SearchLog(
