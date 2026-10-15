@@ -62,7 +62,9 @@ async function request(path, options = {}) {
   // dropped while the instance wakes; a short wait + retry recovers it instead
   // of showing "can't reach the server". Only connection failures are retried —
   // real HTTP responses (including errors) are handled below without retrying.
-  const backoff = [2000, 4000, 8000];
+  // The idle instance takes ~50s to wake, so the backoff spans a full cold
+  // start — later attempts land once it's up instead of giving up too early.
+  const backoff = [3000, 5000, 8000, 12000, 16000, 20000];
   let res;
   for (let attempt = 0; ; attempt++) {
     try {
