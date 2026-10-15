@@ -48,20 +48,35 @@ function getToken() {
 
 async function request(path, options = {}) {
   const token = getToken();
+  const init = {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+    ...options,
+  };
+
+  // Retry transient network failures with backoff. The backend runs on a plan
+  // that sleeps when idle, so the first request after a quiet spell can be
+  // dropped while the instance wakes; a short wait + retry recovers it instead
+  // of showing "can't reach the server". Only connection failures are retried —
+  // real HTTP responses (including errors) are handled below without retrying.
+  const backoff = [2000, 4000, 8000];
   let res;
-  try {
-    res = await fetch(`${BASE}${path}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.headers || {}),
-      },
-      ...options,
-    });
-  } catch {
-    const error = new Error("We can't reach the server right now. Check your connection and try again.");
-    error.status = 0;
-    throw error;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch(`${BASE}${path}`, init);
+      break;
+    } catch {
+      if (attempt < backoff.length) {
+        await new Promise((r) => setTimeout(r, backoff[attempt]));
+        continue;
+      }
+      const error = new Error("We can't reach the server right now. Check your connection and try again.");
+      error.status = 0;
+      throw error;
+    }
   }
   if (!res.ok) {
     let detail = "";

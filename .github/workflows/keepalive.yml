@@ -1,0 +1,29 @@
+name: Keep backend warm
+
+# The backend runs on a plan that sleeps after ~15 min idle, which makes the
+# first request after a quiet spell fail ("can't reach the server"). This pings
+# the health endpoint on a schedule so the instance stays awake.
+# Note: GitHub's scheduled runs can be delayed under load — for a live demo,
+# a dedicated uptime monitor (e.g. UptimeRobot) pinging /health every 5 min is
+# more reliable.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 https://hillingone-api.onrender.com/health || echo 000)
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "health check did not return 200 (instance may be waking)"
+          # Don't fail the workflow on a transient miss.
+          exit 0
